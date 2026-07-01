@@ -12,12 +12,14 @@ class CustomTextField extends StatefulWidget {
   final String label;
   final String hintText;
   final FieldType fieldType;
+  final TextEditingController? controller;
 
   const CustomTextField({
     super.key,
     required this.label,
     required this.hintText,
     this.fieldType = FieldType.text,
+    this.controller,
   });
 
   @override
@@ -25,83 +27,115 @@ class CustomTextField extends StatefulWidget {
 }
 
 class _CustomTextFieldState extends State<CustomTextField> {
-  bool isObscure = true;
+  bool _obscure = true;
 
   bool get isPhone => widget.fieldType == FieldType.phone;
   bool get isPassword => widget.fieldType == FieldType.password;
+  bool get isEmail => widget.fieldType == FieldType.email;
+
+  IconData get fieldIcon {
+    if (isPhone) return Icons.phone_outlined;
+    if (isPassword) return Icons.lock_outline_rounded;
+    if (isEmail) return Icons.email_outlined;
+    return Icons.person_outline_rounded;
+  }
+
+  TextInputType get keyboardType {
+    if (isPhone) return TextInputType.phone;
+    if (isEmail) return TextInputType.emailAddress;
+    return TextInputType.text;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // LABEL
-        Text(
-          widget.label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.black,
-          ),
-        ),
+        // Text(
+        //   widget.label,
+        //   style: const TextStyle(
+        //     fontSize: 15,
+        //     fontWeight: FontWeight.w600,
+        //     color: AppColors.black,
+        //   ),
+        // ),
 
-        const SizedBox(height: 10),
+        const SizedBox(height: 0),
 
-        // INPUT BOX
         Container(
-          height: 58,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          height: 50,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.border,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
             children: [
-              // LEFT ICON (based on field type)
-              Icon(
-                isPhone
-                    ? Icons.phone_outlined
-                    : isPassword
-                    ? Icons.lock_outline
-                    : Icons.text_fields,
-                color: AppColors.primary,
-                size: 22,
+              // Icon Box
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: AppColors.lightPurple,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  fieldIcon,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
               ),
 
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
 
-              // PHONE COUNTRY CODE UI
+              // Phone Prefix
               if (isPhone) ...[
                 const Text(
                   "+977",
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: AppColors.black,
+                    fontSize: 14,
                   ),
                 ),
-                const SizedBox(width: 6),
+
+                const SizedBox(width: 4),
+
                 const Icon(
-                  Icons.keyboard_arrow_down,
-                  size: 18,
+                  Icons.keyboard_arrow_down_rounded,
                   color: AppColors.grey,
+                  size: 20,
                 ),
+
                 const SizedBox(width: 10),
+
                 Container(
                   width: 1,
-                  height: 25,
+                  height: 24,
                   color: AppColors.border,
                 ),
+
                 const SizedBox(width: 10),
               ],
 
-              // TEXT FIELD
               Expanded(
                 child: TextField(
-                  obscureText: isPassword ? isObscure : false,
+                  controller: widget.controller,
+                  keyboardType: keyboardType,
+                  obscureText: isPassword ? _obscure : false,
                   decoration: InputDecoration(
                     hintText: widget.hintText,
                     border: InputBorder.none,
+                    isCollapsed: true,
                     hintStyle: const TextStyle(
                       color: AppColors.grey,
                       fontSize: 14,
@@ -110,16 +144,15 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 ),
               ),
 
-              // PASSWORD TOGGLE
               if (isPassword)
                 GestureDetector(
                   onTap: () {
                     setState(() {
-                      isObscure = !isObscure;
+                      _obscure = !_obscure;
                     });
                   },
                   child: Icon(
-                    isObscure
+                    _obscure
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
                     color: AppColors.grey,
