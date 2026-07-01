@@ -32,9 +32,20 @@ class CustomTextField extends StatefulWidget {
 class _CustomTextFieldState extends State<CustomTextField> {
   bool _obscure = true;
 
+  final FocusNode _focusNode = FocusNode();
+
   bool get isPhone => widget.fieldType == FieldType.phone;
   bool get isPassword => widget.fieldType == FieldType.password;
   bool get isEmail => widget.fieldType == FieldType.email;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _focusNode.addListener(() {
+      setState(() {});
+    });
+  }
 
   IconData get fieldIcon {
     if (isPhone) return Icons.phone_outlined;
@@ -54,17 +65,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Text(
-        //   widget.label,
-        //   style: const TextStyle(
-        //     fontSize: 15,
-        //     fontWeight: FontWeight.w600,
-        //     color: AppColors.black,
-        //   ),
-        // ),
 
         const SizedBox(height: 0),
-
         Container(
           height: 50,
           padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -72,7 +74,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppColors.border,
+              color: _focusNode.hasFocus
+                  ? AppColors.primary
+                  : AppColors.border,
+              width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
@@ -133,6 +138,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
               Expanded(
                 child: TextFormField(
                   controller: widget.controller,
+                  focusNode: _focusNode,
                   validator: widget.validator,
                   keyboardType: keyboardType,
                   obscureText: isPassword ? _obscure : false,

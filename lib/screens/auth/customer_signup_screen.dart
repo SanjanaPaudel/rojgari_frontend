@@ -291,6 +291,17 @@ class _CustomerSignupScreenState
                                 label: "Phone Number",
                                 hintText: "Enter your phone number",
                                 fieldType: FieldType.phone,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return "Phone number is required";
+                                  }
+
+                                  if (value.length != 10) {
+                                    return "Phone number must be 10 digits";
+                                  }
+
+                                  return null;
+                                },
                               ),
 
                               const SizedBox(height: 10),
@@ -300,6 +311,17 @@ class _CustomerSignupScreenState
                                 label: "Password",
                                 hintText: "Create your password",
                                 fieldType: FieldType.password,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return "Password is required";
+                                  }
+
+                                  if (value.length < 8) {
+                                    return "Password must be at least 8 characters";
+                                  }
+
+                                  return null;
+                                },
                               ),
 
                               const SizedBox(height: 10),
@@ -309,6 +331,17 @@ class _CustomerSignupScreenState
                                 label: "Confirm Password",
                                 hintText: "Re-enter your password",
                                 fieldType: FieldType.password,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return "Please confirm your password";
+                                  }
+
+                                  if (value != passwordController.text) {
+                                    return "Passwords do not match";
+                                  }
+
+                                  return null;
+                                },
                               ),
 
                               const SizedBox(height: 30),
@@ -329,6 +362,13 @@ class _CustomerSignupScreenState
                                 label: "Full Name",
                                 hintText: "Enter your full name",
                                 fieldType: FieldType.text,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return "Full name is required";
+                                  }
+
+                                  return null;
+                                },
                               ),
 
                               const SizedBox(height: 10),
@@ -338,10 +378,23 @@ class _CustomerSignupScreenState
                                 label: "Email Address (Optional)",
                                 hintText: "Enter your email address",
                                 fieldType: FieldType.email,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return "Email is required";
+                                  }
+
+                                  final emailRegex =
+                                  RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
+
+                                  if (!emailRegex.hasMatch(value)) {
+                                    return "Enter a valid email";
+                                  }
+
+                                  return null;
+                                },
                               ),
 
                               const SizedBox(height: 30),
-
                               //====================================================
                               // PROFILE PHOTO
                               //====================================================
@@ -440,57 +493,20 @@ class _CustomerSignupScreenState
                               CustomButton(
                                 text: "Sign Up",
                                 icon: Icons.arrow_forward,
-                                onPressed: () {},
+                                onPressed: () {
+                                  if (_formKey.currentState!.validate()) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Frontend validation successful!"),
+                                      ),
+                                    );
+
+                                    // Backend will be connected later.
+                                  }
+                                },
                               ),
 
-                              const SizedBox(height: 28),
-
-                              // SizedBox(
-                              //   width: double.infinity,
-                              //   height: 58,
-                              //   child: ElevatedButton(
-                              //     onPressed: () {},
-                              //     style: ElevatedButton.styleFrom(
-                              //       elevation: 0,
-                              //       padding: EdgeInsets.zero,
-                              //       backgroundColor: Colors.transparent,
-                              //       shadowColor: Colors.transparent,
-                              //       shape: RoundedRectangleBorder(
-                              //         borderRadius: BorderRadius.circular(16),
-                              //       ),
-                              //     ),
-                              //     child: Ink(
-                              //       decoration: BoxDecoration(
-                              //         // gradient: const LinearGradient(
-                              //         //   begin: Alignment.centerLeft,
-                              //         //   end: Alignment.centerRight,
-                              //         //   colors: [
-                              //         //     Color(0xff9A6BFF),
-                              //         //     Color(0xff6C3BFF),
-                              //         //   ],
-                              //         // ),
-                              //         // borderRadius: BorderRadius.circular(16),
-                              //       ),
-                              //       child: Container(
-                              //         alignment: Alignment.center,
-                              //         decoration: BoxDecoration(
-                              //           color: AppColors.primary,
-                              //           borderRadius: BorderRadius.circular(14),
-                              //         ),
-                              //         child: const Text(
-                              //           "Sign Up",
-                              //           style: TextStyle(
-                              //             color: Colors.white,
-                              //             fontSize: 17,
-                              //             fontWeight: FontWeight.bold,
-                              //           ),
-                              //         ),
-                              //       ),
-                              //     ),
-                              //   ),
-                              // ),
-
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 20),
                               //====================================================
                               // LOGIN
                               //====================================================
@@ -518,7 +534,7 @@ class _CustomerSignupScreenState
                                 ),
                               ),
 
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 18),
 
                               //====================================================
                               // SECURITY
