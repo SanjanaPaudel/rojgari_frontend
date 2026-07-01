@@ -27,6 +27,7 @@ class CustomerSignupScreen extends StatelessWidget {
                 ),
               ),
 
+              //temple background
               Positioned(
                 top: 200,
                 left: 0,
@@ -59,7 +60,7 @@ class CustomerSignupScreen extends StatelessWidget {
                       ),
                     ),
 
-
+                  //logo and logo_text
                     Center(
                       child: SizedBox(
                         width: 170,
@@ -85,8 +86,8 @@ class CustomerSignupScreen extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(height: 0),
                     // Orange line
+                    const SizedBox(height: 0),
                     Center(
                       child: Container(
                         width: 20,
@@ -107,11 +108,41 @@ class CustomerSignupScreen extends StatelessWidget {
                             // Left side - Text
                             Positioned(
                               left: 10,
-                              top: 60,
+                              top: 55,
                               right: 80, // Leaves room for the illustration
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
+                                children: [
+                                  const SizedBox(height: 5),
+
+                                  SizedBox(
+                                    width: 170,
+                                    child: RichText(
+                                      text: TextSpan(
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.grey,
+                                          height: 1.5,
+                                        ),
+                                        children: [
+                                          TextSpan(text: "Join Rojgari today and "),
+                                          TextSpan(
+                                            text: "connect with us",
+                                            style: TextStyle(
+                                              color: AppColors.primary, // Purple
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text: " to discover better opportunities",
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+
+
+                                  const SizedBox(height: 8),
                                   Text(
                                     "Create Your Account",
                                     style: TextStyle(
@@ -121,16 +152,8 @@ class CustomerSignupScreen extends StatelessWidget {
                                     ),
                                   ),
 
-                                  SizedBox(height: 8),
 
-                                  Text(
-                                    "Join Rojgari today and connect with US",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.grey,
-                                      height: 1.5,
-                                    ),
-                                  ),
+
                                 ],
                               ),
                             ),
@@ -138,7 +161,7 @@ class CustomerSignupScreen extends StatelessWidget {
                             // Right side - Illustration (overlaps text)
                             Positioned(
                               right: 3,
-                              top: 15,
+                              top: 3,
                               child: Image.asset(
                                 "assets/images/girl(_cus-sign).png",
                                 height: 230,
@@ -151,7 +174,7 @@ class CustomerSignupScreen extends StatelessWidget {
                     ),
 
                     Transform.translate(
-                      offset: const Offset(0, -90),
+                      offset: const Offset(0, -115),
                       child: Container(
                         width: double.infinity,
                         decoration: const BoxDecoration(
