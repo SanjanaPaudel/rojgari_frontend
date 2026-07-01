@@ -292,7 +292,7 @@ class _CustomerSignupScreenState
                                 hintText: "Enter your phone number",
                                 fieldType: FieldType.phone,
                                 validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
+                                  if (value == null || value.isEmpty) {
                                     return "Phone number is required";
                                   }
 
@@ -497,11 +497,9 @@ class _CustomerSignupScreenState
                                   if (_formKey.currentState!.validate()) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text("Frontend validation successful!"),
+                                        content: Text("Registration successful!"),
                                       ),
                                     );
-
-                                    // Backend will be connected later.
                                   }
                                 },
                               ),

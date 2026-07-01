@@ -15,6 +15,8 @@ class CustomTextField extends StatefulWidget {
   final FieldType fieldType;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
+  final FocusNode? focusNode;
+  final bool enabled;
 
   const CustomTextField({
     super.key,
@@ -23,6 +25,8 @@ class CustomTextField extends StatefulWidget {
     this.fieldType = FieldType.text,
     this.controller,
     this.validator,
+    this.focusNode,
+    this.enabled = true,
   });
 
   @override
@@ -31,8 +35,11 @@ class CustomTextField extends StatefulWidget {
 
 class _CustomTextFieldState extends State<CustomTextField> {
   bool _obscure = true;
+  String? _errorText;
 
-  final FocusNode _focusNode = FocusNode();
+  late FocusNode _focusNode;
+
+  bool _hasError = false;
 
   bool get isPhone => widget.fieldType == FieldType.phone;
   bool get isPassword => widget.fieldType == FieldType.password;
@@ -41,6 +48,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   void initState() {
     super.initState();
+
+    _focusNode = widget.focusNode ?? FocusNode();
 
     _focusNode.addListener(() {
       setState(() {});
@@ -68,13 +77,17 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
         const SizedBox(height: 0),
         Container(
-          height: 50,
+          constraints: const BoxConstraints(
+            minHeight: 50,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _focusNode.hasFocus
+              color: _hasError
+                  ? Colors.red
+                  : _focusNode.hasFocus
                   ? AppColors.primary
                   : AppColors.border,
               width: 1.5,
@@ -139,16 +152,60 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 child: TextFormField(
                   controller: widget.controller,
                   focusNode: _focusNode,
-                  validator: widget.validator,
+
+                  validator: (value) {
+                    final error = widget.validator?.call(value);
+
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+
+                      if (_hasError != (error != null)) {
+                        setState(() {
+                          _hasError = error != null;
+                          _errorText = error;
+                        });
+                      }
+                    });
+
+                    return error;
+                  },
+
                   keyboardType: keyboardType,
+                  textInputAction: TextInputAction.next,
                   obscureText: isPassword ? _obscure : false,
+
+                  autocorrect: !isPassword,
+
+                  enableSuggestions: !isPassword,
+
+                  enabled: widget.enabled,
+
+                  inputFormatters: [
+                    if (isPhone)
+                      FilteringTextInputFormatter.digitsOnly,
+
+                    if (isPhone)
+                      LengthLimitingTextInputFormatter(10),
+                  ],
+
                   decoration: InputDecoration(
                     hintText: widget.hintText,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 15),
+
                     border: InputBorder.none,
-                    isCollapsed: true,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
+
+
                     hintStyle: const TextStyle(
                       color: AppColors.grey,
                       fontSize: 14,
+                    ),
+                    errorStyle: const TextStyle(
+                      height: 0,
+                      fontSize: 0,
                     ),
                   ),
                 ),
@@ -171,7 +228,28 @@ class _CustomTextFieldState extends State<CustomTextField> {
             ],
           ),
         ),
+        if (_errorText != null)
+          Padding(
+            padding: const EdgeInsets.only(
+              left: 12,
+              top: 6,
+            ),
+            child: Text(
+              _errorText!,
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+              ),
+            ),
+          ),
       ],
     );
+  }
+  @override
+  void dispose() {
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    }
+    super.dispose();
   }
 }

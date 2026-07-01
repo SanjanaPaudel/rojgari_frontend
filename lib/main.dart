@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'screens/auth/customer_signup_screen.dart';
+import 'package:rojgari_frontend_one/screens/auth/logIn_screen.dart';
+// import 'screens/auth/customer_signup_screen.dart';
 
 void main() {
   runApp(
@@ -16,7 +17,8 @@ class MyApp extends StatelessWidget {
 
       debugShowCheckedModeBanner: false,
 
-      home: const CustomerSignupScreen(),
+      // home: const CustomerSignupScreen(),
+      home: LoginScreen(),
 
     );
   }
