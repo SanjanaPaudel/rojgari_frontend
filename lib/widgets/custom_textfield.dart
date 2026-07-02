@@ -143,16 +143,16 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
                 const SizedBox(width: 4),
 
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.grey,
-                  size: 20,
-                ),
+                // const Icon(
+                //   Icons.keyboard_arrow_down_rounded,
+                //   color: AppColors.grey,
+                //   size: 20,
+                // ),
 
                 const SizedBox(width: 10),
 
                 Container(
-                  width: 1,
+                  width: 2,
                   height: 24,
                   color: AppColors.border,
                 ),
