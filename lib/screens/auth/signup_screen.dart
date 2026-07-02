@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/widgets/custom_textfield.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
+import 'package:rojgari_frontend_one/screens/auth/logIn_screen.dart';
+import 'package:flutter/gestures.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class CustomerSignupScreen extends StatefulWidget {
   const CustomerSignupScreen({super.key});
@@ -20,6 +24,10 @@ class _CustomerSignupScreenState
   final emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
+  File? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
+
+
   @override
   void dispose() {
     phoneController.dispose();
@@ -30,6 +38,37 @@ class _CustomerSignupScreenState
     super.dispose();
   }
 
+  Future<void> pickImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
+    if (image != null) {
+      setState(() {
+        _selectedImage = File(image.path);
+      });
+    }
+  }
+
+  // Future<void> pickImage() async {
+  //   debugPrint("pickImage called");
+  //
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     const SnackBar(
+  //       content: Text("pickImage called"),
+  //     ),
+  //   );
+  //
+  //   final XFile? image = await _picker.pickImage(
+  //     source: ImageSource.gallery,
+  //   );
+  //
+  //   if (image != null) {
+  //     setState(() {
+  //       _selectedImage = File(image.path);
+  //     });
+  //   }
+  // }
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -424,12 +463,20 @@ class _CustomerSignupScreenState
                                       decoration: BoxDecoration(
                                         color: AppColors.lightPurple,
                                         borderRadius: BorderRadius.circular(14),
+                                        image: _selectedImage != null
+                                            ? DecorationImage(
+                                          image: FileImage(_selectedImage!),
+                                          fit: BoxFit.cover,
+                                        )
+                                            : null,
                                       ),
-                                      child: const Icon(
+                                      child: _selectedImage == null
+                                          ? const Icon(
                                         Icons.image_outlined,
                                         color: AppColors.primary,
                                         size: 24,
-                                      ),
+                                      )
+                                          : null,
                                     ),
 
                                     const SizedBox(width: 14),
@@ -461,7 +508,7 @@ class _CustomerSignupScreenState
                                     ),
 
                                     OutlinedButton(
-                                      onPressed: () {},
+                                      onPressed: pickImage,
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppColors.primary,
                                         side: const BorderSide(
@@ -508,24 +555,34 @@ class _CustomerSignupScreenState
                               //====================================================
                               // LOGIN
                               //====================================================
-
                               Center(
                                 child: RichText(
-                                  text: const TextSpan(
-                                    style: TextStyle(
+                                  text: TextSpan(
+                                    style: const TextStyle(
                                       fontSize: 15,
                                       color: AppColors.grey,
                                     ),
                                     children: [
-                                      TextSpan(
+                                      const TextSpan(
                                         text: "Already have an account? ",
                                       ),
                                       TextSpan(
                                         text: "Log In",
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           color: AppColors.primary,
                                           fontWeight: FontWeight.bold,
                                         ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) {
+                                                  return const LoginScreen();
+                                                },
+                                              ),
+                                            );
+                                          },
                                       ),
                                     ],
                                   ),

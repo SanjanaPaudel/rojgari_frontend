@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/widgets/custom_textfield.dart';
+import 'package:rojgari_frontend_one/screens/auth/signup_screen.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -91,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
             // TEMPLE BACKGROUND
             //=====================
             Positioned(
-              top: 120,
+              top: 80,
               left: 0,
               right: 0,
               child: Opacity(
@@ -109,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    const SizedBox(height:80),
+                    const SizedBox(height:60),
 
                     //--------------------------------
                     // LOGO
@@ -121,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         alignment: Alignment.center,
                         children: [
                           Positioned(
-                            top: -15,
+                            top: -20,
                             child: Image.asset(
                               "assets/images/logo_r.png",
                               height: 100,
@@ -165,14 +167,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
 
                     //=========================
-                    //
+                    //FORM BOX
                     //=========================
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 0),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 0),
                       child: Transform.translate(
-                        offset: const Offset(0, 50),
+                        offset: const Offset(0, 60),
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.fromLTRB(22, 30, 22, 30),
@@ -193,7 +195,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
 
-
                           child: Transform.translate(
                             offset: const Offset(0, -50),
                             child: Padding(
@@ -204,13 +205,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   SizedBox(
-                                    height: 190,
+                                    height: 130,
                                     child: Stack(
                                       clipBehavior: Clip.none,
                                       children: [
+                                        //=======================================
+                                        //WELCOME BACK ,MSG AND HOUSE
+                                        //=======================================
                                         Positioned(
                                           left: 0,
-                                          top: 60,
+                                          top: 50,
                                           right: 110,
                                           child: Column(
                                             crossAxisAlignment:
@@ -220,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                                 "Welcome Back",
                                                 maxLines: 1,
                                                 style: TextStyle(
-                                                  fontSize: 25,
+                                                  fontSize: 24,
                                                   fontWeight: FontWeight.bold,
                                                   color: AppColors.black,
                                                 ),
@@ -230,7 +234,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                                 "Login to your Rojgari account",
                                                 maxLines: 1,
                                                 style: TextStyle(
-                                                  fontSize: 15,
+                                                  fontSize: 14,
                                                   color: AppColors.grey,
                                                 ),
                                               ),
@@ -240,7 +244,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                                         Positioned(
                                           right: -10,
-                                          bottom: 60,
+                                          bottom: 5,
                                           child: Image.asset(
                                             "assets/images/house(login).png",
                                             height: 140,
@@ -251,112 +255,160 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ),
 
-                                  const SizedBox(height: 0),
 
+                                  //==========================
+                                  //PHONE NUMBER
+                                  //==========================
+                                  const SizedBox(height: 0),
                                   CustomTextField(
                                     label: "Phone Number",
-                                    hintText: "Enter your phone nummber",
+                                    hintText: "Enter your phone number",
                                     fieldType: FieldType.phone,
                                     controller: phoneController,
                                     validator: validatePhone,
+                                    showLabel: true,
                                   ),
 
-                                  const SizedBox(height: 20),
 
+                                  //==============================
+                                  //PASSWORD
+                                  //==============================
+                                  const SizedBox(height: 10),
                                   CustomTextField(
                                     label: "Password",
                                     hintText: "Enter password",
                                     fieldType: FieldType.password,
                                     controller: passwordController,
                                     validator: validatePassword,
+                                    showLabel: true,
                                   ),
 
-                                  const SizedBox(height: 10),
 
+                                  //=================================
+                                  //FORGET PASSWORD
+                                  //=================================
+                                  const SizedBox(height: 0),
                                   Align(
                                     alignment: Alignment.centerRight,
                                     child: TextButton(
-                                      onPressed: () {},
+                                      onPressed: () {
+                                        // Navigator.push(
+                                        //   context,
+                                        //   MaterialPageRoute(
+                                        //     builder: (context) {
+                                        //       return const ForgotPasswordScreen();
+                                        //     },
+                                        //   ),
+                                        // );
+                                      },
                                       child: const Text(
                                         "Forgot Password?",
                                         style: TextStyle(
                                           color: AppColors.primary,
+                                          fontSize: 15,
+
                                         ),
                                       ),
                                     ),
                                   ),
 
-                                  const SizedBox(height: 15),
-
+                                  //================================
+                                  //LOGIN
+                                  //================================
+                                  const SizedBox(height: 10),
                                   CustomButton(
                                     text: "Login",
                                     isLoading: isLoading,
                                     onPressed: login,
                                   ),
 
-                                  const SizedBox(height: 30),
-
+                                  //==================================
+                                  //SIGN UP
+                                  //==================================
+                                  const SizedBox(height:8),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      const Text("Don't have an account?"),
+                                      const Text(
+                                          "Don't have an account?",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 16,
+                                            color: AppColors.black,
+                                          )
+                                      ),
+                                      const SizedBox(width: 4),
                                       TextButton(
-                                        onPressed: () {},
-                                        child: const Text("Sign Up"),
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) {
+                                                return const CustomerSignupScreen();
+                                              },
+                                            ),
+                                          );
+                                        },
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.only(bottom: 0),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        child: const Text(
+                                          "Sign Up",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 16,
+                                            color: AppColors.primary,
+                                          ),
+                                        )
+
                                       ),
                                     ],
                                   ),
 
-                                  const SizedBox(height: 30),
-
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                      horizontal: 18,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xffFAFAFC),
-                                      borderRadius: BorderRadius.circular(18),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 42,
-                                          height: 42,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.lightPurple,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.gpp_good_outlined,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-
-                                        const SizedBox(width: 15),
-
-                                        const Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                "Your information is safe with us.",
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 14,
-                                                  color: AppColors.black,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  //==============================
+                                  // SECURITY
+                                  //==============================
+                                  // const SizedBox(height: 5),
+                                  // Container(
+                                  //   width: double.infinity,
+                                  //   padding: const EdgeInsets.symmetric(
+                                  //     vertical: 0,
+                                  //     horizontal: 28,
+                                  //   ),
+                                  //   // decoration: BoxDecoration(
+                                  //   //   color: const Color(0xffFAFAFC),
+                                  //   //   borderRadius: BorderRadius.circular(18),
+                                  //   // ),
+                                  //   child: Row(
+                                  //     children: [
+                                  //       Icon(
+                                  //         Icons.gpp_good_outlined,
+                                  //         color: AppColors.primary,
+                                  //         size: 18,
+                                  //       ),
+                                  //
+                                  //       const SizedBox(width: 5),
+                                  //       const Expanded(
+                                  //         child: Column(
+                                  //           crossAxisAlignment:
+                                  //               CrossAxisAlignment.start,
+                                  //           children: [
+                                  //             Text(
+                                  //               "Your information is safe with us.",
+                                  //               style: TextStyle(
+                                  //                 fontWeight: FontWeight.w600,
+                                  //                 fontSize: 16,
+                                  //                 color: AppColors.grey,
+                                  //               ),
+                                  //             ),
+                                  //           ],
+                                  //         ),
+                                  //       ),
+                                  //     ],
+                                  //   ),
+                                  // ),
                                 ],
                               ),
                             ),

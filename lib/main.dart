@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/screens/auth/logIn_screen.dart';
-// import 'screens/auth/customer_signup_screen.dart';
+// import 'screens/auth/signup_screen.dart';
 
 void main() {
   runApp(

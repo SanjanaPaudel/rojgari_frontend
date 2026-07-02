@@ -17,6 +17,7 @@ class CustomTextField extends StatefulWidget {
   final String? Function(String?)? validator;
   final FocusNode? focusNode;
   final bool enabled;
+  final bool showLabel;
 
   const CustomTextField({
     super.key,
@@ -27,6 +28,7 @@ class CustomTextField extends StatefulWidget {
     this.validator,
     this.focusNode,
     this.enabled = true,
+    this.showLabel = false,
   });
 
   @override
@@ -74,8 +76,18 @@ class _CustomTextFieldState extends State<CustomTextField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.showLabel) ...[
+          Text(
+            widget.label,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.black,
+            ),
+          ),
+        ],
 
-        const SizedBox(height: 0),
+        const SizedBox(height: 5),
         Container(
           constraints: const BoxConstraints(
             minHeight: 50,
