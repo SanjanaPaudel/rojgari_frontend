@@ -3,9 +3,13 @@ import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/widgets/custom_textfield.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/screens/auth/logIn_screen.dart';
+import 'package:rojgari_frontend_one/screens/auth/otp_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+//========================added==================
+//import 'package:rojgari_frontend_one/services/auth_service.dart';
+//======================
 
 class CustomerSignupScreen extends StatefulWidget {
   const CustomerSignupScreen({super.key});
@@ -26,7 +30,78 @@ class _CustomerSignupScreenState
 
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
+  //===================changed=======================
 
+  // final AuthService _authService = AuthService();
+  //
+  // bool _isLoading = false;
+  // Future<void> _signup() async {
+  //   // API call code goes here
+  //   if (!_formKey.currentState!.validate()) return;
+  //
+  //   setState(() {
+  //     _isLoading = true;
+  //   });
+  //
+  //   final response = await _authService.signup(
+  //     role: "customer",
+  //     fullName: fullNameController.text.trim(),
+  //     phoneNumber: phoneController.text.trim(),
+  //     email: emailController.text.trim(),
+  //     password: passwordController.text,
+  //     confirmPassword: confirmPasswordController.text,
+  //     profilePhoto: _selectedImage,
+  //   );
+  //
+  //   setState(() {
+  //     _isLoading = false;
+  //   });
+  //
+  //
+  //   if (!mounted) return;
+  //
+  //   if (response["statusCode"] == 200 ||
+  //       response["statusCode"] == 201) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text(response["body"]["message"]),
+  //       ),
+  //     );
+  //
+  //     Navigator.push(
+  //       context,
+  //       MaterialPageRoute(
+  //         builder: (context) => OTPScreen(
+  //           phoneNumber: phoneController.text.trim(),
+  //         ),
+  //       ),
+  //     );
+  //
+  //   } else {
+  //     final body = response["body"];
+  //
+  //     String error = "Something went wrong.";
+  //
+  //     if (body is Map<String, dynamic>) {
+  //       if (body["phone_number"] != null) {
+  //         error = body["phone_number"][0];
+  //       } else if (body["email"] != null) {
+  //         error = body["email"][0];
+  //       } else if (body["password"] != null) {
+  //         error = body["password"][0];
+  //       } else if (body["confirm_password"] != null) {
+  //         error = body["confirm_password"][0];
+  //       } else if (body["message"] != null) {
+  //         error = body["message"];
+  //       }
+  //     }
+  //
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text(error)),
+  //     );
+  //   }
+  // }
+//============================================
 
   @override
   void dispose() {
@@ -414,7 +489,7 @@ class _CustomerSignupScreenState
 
                               CustomTextField(
                                 controller: emailController,
-                                label: "Email Address (Optional)",
+                                label: "Email Address",
                                 hintText: "Enter your email address",
                                 fieldType: FieldType.email,
                                 validator: (value) {
@@ -534,6 +609,8 @@ class _CustomerSignupScreenState
                               ),
 
                               const SizedBox(height: 20),
+                              //=========Changed======================//
+
                               //====================================================
                               // SIGN UP BUTTON
                               //====================================================
@@ -541,15 +618,24 @@ class _CustomerSignupScreenState
                                 text: "Sign Up",
                                 icon: Icons.arrow_forward,
                                 onPressed: () {
-                                  if (_formKey.currentState!.validate()) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Registration successful!"),
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => OTPScreen(
+                                        phoneNumber: phoneController.text.trim(),
                                       ),
-                                    );
-                                  }
+                                    ),
+                                  );
                                 },
                               ),
+
+                              //=========================
+                              // CustomButton(
+                              //   text: _isLoading ? "Signing Up..." : "Sign Up",
+                              //   icon: Icons.arrow_forward,
+                              //   onPressed: _isLoading ? null : _signup,
+                              // ),
+                              //==========================
 
                               const SizedBox(height: 20),
                               //====================================================

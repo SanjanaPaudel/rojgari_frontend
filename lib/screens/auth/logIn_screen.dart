@@ -3,6 +3,7 @@ import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/widgets/custom_textfield.dart';
 import 'package:rojgari_frontend_one/screens/auth/signup_screen.dart';
+import 'package:rojgari_frontend_one/services/auth_service.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -19,6 +20,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final passwordController = TextEditingController();
 
   bool isLoading = false;
+
+  String? loginError;
+  bool showLoginError = false;
 
   String? validatePhone(String? value) {
     if (value == null || value.trim().isEmpty) {
@@ -49,18 +53,43 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() {
       isLoading = true;
+      showLoginError = false;
     });
 
     await Future.delayed(const Duration(seconds: 2));
 
+    //====================
+    // Temporary test
+    //====================
+    if (phoneController.text != "9812345678" ||
+        passwordController.text != "password123") {
+      setState(() {
+        isLoading = false;
+        showLoginError = true;
+        loginError = "Incorrect phone number or password.";
+      });
+      return;
+    }
+    // later replace with API response:
+    // if (response.statusCode == 401) {
+    //   setState(() {
+    //     showLoginError = true;
+    //     loginError = "Incorrect phone number or password.";
+    //   });
+    // }
+
     setState(() {
       isLoading = false;
+      showLoginError = false;
     });
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Login Successful")));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Login Successful"),
+      ),
+    );
   }
+  //================================
 
   @override
   void dispose() {
@@ -282,6 +311,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                     validator: validatePassword,
                                     showLabel: true,
                                   ),
+
+                                  if (showLoginError) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      loginError ?? "",
+                                      style: const TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
 
 
                                   //=================================
