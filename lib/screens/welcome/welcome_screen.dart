@@ -56,7 +56,7 @@ height: 85,
 Transform.translate(
 offset: const Offset(0, -29),
 child: Image.asset(
-"assets/images/logo_text.png",
+"assets/images/logo_text_J.png",
 height: 70,
 ),
 ),
@@ -80,7 +80,7 @@ Stack(
 alignment: Alignment.center,
 children: [
 Image.asset(
-"assets/images/bg.png",
+"assets/images/bg_signup.png",
 width: double.infinity,
 height: 380,
 fit: BoxFit.cover,

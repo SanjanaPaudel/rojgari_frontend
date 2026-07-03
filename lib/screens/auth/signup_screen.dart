@@ -181,7 +181,7 @@ class _CustomerSignupScreenState
               child: Opacity(
                 opacity: 0.5,
                 child: Image.asset(
-                  "assets/images/bg.png",
+                  "assets/images/bg_signup.png",
                   fit: BoxFit.cover,
                 ),
               )
@@ -252,7 +252,7 @@ class _CustomerSignupScreenState
                           Positioned(
                             bottom: -20,
                             child: Image.asset(
-                              "assets/images/logo_text.png",
+                              "assets/images/logo_text_J.png",
                               height: 130,
                             ),
                           ),
