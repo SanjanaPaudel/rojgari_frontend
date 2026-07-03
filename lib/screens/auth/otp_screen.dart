@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/widgets/otp_input.dart';
+import 'package:rojgari_frontend_one/screens/welcome/welcome_screen.dart';
 
 class OTPScreen extends StatefulWidget {
   final String phoneNumber;
@@ -102,6 +103,12 @@ class _OTPScreenState extends State<OTPScreen> {
     });
 
     debugPrint("OTP Verified");
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const WelcomeScreen(),
+      ),
+    );
   }
 
   @override
