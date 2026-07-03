@@ -161,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Positioned(
                             bottom: -20,
                             child: Image.asset(
-                              "assets/images/logo_text.png",
+                              "assets/images/logo_text_J.png",
                               height: 130,
                             ),
                           ),
