@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rojgari_frontend_one/screens/auth/logIn_screen.dart';
+import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
 // import 'screens/auth/signup_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/otp_screen.dart';
 // import 'screens/welcome/welcome_screen.dart';
