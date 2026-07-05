@@ -1,63 +1,31 @@
 //Only responsible for making HTTP requests and delivery.
 
-// import 'package:dio/dio.dart';
-//
-// class ApiService {
-//   static final Dio dio = Dio(
-//     BaseOptions(
-//       connectTimeout: const Duration(seconds: 15),
-//       receiveTimeout: const Duration(seconds: 15),
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//     ),
-//   );
-// }
 
 import 'dart:convert';
-import 'dart:io';
-
 import 'package:http/http.dart' as http;
 
+
 class ApiService {
-  Future<Map<String, dynamic>> multipartPost({
-    required String url,
-    required Map<String, String> fields,
-    File? image,
-    String imageField = "profile_photo",
-  }) async {
-    try {
-      final request = http.MultipartRequest(
-        "POST",
-        Uri.parse(url),
-      );
 
-      request.fields.addAll(fields);
 
-      if (image != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            imageField,
-            image.path,
-          ),
-        );
-      }
+  //"Create a function called post.
+  // It receives a URL and a Dart Map. Convert the URL into a Uri. Convert the Map into JSON.
+  // Send a POST request. Wait for the server's response. Return that response."
 
-      final streamedResponse = await request.send();
-
-      final response = await http.Response.fromStream(streamedResponse);
-
-      return {
-        "statusCode": response.statusCode,
-        "body": jsonDecode(response.body),
-      };
-    } catch (e) {
-      return {
-        "statusCode": 500,
-        "body": {
-          "message": e.toString(),
-        },
-      };
-    }
-  }
+ Future<http.Response> post( String url,Map<String, dynamic> body,)async{
+   final response = await http.post( Uri.parse(url),
+     headers: {
+       "Content-Type": "application/json",
+     },
+     body: jsonEncode(body),
+   );
+   return response;
+ }
 }
+// Future<http.Response> is return type of post(). In Future comes http.Response
+// url and body is parameter of the post
+// Map<String, dynamic> is a datatype that says the body contains mapping in string: dynamic data type format
+// async allows a function to use await
+// response is a variable that stores the response of the http.post function . http.post() is the funtion in http library/package
+// Right now http.post is taking 3 parameter -> url, headers and body
+// response has -> statusCode, headers and body

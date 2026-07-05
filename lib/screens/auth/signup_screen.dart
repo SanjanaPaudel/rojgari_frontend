@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/widgets/custom_textfield.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
-import 'package:rojgari_frontend_one/screens/auth/logIn_screen.dart';
+import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
 import 'package:rojgari_frontend_one/screens/auth/otp_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-//========================added==================
-//import 'package:rojgari_frontend_one/services/auth_service.dart';
-//======================
 
 class CustomerSignupScreen extends StatefulWidget {
   const CustomerSignupScreen({super.key});
@@ -30,78 +27,35 @@ class _CustomerSignupScreenState
 
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
-  //===================changed=======================
 
-  // final AuthService _authService = AuthService();
+
+
+
+
+
+  // void showFieldError(String field, String message) {
+  //   switch (field) {
+  //     case "phone":
+  //       phoneError = message;
+  //       break;
   //
-  // bool _isLoading = false;
-  // Future<void> _signup() async {
-  //   // API call code goes here
-  //   if (!_formKey.currentState!.validate()) return;
+  //     case "email":
+  //       emailError = message;
+  //       break;
   //
-  //   setState(() {
-  //     _isLoading = true;
-  //   });
+  //     case "password":
+  //       passwordError = message;
+  //       break;
   //
-  //   final response = await _authService.signup(
-  //     role: "customer",
-  //     fullName: fullNameController.text.trim(),
-  //     phoneNumber: phoneController.text.trim(),
-  //     email: emailController.text.trim(),
-  //     password: passwordController.text,
-  //     confirmPassword: confirmPasswordController.text,
-  //     profilePhoto: _selectedImage,
-  //   );
+  //     case "confirmPassword":
+  //       confirmPasswordError = message;
+  //       break;
   //
-  //   setState(() {
-  //     _isLoading = false;
-  //   });
-  //
-  //
-  //   if (!mounted) return;
-  //
-  //   if (response["statusCode"] == 200 ||
-  //       response["statusCode"] == 201) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text(response["body"]["message"]),
-  //       ),
-  //     );
-  //
-  //     Navigator.push(
-  //       context,
-  //       MaterialPageRoute(
-  //         builder: (context) => OTPScreen(
-  //           phoneNumber: phoneController.text.trim(),
-  //         ),
-  //       ),
-  //     );
-  //
-  //   } else {
-  //     final body = response["body"];
-  //
-  //     String error = "Something went wrong.";
-  //
-  //     if (body is Map<String, dynamic>) {
-  //       if (body["phone_number"] != null) {
-  //         error = body["phone_number"][0];
-  //       } else if (body["email"] != null) {
-  //         error = body["email"][0];
-  //       } else if (body["password"] != null) {
-  //         error = body["password"][0];
-  //       } else if (body["confirm_password"] != null) {
-  //         error = body["confirm_password"][0];
-  //       } else if (body["message"] != null) {
-  //         error = body["message"];
-  //       }
-  //     }
-  //
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text(error)),
-  //     );
+  //     default:
+  //       generalError = message;
   //   }
   // }
-//============================================
+
 
   @override
   void dispose() {
@@ -125,25 +79,6 @@ class _CustomerSignupScreenState
     }
   }
 
-  // Future<void> pickImage() async {
-  //   debugPrint("pickImage called");
-  //
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     const SnackBar(
-  //       content: Text("pickImage called"),
-  //     ),
-  //   );
-  //
-  //   final XFile? image = await _picker.pickImage(
-  //     source: ImageSource.gallery,
-  //   );
-  //
-  //   if (image != null) {
-  //     setState(() {
-  //       _selectedImage = File(image.path);
-  //     });
-  //   }
-  // }
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -405,17 +340,6 @@ class _CustomerSignupScreenState
                                 label: "Phone Number",
                                 hintText: "Enter your phone number",
                                 fieldType: FieldType.phone,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return "Phone number is required";
-                                  }
-
-                                  if (value.length != 10) {
-                                    return "Phone number must be 10 digits";
-                                  }
-
-                                  return null;
-                                },
                               ),
 
                               const SizedBox(height: 10),
@@ -425,17 +349,6 @@ class _CustomerSignupScreenState
                                 label: "Password",
                                 hintText: "Create your password",
                                 fieldType: FieldType.password,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return "Password is required";
-                                  }
-
-                                  if (value.length < 8) {
-                                    return "Password must be at least 8 characters";
-                                  }
-
-                                  return null;
-                                },
                               ),
 
                               const SizedBox(height: 10),
@@ -445,17 +358,6 @@ class _CustomerSignupScreenState
                                 label: "Confirm Password",
                                 hintText: "Re-enter your password",
                                 fieldType: FieldType.password,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return "Please confirm your password";
-                                  }
-
-                                  if (value != passwordController.text) {
-                                    return "Passwords do not match";
-                                  }
-
-                                  return null;
-                                },
                               ),
 
                               const SizedBox(height: 30),
@@ -476,13 +378,6 @@ class _CustomerSignupScreenState
                                 label: "Full Name",
                                 hintText: "Enter your full name",
                                 fieldType: FieldType.text,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return "Full name is required";
-                                  }
-
-                                  return null;
-                                },
                               ),
 
                               const SizedBox(height: 10),
@@ -492,20 +387,6 @@ class _CustomerSignupScreenState
                                 label: "Email Address",
                                 hintText: "Enter your email address",
                                 fieldType: FieldType.email,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return "Email is required";
-                                  }
-
-                                  final emailRegex =
-                                  RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
-
-                                  if (!emailRegex.hasMatch(value)) {
-                                    return "Enter a valid email";
-                                  }
-
-                                  return null;
-                                },
                               ),
 
                               const SizedBox(height: 30),

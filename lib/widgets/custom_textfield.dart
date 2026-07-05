@@ -14,7 +14,7 @@ class CustomTextField extends StatefulWidget {
   final String hintText;
   final FieldType fieldType;
   final TextEditingController? controller;
-  final String? Function(String?)? validator;
+  final String? serverError;
   final FocusNode? focusNode;
   final bool enabled;
   final bool showLabel;
@@ -25,7 +25,7 @@ class CustomTextField extends StatefulWidget {
     required this.hintText,
     this.fieldType = FieldType.text,
     this.controller,
-    this.validator,
+    this.serverError,
     this.focusNode,
     this.enabled = true,
     this.showLabel = false,
@@ -38,10 +38,9 @@ class CustomTextField extends StatefulWidget {
 class _CustomTextFieldState extends State<CustomTextField> {
   bool _obscure = true;
   String? _errorText;
+  bool _hasError = false;
 
   late FocusNode _focusNode;
-
-  bool _hasError = false;
 
   bool get isPhone => widget.fieldType == FieldType.phone;
   bool get isPassword => widget.fieldType == FieldType.password;
@@ -56,6 +55,21 @@ class _CustomTextFieldState extends State<CustomTextField> {
     _focusNode.addListener(() {
       setState(() {});
     });
+
+    _errorText = widget.serverError;
+    _hasError = widget.serverError != null;
+  }
+
+  @override
+  void didUpdateWidget(covariant CustomTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.serverError != widget.serverError) {
+      setState(() {
+        _errorText = widget.serverError;
+        _hasError = widget.serverError != null;
+      });
+    }
   }
 
   IconData get fieldIcon {
@@ -76,7 +90,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.showLabel) ...[
+        if (widget.showLabel)
           Text(
             widget.label,
             style: const TextStyle(
@@ -85,9 +99,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
               color: AppColors.black,
             ),
           ),
-        ],
 
         const SizedBox(height: 5),
+
         Container(
           constraints: const BoxConstraints(
             minHeight: 50,
@@ -114,7 +128,6 @@ class _CustomTextFieldState extends State<CustomTextField> {
           ),
           child: Row(
             children: [
-              // Icon Box
               Container(
                 width: 30,
                 height: 30,
@@ -131,7 +144,6 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
               const SizedBox(width: 12),
 
-              // Phone Prefix
               if (isPhone) ...[
                 const Text(
                   "+977",
@@ -140,23 +152,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
                     fontSize: 14,
                   ),
                 ),
-
-                const SizedBox(width: 4),
-
-                // const Icon(
-                //   Icons.keyboard_arrow_down_rounded,
-                //   color: AppColors.grey,
-                //   size: 20,
-                // ),
-
                 const SizedBox(width: 10),
-
                 Container(
                   width: 2,
                   height: 24,
                   color: AppColors.border,
                 ),
-
                 const SizedBox(width: 10),
               ],
 
@@ -165,44 +166,33 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   controller: widget.controller,
                   focusNode: _focusNode,
 
-                  validator: (value) {
-                    final error = widget.validator?.call(value);
-
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (!mounted) return;
-
-                      if (_hasError != (error != null)) {
-                        setState(() {
-                          _hasError = error != null;
-                          _errorText = error;
-                        });
-                      }
-                    });
-
-                    return error;
-                  },
-
                   keyboardType: keyboardType,
                   textInputAction: TextInputAction.next,
                   obscureText: isPassword ? _obscure : false,
-
                   autocorrect: !isPassword,
-
                   enableSuggestions: !isPassword,
-
                   enabled: widget.enabled,
+
+                  onChanged: (_) {
+                    if (_errorText != null) {
+                      setState(() {
+                        _errorText = null;
+                        _hasError = false;
+                      });
+                    }
+                  },
 
                   inputFormatters: [
                     if (isPhone)
                       FilteringTextInputFormatter.digitsOnly,
-
                     if (isPhone)
                       LengthLimitingTextInputFormatter(10),
                   ],
 
                   decoration: InputDecoration(
                     hintText: widget.hintText,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 15),
+                    contentPadding:
+                    const EdgeInsets.symmetric(vertical: 15),
 
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
@@ -210,11 +200,11 @@ class _CustomTextFieldState extends State<CustomTextField> {
                     errorBorder: InputBorder.none,
                     focusedErrorBorder: InputBorder.none,
 
-
                     hintStyle: const TextStyle(
                       color: AppColors.grey,
                       fontSize: 14,
                     ),
+
                     errorStyle: const TextStyle(
                       height: 0,
                       fontSize: 0,
@@ -240,6 +230,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
             ],
           ),
         ),
+
         if (_errorText != null)
           Padding(
             padding: const EdgeInsets.only(
@@ -257,6 +248,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
       ],
     );
   }
+
   @override
   void dispose() {
     if (widget.focusNode == null) {

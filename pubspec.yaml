@@ -33,7 +33,7 @@ dependencies:
 
   image_picker: ^1.1.2
 
-  http: ^1.2.2
+  http: ^1.2.2 # library for the http communication
 
   dio: ^5.8.0+1
   flutter_secure_storage: ^9.2.2
