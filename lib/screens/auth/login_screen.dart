@@ -331,14 +331,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                   isLoading: isLoading,
                                   onPressed: () async {
 
-                                    setState(() {
-                                      isLoading = true;
-                                    });
-
 
                                     if (!validateFields()) {
                                       return;
                                     }
+
+                                    setState(() {
+                                      isLoading = true;
+                                    });
 
                                     final response = await _authService.login(
                                       phone: phoneController.text.trim(),
