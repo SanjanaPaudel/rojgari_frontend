@@ -27,32 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool isLoading = false; //Controls loading spinner of login button
 
-  /// Stores backend error message.
-  String? phoneError;
-  String? passwordError;
-  String? generalError;
-  bool hasError = false;
-
-  //=========================================================
-  // Displays an error in the correct place on the screen.
-  //=========================================================
-  void showFieldError(String field, String message) {
-    setState(() {
-      switch (field) {
-        case "phone":
-          phoneError = message;
-          break;
-
-        case "password":
-          passwordError = message;
-          break;
-
-        default:
-          generalError = message;
-      }
-    });
-  }
-
   //---------------------------------------------------------
   // Cleanup
   //---------------------------------------------------------
@@ -62,6 +36,37 @@ class _LoginScreenState extends State<LoginScreen> {
     phoneController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  String? phoneError;
+  String? passwordError;
+
+  bool validateFields() {
+    bool hasError = false; // false mean haven't found any error
+
+    //Clear previous backend/frontend errors
+    phoneError = null;
+    passwordError = null;
+
+    // Phone
+    if (phoneController.text.trim().isEmpty) {
+      phoneError = "Phone number is required";
+      hasError = true;
+    } else if (!RegExp(r'^(97|98)\d{8}$')
+        .hasMatch(phoneController.text.trim())) {
+      phoneError = "Enter a valid Nepal phone number";
+      hasError = true;
+    }
+
+    // Password
+    final password = passwordController.text;
+    if (password.isEmpty) {
+      passwordError = "Password is required";
+      hasError = true;
+    }
+    setState(() {}); // tells the flutter to rebuild the textfield with the changes/errors
+
+    return !hasError; // -> if validateFields() returns true means all fields are valid(validation pass) and continue else otherwise.
   }
 
   //---------------------------------------------------------
@@ -270,19 +275,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 fieldType: FieldType.phone,
                                 controller: phoneController,
                                 showLabel: true,
-                                serverError: phoneError,
-                                // validator: (value) {
-                                //   // Empty field validation.
-                                //   if (value == null ||
-                                //       value.trim().isEmpty) {
-                                //     showFieldError(
-                                //       "phone",
-                                //       "Phone number is required",
-                                //     );
-                                //   }
-                                //
-                                //   return;
-                                // },
+                                errorMsg: phoneError,
 
                               ),
 
@@ -297,19 +290,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 fieldType: FieldType.password,
                                 controller: passwordController,
                                 showLabel: true,
-                                serverError: passwordError,
+                                errorMsg: passwordError,
 
-                                // validator: (value) {
-                                //
-                                //   if (value == null ||
-                                //       value.isEmpty) {
-                                //     showFieldError(
-                                //       "password",
-                                //       "Password is required",
-                                //     );
-                                //   }
-                                //   return;
-                                // },
                               ),
 
                               //=================================
@@ -349,66 +331,46 @@ class _LoginScreenState extends State<LoginScreen> {
                                   isLoading: isLoading,
                                   onPressed: () async {
 
-                                    if (phoneController.text.trim().isEmpty) {
-                                      phoneError = "Phone number is required";
-                                      hasError = true;
-                                    }
-
-                                    if (passwordController.text.isEmpty) {
-                                      passwordError = "Password is required";
-                                      hasError = true;
-                                    }
-
-                                    setState(() {
-                                    });
-
-                                    if (hasError) return;
-
                                     setState(() {
                                       isLoading = true;
                                     });
 
-                                    await Future.delayed(const Duration(seconds: 2));
+
+                                    if (!validateFields()) {
+                                      return;
+                                    }
+
+                                    final response = await _authService.login(
+                                      phone: phoneController.text.trim(),
+                                      password: passwordController.text,
+                                    );
 
                                     setState(() {
                                       isLoading = false;
                                     });
 
-                                    // Show success message
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Login Successful!"),
-                                        backgroundColor: Colors.green,
-                                      )
-                                    );
+                                    //clear and store backend errors
+                                    setState(() { //Due to the setState , the customFiled is rebuild by flutter immediately if any error msg (from backend) with error msg or if no error msg clears the variable and rebuilds
+                                      phoneError = response["phone_number"]?.first; //"Look for a phone_number error in the backend response. If it exists, take the first error message from the list and store it in phoneError. If it doesn't exist, store null."
+                                      passwordError = response["password"]?.first;
+                                    });
 
-                                    //Backend call
-                                    // final result = await _authService.login(
-                                    //   phone: phoneController.text,
-                                    //   password: passwordController.text,
-                                    // );
+                                    // Stop if backend returned validation error
+                                    if (phoneError != null ||
+                                        passwordError != null ) {
+                                      return; // Stops executing onPressed() i.e don't navigate to the OTP screen
+                                    }
 
-                                    //Stops loading spinner
-                                    // setState(() {
-                                    //   isLoading = false;
-                                    // });
-
-                                    //Backend Response
-                                    // if (result["success"] == true) {
-                                    //
-                                    //   // TODO
-                                    //
-                                    //   // Navigate Home Screen.
-                                    //
-                                    // } else {
-                                    //
-                                    //   setState(() {
-                                    //     showFieldError(
-                                    //       "general",
-                                    //       result["message"],
-                                    //     );
-                                    //   });
+                                    // login successful
+                                    // if (response["message"] == "Login successful.") {
+                                    //   Navigator.push(
+                                    //     context,
+                                    //     MaterialPageRoute(
+                                    //       builder: (_) => const HomeScreen(),
+                                    //     ),
+                                    //   );
                                     // }
+
                                   },
                               ),
 

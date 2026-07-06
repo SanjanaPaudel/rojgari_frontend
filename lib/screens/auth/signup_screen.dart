@@ -7,6 +7,7 @@ import 'package:rojgari_frontend_one/screens/auth/otp_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:rojgari_frontend_one/services/auth_service.dart';
 
 class CustomerSignupScreen extends StatefulWidget {
   const CustomerSignupScreen({super.key});
@@ -25,36 +26,10 @@ class _CustomerSignupScreenState
   final emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
+  final AuthService _authService = AuthService();
+
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
-
-
-
-
-
-
-  // void showFieldError(String field, String message) {
-  //   switch (field) {
-  //     case "phone":
-  //       phoneError = message;
-  //       break;
-  //
-  //     case "email":
-  //       emailError = message;
-  //       break;
-  //
-  //     case "password":
-  //       passwordError = message;
-  //       break;
-  //
-  //     case "confirmPassword":
-  //       confirmPasswordError = message;
-  //       break;
-  //
-  //     default:
-  //       generalError = message;
-  //   }
-  // }
 
 
   @override
@@ -77,6 +52,93 @@ class _CustomerSignupScreenState
         _selectedImage = File(image.path);
       });
     }
+  }
+
+  String? phoneError;
+  String? passwordError;
+  String? confirmPasswordError;
+  String? fullNameError;
+  String? emailError;
+  bool hasError = false;
+  bool isWorker = false;
+  bool isLoading = false;
+
+  // Validation of the sign_up form. If every field is valid returns true otherwise false
+  bool validateFields() {
+    hasError = false; // false mean haven't found any error
+
+    //Clear previous backend/frontend errors
+    phoneError = null;
+    passwordError = null;
+    confirmPasswordError = null;
+    fullNameError = null;
+    emailError = null;
+
+    // Full Name
+    if (fullNameController.text.trim().isEmpty) {
+      fullNameError = "Full name is required";
+      hasError = true;
+    }
+
+    // Phone
+    if (phoneController.text.trim().isEmpty) {
+      phoneError = "Phone number is required";
+      hasError = true;
+    } else if (!RegExp(r'^(97|98)\d{8}$')
+        .hasMatch(phoneController.text.trim())) {
+      phoneError = "Enter a valid Nepal phone number";
+      hasError = true;
+    }
+
+    // Email
+    if (emailController.text.trim().isEmpty) {
+      emailError = "Email is required";
+      hasError = true;
+    } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+')
+        .hasMatch(emailController.text.trim())) {
+      emailError = "Enter a valid email address";
+      hasError = true;
+    }
+
+    // Password
+    final password = passwordController.text;
+    if (password.isEmpty) {
+      passwordError = "Password is required";
+      hasError = true;
+    } else if (password.length < 8) {
+      passwordError = "Password must be at least 8 characters.";
+      hasError = true;
+    } else if (!RegExp(r'[A-Z]').hasMatch(password)) {
+      passwordError =
+      "Password must contain at least one uppercase letter.";
+      hasError = true;
+    } else if (!RegExp(r'[a-z]').hasMatch(password)) {
+      passwordError =
+      "Password must contain at least one lowercase letter.";
+      hasError = true;
+    } else if (!RegExp(r'\d').hasMatch(password)) {
+      passwordError =
+      "Password must contain at least one number.";
+      hasError = true;
+    } else if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]')
+        .hasMatch(password)) {
+      passwordError =
+      "Password must contain at least one special character.";
+      hasError = true;
+    }
+
+    // Confirm Password
+    if (confirmPasswordController.text.isEmpty) {
+      confirmPasswordError = "Please confirm your password";
+      hasError = true;
+    } else if (confirmPasswordController.text != password) {
+      confirmPasswordError = "Passwords do not match";
+      hasError = true;
+    }
+
+    setState(() {}); // tells the flutter to rebuild the textfield with the changes/errors
+
+    return !hasError; // -> if validateFields() returns true means all fields are valid(validation pass) and continue else otherwise.
   }
 
   @override
@@ -340,6 +402,7 @@ class _CustomerSignupScreenState
                                 label: "Phone Number",
                                 hintText: "Enter your phone number",
                                 fieldType: FieldType.phone,
+                                errorMsg: phoneError,
                               ),
 
                               const SizedBox(height: 10),
@@ -349,6 +412,7 @@ class _CustomerSignupScreenState
                                 label: "Password",
                                 hintText: "Create your password",
                                 fieldType: FieldType.password,
+                                errorMsg: passwordError,
                               ),
 
                               const SizedBox(height: 10),
@@ -358,6 +422,7 @@ class _CustomerSignupScreenState
                                 label: "Confirm Password",
                                 hintText: "Re-enter your password",
                                 fieldType: FieldType.password,
+                                errorMsg: confirmPasswordError,
                               ),
 
                               const SizedBox(height: 30),
@@ -378,6 +443,7 @@ class _CustomerSignupScreenState
                                 label: "Full Name",
                                 hintText: "Enter your full name",
                                 fieldType: FieldType.text,
+                                errorMsg: fullNameError,
                               ),
 
                               const SizedBox(height: 10),
@@ -387,7 +453,9 @@ class _CustomerSignupScreenState
                                 label: "Email Address",
                                 hintText: "Enter your email address",
                                 fieldType: FieldType.email,
+                                errorMsg: emailError,
                               ),
+
 
                               const SizedBox(height: 30),
                               //====================================================
@@ -489,8 +557,22 @@ class _CustomerSignupScreenState
                                 ),
                               ),
 
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: isWorker,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        isWorker = value ?? false;
+                                      });
+                                    },
+                                  ),
+                                  const Text("I want to sign up as a worker"),
+                                ],
+                              ),
+
                               const SizedBox(height: 20),
-                              //=========Changed======================//
 
                               //====================================================
                               // SIGN UP BUTTON
@@ -498,25 +580,62 @@ class _CustomerSignupScreenState
                               CustomButton(
                                 text: "Sign Up",
                                 icon: Icons.arrow_forward,
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => OTPScreen(
-                                        phoneNumber: phoneController.text.trim(),
-                                      ),
-                                    ),
+                                isLoading: isLoading,
+                                onPressed: () async {
+                                  // Stores user input
+
+                                  if (!validateFields()) {
+                                    return;
+                                  }
+
+                                  setState(() {
+                                    isLoading = true;
+                                  });
+
+                                  final response = await _authService.signup(
+                                    phone: phoneController.text.trim(),
+                                    password: passwordController.text,
+                                    fullName: fullNameController.text.trim(),
+                                    email: emailController.text.trim(),
+                                    confirmPassword: confirmPasswordController.text,
+                                    profilePhoto: _selectedImage,
+                                    role: isWorker ? "worker" : "customer",
                                   );
+
+                                  setState(() {
+                                    isLoading = false;
+                                  });
+
+                                  //clear and store backend errors
+                                  setState(() { //Due to the setState , the customFiled is rebuild by flutter immediately if any error msg (from backend) with error msg or if no error msg clears the variable and rebuilds
+                                    phoneError = response["phone_number"]?.first; //"Look for a phone_number error in the backend response. If it exists, take the first error message from the list and store it in phoneError. If it doesn't exist, store null."
+                                    emailError = response["email"]?.first;
+                                    passwordError = response["password"]?.first;
+                                    confirmPasswordError = response["confirm_password"]?.first;
+                                    fullNameError = response["full_name"]?.first;
+                                  });
+
+                                  // Stop if backend returned validation error
+                                  if (phoneError != null ||
+                                      emailError != null ||
+                                      passwordError != null ||
+                                      confirmPasswordError != null ||
+                                      fullNameError != null) {
+                                    return; // Stops executing onPressed() i.e don't navigate to the OTP screen
+                                  }
+                                  // Signup successful
+                                  if (response["message"] == "OTP sent successfully.") {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => OTPScreen(
+                                          email: emailController.text.trim(),
+                                        ),
+                                      ),
+                                    );
+                                  }
                                 },
                               ),
-
-                              //=========================
-                              // CustomButton(
-                              //   text: _isLoading ? "Signing Up..." : "Sign Up",
-                              //   icon: Icons.arrow_forward,
-                              //   onPressed: _isLoading ? null : _signup,
-                              // ),
-                              //==========================
 
                               const SizedBox(height: 20),
                               //====================================================

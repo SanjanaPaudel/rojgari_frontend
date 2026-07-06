@@ -1,114 +1,48 @@
-import 'dart:async';
-
+import 'dart:async'; // For Timer
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/widgets/otp_input.dart';
-import 'package:rojgari_frontend_one/screens/welcome/welcome_screen.dart';
+import 'package:rojgari_frontend_one/services/auth_service.dart';
+
 
 class OTPScreen extends StatefulWidget {
-  final String phoneNumber;
+  final String email; //the email to which the otp is send is now in widget.email
 
   const OTPScreen({
     super.key,
-    required this.phoneNumber,
+    required this.email,
   });
 
   @override
   State<OTPScreen> createState() => _OTPScreenState();
 }
 
-class _OTPScreenState extends State<OTPScreen> {
-  final List<TextEditingController> controllers =
-  List.generate(6, (_) => TextEditingController());
+class _OTPScreenState extends State<OTPScreen> { //Everything that changes while the screen is running belongs here.
+  final List<TextEditingController> controllers = List.generate(6, (_) => TextEditingController()); //Each OTP box gets one controller
+  final List<FocusNode> focusNodes =  List.generate(6, (_) => FocusNode());
+  final AuthService _authService = AuthService(); //For API connect
 
-  final List<FocusNode> focusNodes =
-  List.generate(6, (_) => FocusNode());
+  bool isLoading = false;
 
+  // Timer
   Timer? timer;
+  int secondsRemaining = 180; // timer
+  bool canResend = false; // When reaches to 0 the canResend = true and user can press Resend OTP
 
-  int secondsRemaining = 165;
-
-  bool canResend = false;
-  bool showOtpError = false;
-
-  String? otpErrorMessage;
+  // OTP Error
+  bool showOtpError = false; // If error occurs showOtpError becomes true
+  String? otpErrorMessage; //Stores Error Message
 
   @override
   void initState() {
     super.initState();
 
-    startTimer();
+    startTimer(); //Starts counting down
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) { //When the screen opens , the cursor automatically appears in the first box.
       focusNodes.first.requestFocus();
     });
-  }
-
-  void startTimer() {
-    timer?.cancel();
-
-    setState(() {
-      secondsRemaining = 165;
-      canResend = false;
-    });
-
-    timer = Timer.periodic(
-      const Duration(seconds: 1),
-          (timer) {
-        if (secondsRemaining > 0) {
-          setState(() {
-            secondsRemaining--;
-          });
-        } else {
-          setState(() {
-            canResend = true;
-          });
-
-          timer.cancel();
-        }
-      },
-    );
-  }
-
-  String getOTP() {
-    return controllers.map((e) => e.text).join();
-  }
-
-  void verifyOTP() {
-    String otp = getOTP();
-
-    if (otp.length != 6) {
-      setState(() {
-        showOtpError = true;
-        otpErrorMessage = "Please enter the complete 6-digit OTP.";
-      });
-      return;
-    }
-
-    //=====================
-    // Temporary: simulate backend verification
-    //=====================
-    if (otp != "123456") {
-      setState(() {
-        showOtpError = true;
-        otpErrorMessage = "The OTP you entered is incorrect.";
-      });
-      return;
-    }
-
-    setState(() {
-      showOtpError = false;
-      otpErrorMessage = null;
-    });
-
-    debugPrint("OTP Verified");
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const WelcomeScreen(),
-      ),
-    );
   }
 
   @override
@@ -125,6 +59,38 @@ class _OTPScreenState extends State<OTPScreen> {
 
     super.dispose();
   }
+
+  void startTimer() {
+    timer?.cancel();
+
+    setState(() {
+      secondsRemaining = 180;
+      canResend = false;
+    });
+
+    timer = Timer.periodic(
+      const Duration(seconds: 1),
+          (timer) {
+        if (secondsRemaining > 0) {
+          setState(() {
+            secondsRemaining--;
+          });
+        } else {
+
+          timer.cancel(); // cancel previous time to start new time
+
+          setState(() {
+            canResend = true;
+          });
+        }
+      },
+    );
+  }
+
+  String getOTP() {
+    return controllers.map((controller) => controller.text).join(); // collects value inside six controllers.
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +155,7 @@ class _OTPScreenState extends State<OTPScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Row(
                       children: [
-                        InkWell(
+                        InkWell( // makes the image tappable.
                           onTap: () {
                             Navigator.pop(context);
                           },
@@ -261,9 +227,7 @@ class _OTPScreenState extends State<OTPScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 10),
-
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 20),
 
                   const SizedBox(height: 0),
                   //--------------------------------
@@ -288,9 +252,8 @@ class _OTPScreenState extends State<OTPScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-
                                   const Text(
-                                    "Verify Phone Number",
+                                    "Verify Email Address",
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
@@ -310,7 +273,7 @@ class _OTPScreenState extends State<OTPScreen> {
 
                                         TextSpan(
                                             text: "We've sent a verification code to\n",
-                                    style: TextStyle(
+                                            style: TextStyle(
                                               color: AppColors.grey,
                                               // fontWeight: FontWeight.bold,
                                               fontSize: 15,
@@ -318,7 +281,7 @@ class _OTPScreenState extends State<OTPScreen> {
                                         ),
 
                                         TextSpan(
-                                          text: "+977 ${widget.phoneNumber}",
+                                          text: widget.email,
                                           style: const TextStyle(
                                             fontSize: 17,
                                             fontWeight: FontWeight.bold,
@@ -355,7 +318,6 @@ class _OTPScreenState extends State<OTPScreen> {
                   //--------------------------------
                   // WHITE CARD
                   //--------------------------------
-
                   Transform.translate(
                     offset: const Offset(0, -85),
                     child: Container(
@@ -369,11 +331,11 @@ class _OTPScreenState extends State<OTPScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius:
-                        BorderRadius.circular(28),
+                          BorderRadius.circular(28),
                         boxShadow: [
                           BoxShadow(
                             color:
-                            Colors.black.withOpacity(.04),
+                              Colors.black.withOpacity(.04),
                             blurRadius: 18,
                             offset: const Offset(0, -2),
                           ),
@@ -440,12 +402,12 @@ class _OTPScreenState extends State<OTPScreen> {
 
 
                           const SizedBox(height: 30),
-
                             //=========================
                             // TIMER
                             //=========================
                           Text(
                             "$minutes:$seconds",
+
                             style: const TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.bold,
@@ -454,7 +416,6 @@ class _OTPScreenState extends State<OTPScreen> {
                           ),
 
                           const SizedBox(height: 6),
-
                           const Text(
                             "Didn't receive the code?",
                             style: TextStyle(
@@ -465,25 +426,45 @@ class _OTPScreenState extends State<OTPScreen> {
 
                           TextButton(
                             onPressed: canResend
-                                ? () {
+                                ? () async {
+
+                              final response =
+                              await _authService.resendOTP(
+                                email: widget.email,
+                              );
+
+                              if (response["success"] == false) {
+                                setState(() {
+                                  showOtpError = true;
+                                  otpErrorMessage = response["message"];
+                                });
+                                return;
+                              }
+
                               for (final controller in controllers) {
                                 controller.clear();
                               }
 
                               focusNodes.first.requestFocus();
 
-                              startTimer();
+                              setState(() {
+                                showOtpError = false;
+                                otpErrorMessage = null;
+                              });
 
-                              // TODO:
-                              // Resend OTP API
+                              startTimer();
                             }
-                                : null,
+                            : null,
+
                             child: Text(
-                              canResend ? "Resend OTP" : "Resend OTP",
+                              "Resend OTP",
+
                               style: TextStyle(
+
                                 color: canResend
                                     ? AppColors.primary
                                     : Colors.grey,
+
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -497,7 +478,54 @@ class _OTPScreenState extends State<OTPScreen> {
 
                           CustomButton(
                             text: "Verify & Continue",
-                            onPressed: verifyOTP,
+                            isLoading: isLoading,
+
+                            onPressed: () async {
+                              final otp = getOTP();
+
+                              // Frontend validation
+                              if (otp.length != 6) {
+                                setState(() {
+                                  showOtpError = true;
+                                  otpErrorMessage =
+                                  "Please enter the complete 6-digit OTP.";
+                                });
+                                return;
+                              }
+
+                              setState(() {
+                                isLoading = true; // Shows loading indicator
+                              });
+
+                              final response = await _authService.verifyOTP(
+                                email: widget.email,
+                                otp: otp,
+                              );
+
+                              setState(() {
+                                isLoading = false; // hides loading indicator
+                              });
+
+                              if (response["success"] == false) {
+                                setState(() {
+                                  showOtpError = true;
+                                  otpErrorMessage = response["message"];
+                                });
+                                return;
+                              }
+
+                              setState(() {
+                                showOtpError = false;
+                                otpErrorMessage = null;
+                              });
+
+                              // Navigator.pushReplacement(
+                              //   context,
+                              //   MaterialPageRoute(
+                              //     builder: (_) => const WelcomeScreen(),
+                              //   ),
+                              // );
+                            },
                           ),
                           const SizedBox(height: 25),
                         ],

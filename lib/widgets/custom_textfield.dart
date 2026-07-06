@@ -10,11 +10,13 @@ enum FieldType {
 }
 
 class CustomTextField extends StatefulWidget {
+
+  //Variable in CustomTextField
   final String label;
   final String hintText;
-  final FieldType fieldType;
-  final TextEditingController? controller;
-  final String? serverError;
+  final FieldType fieldType;  // What kind of field -> phone, password, email or text
+  final TextEditingController? controller;  //TextEditingController job is to know what the user typed . Now ? means control variable stores the TextEditingContoller object or null
+  final String? errorMsg; // Stores the error msg to display under the textfield
   final FocusNode? focusNode;
   final bool enabled;
   final bool showLabel;
@@ -25,7 +27,7 @@ class CustomTextField extends StatefulWidget {
     required this.hintText,
     this.fieldType = FieldType.text,
     this.controller,
-    this.serverError,
+    this.errorMsg,
     this.focusNode,
     this.enabled = true,
     this.showLabel = false,
@@ -36,9 +38,10 @@ class CustomTextField extends StatefulWidget {
 }
 
 class _CustomTextFieldState extends State<CustomTextField> {
-  bool _obscure = true;
-  String? _errorText;
-  bool _hasError = false;
+  // _ indicate private variable
+  bool _obscure = true;  //controls password visibility ( tapping on eye ) ture -> password hidden , false -> password visible
+  String? _errorText; // error shown below the field
+  bool _hasError = false; //false mean valid
 
   late FocusNode _focusNode;
 
@@ -56,18 +59,18 @@ class _CustomTextFieldState extends State<CustomTextField> {
       setState(() {});
     });
 
-    _errorText = widget.serverError;
-    _hasError = widget.serverError != null;
+    _errorText = widget.errorMsg;
+    _hasError = widget.errorMsg != null;
   }
 
   @override
   void didUpdateWidget(covariant CustomTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.serverError != widget.serverError) {
+    if (oldWidget.errorMsg != widget.errorMsg) {
       setState(() {
-        _errorText = widget.serverError;
-        _hasError = widget.serverError != null;
+        _errorText = widget.errorMsg;
+        _hasError = widget.errorMsg != null;
       });
     }
   }
