@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 // import 'screens/auth/signup_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/otp_screen.dart';
 import 'package:rojgari_frontend_one/screens/auth/reset_passord_screen.dart';
+// import 'package:rojgari_frontend_one/screens/auth/forget_password_email_screen.dart';
 
 
 
@@ -32,6 +33,7 @@ class MyApp extends StatelessWidget {
       // home: LoginScreen(),
       // home: const TechnicianHomeScreen(),
       home: ResetPasswordScreen(),
+      // home: ForgotPasswordEmailScreen(),
 
     );
   }
