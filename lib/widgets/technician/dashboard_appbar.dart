@@ -2,7 +2,22 @@ import 'package:flutter/material.dart';
 
 class DashboardAppbar extends StatelessWidget {
 
-  const DashboardAppbar({super.key});
+  final int messageCount;
+  final int notificationCount;
+  final VoidCallback? onMenuTap;
+  final VoidCallback? onMessageTap;
+  final VoidCallback? onNotificationTap;
+
+  const DashboardAppbar({
+
+    super.key,
+    required this.messageCount,
+    required this.notificationCount,
+    this.onMenuTap,
+    this.onMessageTap,
+    this.onNotificationTap,
+
+  });
 
   @override
   Widget build(BuildContext context){
@@ -24,7 +39,7 @@ class DashboardAppbar extends StatelessWidget {
 
           IconButton(
 
-            onPressed: (){},
+            onPressed: onMenuTap,
 
             icon: const Icon(
 
@@ -45,12 +60,11 @@ class DashboardAppbar extends StatelessWidget {
 
               children:[
 
+                // If you want to show R logo again later:
+                //
                 // Image.asset(
-                //
                 //   "assets/images/logo_r.png",
-                //
                 //   height:52,
-                //
                 // ),
 
                 Transform.translate(
@@ -79,123 +93,25 @@ class DashboardAppbar extends StatelessWidget {
 
             children:[
 
-              Stack(
+              _TopIconWithBadge(
 
-                children:[
+                icon: Icons.chat_bubble_outline,
 
-                  IconButton(
+                count: messageCount,
 
-                    onPressed:(){},
-
-                    icon: const Icon(
-
-                      Icons.chat_bubble_outline,
-                      size:28,
-
-                    ),
-
-                  ),
-
-                  Positioned(
-
-                    right:4,
-                    top:4,
-
-                    child: Container(
-
-                      width:18,
-                      height:18,
-
-                      decoration: const BoxDecoration(
-
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-
-                      ),
-
-                      child: const Center(
-
-                        child: Text(
-
-                          "2",
-
-                          style: TextStyle(
-
-                            color: Colors.white,
-                            fontSize:10,
-
-                          ),
-
-                        ),
-
-                      ),
-
-                    ),
-
-                  )
-
-                ],
+                onTap: onMessageTap,
 
               ),
 
-              Stack(
+              _TopIconWithBadge(
 
-                children:[
+                icon: Icons.notifications_none,
 
-                  IconButton(
+                count: notificationCount,
 
-                    onPressed:(){},
+                onTap: onNotificationTap,
 
-                    icon: const Icon(
-
-                      Icons.notifications_none,
-                      size:30,
-
-                    ),
-
-                  ),
-
-                  Positioned(
-
-                    right:4,
-                    top:4,
-
-                    child: Container(
-
-                      width:18,
-                      height:18,
-
-                      decoration: const BoxDecoration(
-
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-
-                      ),
-
-                      child: const Center(
-
-                        child: Text(
-
-                          "3",
-
-                          style: TextStyle(
-
-                            color: Colors.white,
-                            fontSize:10,
-
-                          ),
-
-                        ),
-
-                      ),
-
-                    ),
-
-                  )
-
-                ],
-
-              )
+              ),
 
             ],
 
@@ -204,6 +120,91 @@ class DashboardAppbar extends StatelessWidget {
         ],
 
       ),
+
+    );
+
+  }
+
+}
+
+class _TopIconWithBadge extends StatelessWidget {
+
+  final IconData icon;
+  final int count;
+  final VoidCallback? onTap;
+
+  const _TopIconWithBadge({
+
+    required this.icon,
+    required this.count,
+    this.onTap,
+
+  });
+
+  @override
+  Widget build(BuildContext context){
+
+    return Stack(
+
+      clipBehavior: Clip.none,
+
+      children:[
+
+        IconButton(
+
+          onPressed: onTap,
+
+          icon: Icon(
+
+            icon,
+            size:28,
+
+          ),
+
+        ),
+
+        if(count > 0)
+
+          Positioned(
+
+            right:4,
+            top:4,
+
+            child: Container(
+
+              width:18,
+              height:18,
+
+              decoration: const BoxDecoration(
+
+                color: Colors.red,
+                shape: BoxShape.circle,
+
+              ),
+
+              child: Center(
+
+                child: Text(
+
+                  count > 9 ? "9+" : count.toString(),
+
+                  style: const TextStyle(
+
+                    color: Colors.white,
+                    fontSize:10,
+                    fontWeight: FontWeight.bold,
+
+                  ),
+
+                ),
+
+              ),
+
+            ),
+
+          )
+
+      ],
 
     );
 

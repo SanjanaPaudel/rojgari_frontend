@@ -22,6 +22,15 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
   bool isOnline = true;
 
+  // BACKEND READY:
+  // Later these counts will come from backend dashboard API.
+  // Example:
+  // unreadMessageCount = dashboardData.unreadMessageCount;
+  // unreadNotificationCount = dashboardData.unreadNotificationCount;
+
+  int unreadMessageCount = 2;
+  int unreadNotificationCount = 3;
+
   final List<Map<String, String>> requests = [
 
     {
@@ -61,7 +70,45 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
                 offset: const Offset(0,-3),
 
-                child: const DashboardAppbar(),
+                child: DashboardAppbar(
+
+                  messageCount: unreadMessageCount,
+
+                  notificationCount: unreadNotificationCount,
+
+                  onMenuTap: (){
+
+                    // NAVIGATION PLACE:
+                    // Later open drawer/menu here:
+                    // Scaffold.of(context).openDrawer();
+                    // OR:
+                    // Navigator.pushNamed(context, AppRoutes.menu);
+
+                    print("Menu clicked");
+
+                  },
+
+                  onMessageTap: (){
+
+                    // NAVIGATION PLACE:
+                    // Later create messages page and use:
+                    // Navigator.pushNamed(context, AppRoutes.messages);
+
+                    print("Messages clicked");
+
+                  },
+
+                  onNotificationTap: (){
+
+                    // NAVIGATION PLACE:
+                    // Later create notifications page and use:
+                    // Navigator.pushNamed(context, AppRoutes.notifications);
+
+                    print("Notifications clicked");
+
+                  },
+
+                ),
 
               ),
 
