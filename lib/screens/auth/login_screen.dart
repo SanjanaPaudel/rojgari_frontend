@@ -40,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? phoneError;
   String? passwordError;
+  String? loginError;
 
   bool validateFields() {
     bool hasError = false; // false mean haven't found any error
@@ -350,19 +351,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                     });
 
                                     //clear and store backend errors
-                                    setState(() { //Due to the setState , the customFiled is rebuild by flutter immediately if any error msg (from backend) with error msg or if no error msg clears the variable and rebuilds
+                                    setState(() { //Due to the setState , the customFiled is scheduled to rebuild by flutter immediately.  if any error msg (from backend) with error msg or if no error msg clears the variable and rebuilds
                                       phoneError = response["phone_number"]?.first; //"Look for a phone_number error in the backend response. If it exists, take the first error message from the list and store it in phoneError. If it doesn't exist, store null."
                                       passwordError = response["password"]?.first;
+                                      loginError = response["non_field_errors"]?.first;
                                     });
 
                                     // Stop if backend returned validation error
                                     if (phoneError != null ||
-                                        passwordError != null ) {
-                                      return; // Stops executing onPressed() i.e don't navigate to the OTP screen
+                                        passwordError != null ||
+                                        loginError != null ) {
+                                      return; // Stops executing onPressed() i.e don't navigate to the OTP screen and now flutter rebuilds the build()
                                     }
 
-                                    // login successful
-                                    // if (response["message"] == "Login successful.") {
+                                    // //Invalid User
+                                    // if (response["non_field_errors"] == "Invalid data. Expected a dictionary, but got str.") {
                                     //   Navigator.push(
                                     //     context,
                                     //     MaterialPageRoute(

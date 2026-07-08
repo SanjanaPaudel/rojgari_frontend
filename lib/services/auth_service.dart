@@ -13,8 +13,6 @@ class AuthService {
     required String phone,
     required String password,
   }) async {
-    print("Entered login()");
-    debugPrint("Inside AuthService.login()");
     final response = await _apiService.post(
       ApiUrls.login,
       {
