@@ -332,7 +332,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                   isLoading: isLoading,
                                   onPressed: () async {
 
-
                                     if (!validateFields()) {
                                       return;
                                     }
