@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/colors.dart';
+import '../../data/technician_dummy_data.dart';
 
 import '../../widgets/technician/dashboard_appbar.dart';
 import '../../widgets/technician/profile_header.dart';
@@ -20,7 +21,7 @@ class TechnicianHomeScreen extends StatefulWidget {
 
 class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
-  bool isOnline = true;
+  late bool isOnline;
 
   // BACKEND READY:
   // Later these counts will come from backend dashboard API.
@@ -50,6 +51,18 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     },
 
   ];
+
+  @override
+  void initState() {
+
+    super.initState();
+
+    // BACKEND READY:
+    // For now this comes from dummy data.
+    // Later this value will come from dashboard API.
+    isOnline = technicianData.online;
+
+  }
 
   @override
   Widget build(BuildContext context){
@@ -116,7 +129,21 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
                 offset: const Offset(0,-20),
 
-                child: const ProfileHeader(),
+                child: ProfileHeader(
+
+                  name: technicianData.name,
+
+                  rating: technicianData.rating,
+
+                  profession: technicianData.profession,
+
+                  experienceText: technicianData.experienceText,
+
+                  isVerified: technicianData.isVerified,
+
+                  avatarImage: technicianData.avatarImage,
+
+                ),
 
               ),
 
@@ -150,21 +177,21 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
                   children:[
 
-                    const StatCard(
+                    StatCard(
 
-                      number:"28",
+                      number: technicianData.completedJobs.toString(),
                       title:"Jobs Done",
                       subtitle:"This Month",
                       icon:Icons.work_outline,
-                      iconColor: Color(0xff6A35FF),
-                      bgColor: Color(0xffF4EEFF),
+                      iconColor: const Color(0xff6A35FF),
+                      bgColor: const Color(0xffF4EEFF),
 
                     ),
 
                     Container(
                       width:1,
                       height:100,
-                      color: Color(0xffEEEEEE),
+                      color: const Color(0xffEEEEEE),
                     ),
 
                     const StatCard(
@@ -181,34 +208,34 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                     Container(
                       width:1,
                       height:100,
-                      color: Color(0xffEEEEEE),
+                      color: const Color(0xffEEEEEE),
                     ),
 
-                    const StatCard(
+                    StatCard(
 
-                      number:"12",
+                      number: technicianData.reviews.toString(),
                       title:"Reviews",
                       subtitle:"This Week",
                       icon:Icons.calendar_month,
-                      iconColor: Color(0xffFF8C1A),
-                      bgColor: Color(0xffFFF1E6),
+                      iconColor: const Color(0xffFF8C1A),
+                      bgColor: const Color(0xffFFF1E6),
 
                     ),
 
                     Container(
                       width:1,
                       height:100,
-                      color: Color(0xffEEEEEE),
+                      color: const Color(0xffEEEEEE),
                     ),
 
-                    const StatCard(
+                    StatCard(
 
-                      number:"4.8",
+                      number: technicianData.rating.toStringAsFixed(1),
                       title:"Avg Rating",
                       subtitle:"Out of 5",
                       icon:Icons.star_border,
-                      iconColor: Color(0xff246BFD),
-                      bgColor: Color(0xffEDF4FF),
+                      iconColor: const Color(0xff246BFD),
+                      bgColor: const Color(0xffEDF4FF),
 
                     ),
 

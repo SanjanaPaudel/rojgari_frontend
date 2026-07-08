@@ -2,7 +2,25 @@ import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 
 class ProfileHeader extends StatelessWidget {
-  const ProfileHeader({super.key});
+
+  final String name;
+  final double rating;
+  final String profession;
+  final String experienceText;
+  final bool isVerified;
+  final String avatarImage;
+
+  const ProfileHeader({
+
+    super.key,
+    required this.name,
+    required this.rating,
+    required this.profession,
+    required this.experienceText,
+    required this.isVerified,
+    required this.avatarImage,
+
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -14,8 +32,6 @@ class ProfileHeader extends StatelessWidget {
       child: Stack(
 
         children:[
-
-          // TEMPLE IMAGE
 
           Positioned(
 
@@ -54,8 +70,6 @@ class ProfileHeader extends StatelessWidget {
 
               children:[
 
-                // PROFILE IMAGE
-
                 Padding(
 
                   padding: const EdgeInsets.only(
@@ -79,20 +93,16 @@ class ProfileHeader extends StatelessWidget {
                       child: Padding(
 
                         padding: const EdgeInsets.only(
-                          top: 8,
+                          top:8,
                         ),
 
                         child: Transform.scale(
 
-                          scale: 1.15,
+                          scale:1.15,
 
-                          child: Image.asset(
+                          child: _ProfileImage(
 
-                            "assets/images/technician_avatar.png",
-
-                            fit: BoxFit.contain,
-
-                            alignment: Alignment.bottomCenter,
+                            imagePath: avatarImage,
 
                           ),
 
@@ -123,11 +133,16 @@ class ProfileHeader extends StatelessWidget {
 
                       children:[
 
-                        const Text(
+                        Text(
 
-                          "Hello, Rajan 👋",
+                          "Hello, $name 👋",
 
-                          style: TextStyle(
+                          maxLines:1,
+
+                          overflow:
+                          TextOverflow.ellipsis,
+
+                          style: const TextStyle(
 
                             fontSize:18,
                             fontWeight:
@@ -161,23 +176,25 @@ class ProfileHeader extends StatelessWidget {
 
                               ),
 
-                              child: const Row(
+                              child: Row(
 
                                 children:[
 
-                                  Icon(
+                                  const Icon(
+
                                     Icons.star,
                                     size:12,
                                     color: Colors.yellow,
+
                                   ),
 
-                                  SizedBox(width:3),
+                                  const SizedBox(width:3),
 
                                   Text(
 
-                                    "4.8",
+                                    rating.toStringAsFixed(1),
 
-                                    style: TextStyle(
+                                    style: const TextStyle(
 
                                       fontSize:12,
                                       fontWeight:
@@ -227,14 +244,14 @@ class ProfileHeader extends StatelessWidget {
 
                         const SizedBox(height:5),
 
-                        const Text(
+                        Text(
 
-                          "Plumber • 3+ Years Experience",
+                          "$profession • $experienceText",
 
                           overflow:
                           TextOverflow.ellipsis,
 
-                          style: TextStyle(
+                          style: const TextStyle(
 
                             fontSize:12,
 
@@ -249,33 +266,39 @@ class ProfileHeader extends StatelessWidget {
 
                         const SizedBox(height:5),
 
-                        const Row(
+                        Row(
 
                           children:[
 
                             Icon(
 
-                              Icons.verified_user,
+                              isVerified
+                                  ? Icons.verified_user
+                                  : Icons.info_outline,
 
                               size:16,
 
-                              color:
-                              AppColors.primary,
+                              color: isVerified
+                                  ? AppColors.primary
+                                  : Colors.grey,
 
                             ),
 
-                            SizedBox(width:4),
+                            const SizedBox(width:4),
 
                             Text(
 
-                              "Verified",
+                              isVerified
+                                  ? "Verified"
+                                  : "Not Verified",
 
                               style: TextStyle(
 
                                 fontSize:12,
 
-                                color:
-                                AppColors.primary,
+                                color: isVerified
+                                    ? AppColors.primary
+                                    : Colors.grey,
 
                                 fontWeight:
                                 FontWeight.w600,
@@ -305,6 +328,59 @@ class ProfileHeader extends StatelessWidget {
         ],
 
       ),
+
+    );
+
+  }
+
+}
+
+class _ProfileImage extends StatelessWidget {
+
+  final String imagePath;
+
+  const _ProfileImage({
+    required this.imagePath,
+  });
+
+  @override
+  Widget build(BuildContext context){
+
+    if(imagePath.startsWith("http")){
+
+      return Image.network(
+
+        imagePath,
+
+        fit: BoxFit.contain,
+
+        alignment: Alignment.bottomCenter,
+
+        errorBuilder: (context,error,stackTrace){
+
+          return Image.asset(
+
+            "assets/images/technician_avatar.png",
+
+            fit: BoxFit.contain,
+
+            alignment: Alignment.bottomCenter,
+
+          );
+
+        },
+
+      );
+
+    }
+
+    return Image.asset(
+
+      imagePath,
+
+      fit: BoxFit.contain,
+
+      alignment: Alignment.bottomCenter,
 
     );
 
