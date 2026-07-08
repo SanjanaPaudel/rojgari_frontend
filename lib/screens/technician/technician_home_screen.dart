@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/colors.dart';
+
 import '../../widgets/technician/dashboard_appbar.dart';
 import '../../widgets/technician/profile_header.dart';
 import '../../widgets/technician/stat_card.dart';
@@ -7,272 +9,511 @@ import '../../widgets/technician/request_card.dart';
 import '../../widgets/technician/online_status_card.dart';
 import '../../widgets/technician/pro_tip_card.dart';
 
-class TechnicianHomeScreen extends StatelessWidget {
+class TechnicianHomeScreen extends StatefulWidget {
 
   const TechnicianHomeScreen({super.key});
+
+  @override
+  State<TechnicianHomeScreen> createState() => _TechnicianHomeScreenState();
+
+}
+
+class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
+
+  bool isOnline = true;
+
+  final List<Map<String, String>> requests = [
+
+    {
+      "title": "Plumbing Service",
+      "location": "Lazimpat, Kathmandu",
+      "issue": "Leaking in bathroom pipe",
+      "time": "Posted 5 mins ago",
+      "image": "assets/images/plumbing_icon.png",
+    },
+
+    {
+      "title": "Electrician Service",
+      "location": "Maitidevi, Kathmandu",
+      "issue": "Switch board not working",
+      "time": "Posted 12 mins ago",
+      "image": "assets/images/electrician_icon.png",
+    },
+
+  ];
 
   @override
   Widget build(BuildContext context){
 
     return Scaffold(
 
-        body: SafeArea(
+      body: SafeArea(
 
-            child: SingleChildScrollView(
+        child: SingleChildScrollView(
 
-                child: Column(
+          child: Column(
+
+            children:[
+
+              const SizedBox(height:0),
+
+              Transform.translate(
+
+                offset: const Offset(0,-3),
+
+                child: const DashboardAppbar(),
+
+              ),
+
+              Transform.translate(
+
+                offset: const Offset(0,-20),
+
+                child: const ProfileHeader(),
+
+              ),
+
+              Container(
+
+                margin: const EdgeInsets.fromLTRB(
+                  12,
+                  5,
+                  12,
+                  20,
+                ),
+
+                padding: const EdgeInsets.symmetric(
+                  horizontal:6,
+                  vertical:22,
+                ),
+
+                decoration: BoxDecoration(
+
+                  color: Colors.white,
+
+                  borderRadius: BorderRadius.circular(25),
+
+                  border: Border.all(
+                    color: const Color(0xffEEEEEE),
+                  ),
+
+                ),
+
+                child: Row(
+
+                  children:[
+
+                    const StatCard(
+
+                      number:"28",
+                      title:"Jobs Done",
+                      subtitle:"This Month",
+                      icon:Icons.work_outline,
+                      iconColor: Color(0xff6A35FF),
+                      bgColor: Color(0xffF4EEFF),
+
+                    ),
+
+                    Container(
+                      width:1,
+                      height:100,
+                      color: Color(0xffEEEEEE),
+                    ),
+
+                    const StatCard(
+
+                      number:"12",
+                      title:"Update Skills",
+                      subtitle:"In Progress",
+                      icon:Icons.sync,
+                      iconColor: Color(0xff246BFD),
+                      bgColor: Color(0xffEDF4FF),
+
+                    ),
+
+                    Container(
+                      width:1,
+                      height:100,
+                      color: Color(0xffEEEEEE),
+                    ),
+
+                    const StatCard(
+
+                      number:"12",
+                      title:"Reviews",
+                      subtitle:"This Week",
+                      icon:Icons.calendar_month,
+                      iconColor: Color(0xffFF8C1A),
+                      bgColor: Color(0xffFFF1E6),
+
+                    ),
+
+                    Container(
+                      width:1,
+                      height:100,
+                      color: Color(0xffEEEEEE),
+                    ),
+
+                    const StatCard(
+
+                      number:"4.8",
+                      title:"Avg Rating",
+                      subtitle:"Out of 5",
+                      icon:Icons.star_border,
+                      iconColor: Color(0xff246BFD),
+                      bgColor: Color(0xffEDF4FF),
+
+                    ),
+
+                  ],
+
+                ),
+
+              ),
+
+              _incomingRequestsSection(),
+
+              OnlineStatusCard(
+
+                isOnline: isOnline,
+
+                onToggle:(){
+
+                  setState(() {
+
+                    isOnline = !isOnline;
+
+                  });
+
+                  // BACKEND PLACE:
+                  // Later connect backend here:
+                  // await technicianService.updateOnlineStatus(isOnline);
+
+                },
+
+              ),
+
+              ProTipCard(
+
+                onTap:(){
+
+                  // NAVIGATION PLACE:
+                  // Later create profile tips page and use:
+                  // Navigator.pushNamed(context, AppRoutes.profileTips);
+
+                  print("Pro Tip clicked");
+
+                },
+
+              ),
+
+              const SizedBox(height:50),
+
+            ],
+
+          ),
+
+        ),
+
+      ),
+
+    );
+
+  }
+
+  Widget _incomingRequestsSection(){
+
+    return Container(
+
+      margin: const EdgeInsets.symmetric(
+        horizontal: 22,
+      ),
+
+      decoration: BoxDecoration(
+
+        color: Colors.white,
+
+        borderRadius: BorderRadius.circular(25),
+
+        border: Border.all(
+          color: const Color(0xffEFE6FF),
+        ),
+
+        boxShadow:[
+
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+
+        ],
+
+      ),
+
+      child: Column(
+
+        children:[
+
+          Container(
+
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 20,
+            ),
+
+            decoration: const BoxDecoration(
+
+              color: Color(0xffFCFAFF),
+
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(25),
+                topRight: Radius.circular(25),
+              ),
+
+            ),
+
+            child: Row(
+
+              children:[
+
+                Container(
+
+                  width: 52,
+                  height: 52,
+
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary,
+                  ),
+
+                  child: const Icon(
+                    Icons.assignment_outlined,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+
+                ),
+
+                const SizedBox(width: 12),
+
+                Expanded(
+
+                  child: Column(
+
+                    crossAxisAlignment: CrossAxisAlignment.start,
 
                     children:[
 
-                      const SizedBox(height:0),
+                      Row(
 
-                      Transform.translate(
+                        children:[
 
-                        offset: const Offset(0,-3),
+                          Expanded(
 
-                        child: const DashboardAppbar(),
+                            child: FittedBox(
+
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+
+                              child: const Text(
+
+                                "Incoming Requests",
+
+                                maxLines: 1,
+
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+
+                              ),
+
+                            ),
+
+                          ),
+
+                          const SizedBox(width: 7),
+
+                          Container(
+
+                            width: 23,
+                            height: 23,
+
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.red,
+                            ),
+
+                            child: Center(
+
+                              child: Text(
+
+                                requests.length.toString(),
+
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+
+                              ),
+
+                            ),
+
+                          ),
+
+                        ],
 
                       ),
 
-                      Transform.translate(
+                      const SizedBox(height: 5),
 
-                        offset: const Offset(0,-20),
+                      const Text(
 
-                        child: const ProfileHeader(),
+                        "New service requests near you",
+
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          color: Color(0xff5F6A8A),
+                          fontWeight: FontWeight.w500,
+                        ),
 
                       ),
 
-                      Container(
+                    ],
 
-                        margin: const EdgeInsets.fromLTRB(
-                          12,
-                          5,
-                          12,
-                          20,
-                        ),
+                  ),
 
-                        padding: const EdgeInsets.symmetric(
-                          horizontal:6,
-                          vertical:22,
-                        ),
+                ),
 
-                        decoration: BoxDecoration(
+                const SizedBox(width: 6),
 
-                          color: Colors.white,
+                InkWell(
 
-                          borderRadius:
-                          BorderRadius.circular(25),
+                  borderRadius: BorderRadius.circular(10),
 
-                          border: Border.all(
-                            color: const Color(0xffEEEEEE),
+                  onTap:(){
+
+                    // NAVIGATION PLACE:
+                    // Later create requests page and use:
+                    // Navigator.pushNamed(context, AppRoutes.requests);
+
+                    print("View All clicked");
+
+                  },
+
+                  child: const Padding(
+
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 2,
+                      vertical: 8,
+                    ),
+
+                    child: Row(
+
+                      children:[
+
+                        Text(
+
+                          "View All",
+
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
                           ),
 
                         ),
 
-                        child: Row(
+                        SizedBox(width: 8),
 
-                          children:[
-
-                            const StatCard(
-
-                              number:"28",
-
-                              title:"Jobs Done",
-
-                              subtitle:"This Month",
-
-                              icon:Icons.work_outline,
-
-                              iconColor: Color(0xff6A35FF),
-
-                              bgColor: Color(0xffF4EEFF),
-
-                            ),
-
-                            Container(
-                              width:1,
-                              height:100,
-                              color: Color(0xffEEEEEE),
-                            ),
-
-                            const StatCard(
-
-                              number:"12",
-
-                              title:"Update Skills",
-
-                              subtitle:"In Progress",
-
-                              icon:Icons.sync,
-
-                              iconColor: Color(0xff246BFD),
-
-                              bgColor: Color(0xffEDF4FF),
-
-                            ),
-
-                            Container(
-                              width:1,
-                              height:100,
-                              color: Color(0xffEEEEEE),
-                            ),
-
-                            const StatCard(
-
-                              number:"12",
-
-                              title:"Reviews",
-
-                              subtitle:"This Week",
-
-                              icon:Icons.calendar_month,
-
-                              iconColor: Color(0xffFF8C1A),
-
-                              bgColor: Color(0xffFFF1E6),
-
-                            ),
-
-                            Container(
-                              width:1,
-                              height:100,
-                              color: Color(0xffEEEEEE),
-                            ),
-
-                            const StatCard(
-
-                              number:"4.8",
-
-                              title:"Avg Rating",
-
-                              subtitle:"Out of 5",
-
-                              icon:Icons.star_border,
-
-                              iconColor: Color(0xff246BFD),
-
-                              bgColor: Color(0xffEDF4FF),
-
-                            ),
-
-                          ],
-
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          color: AppColors.primary,
+                          size: 15,
                         ),
 
-                      ),
+                      ],
 
-                      Container(
+                    ),
 
-                          margin:
-                          const EdgeInsets.symmetric(
-                              horizontal:20
-                          ),
+                  ),
 
-                          padding:
-                          const EdgeInsets.all(20),
+                ),
 
-                          decoration: BoxDecoration(
+              ],
 
-                              color: Colors.white,
+            ),
 
-                              borderRadius:
-                              BorderRadius.circular(25)
+          ),
 
-                          ),
+          ListView.separated(
 
-                          child: Column(
+            shrinkWrap: true,
 
-                              children:[
+            physics: const NeverScrollableScrollPhysics(),
 
-                                Row(
+            itemCount: requests.length,
 
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+            separatorBuilder: (context,index){
 
-                                    children:[
+              return const Padding(
 
-                                      const Text(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 28,
+                ),
 
-                                        "Incoming Requests",
+                child: Divider(
+                  height: 1,
+                  color: Color(0xffE6E1EF),
+                ),
 
-                                        style: TextStyle(
+              );
 
-                                            fontWeight: FontWeight.bold,
-                                            fontSize:24
+            },
 
-                                        ),
+            itemBuilder: (context,index){
 
-                                      ),
+              final request = requests[index];
 
-                                      TextButton(
+              return RequestCard(
 
-                                          onPressed: (){
+                title: request["title"]!,
+                location: request["location"]!,
+                issue: request["issue"]!,
+                time: request["time"]!,
+                image: request["image"]!,
 
-                                            print("View all");
+                onTap:(){
 
-                                          },
+                  // NAVIGATION PLACE:
+                  // Later create request detail page and use:
+                  // Navigator.pushNamed(
+                  //   context,
+                  //   AppRoutes.requestDetail,
+                  //   arguments: request,
+                  // );
 
-                                          child: const Text(
-                                              "View All"
-                                          )
+                  print("${request["title"]} clicked");
 
-                                      )
+                },
 
-                                    ]
+              );
 
-                                ),
+            },
 
-                                RequestCard(
+          ),
 
-                                    title:"Plumbing Service",
+          const SizedBox(height: 8),
 
-                                    location:"Lazimpat Kathmandu",
+        ],
 
-                                    issue:"Leaking bathroom pipe",
-
-                                    time:"Posted 5 mins ago",
-
-                                    image:"assets/images/plumbing_icon.png"
-
-                                ),
-
-                                const Divider(),
-
-                                RequestCard(
-
-                                    title:"Electrician Service",
-
-                                    location:"Maitidevi Kathmandu",
-
-                                    issue:"Switch board not working",
-
-                                    time:"Posted 12 mins ago",
-
-                                    image:"assets/images/electrician_icon.png"
-
-                                ),
-
-                              ]
-
-                          )
-
-                      ),
-
-                      const OnlineStatusCard(),
-
-                      const ProTipCard(),
-
-                      const SizedBox(
-                          height:50
-                      )
-
-                    ]
-
-                )
-
-            )
-
-        )
+      ),
 
     );
 

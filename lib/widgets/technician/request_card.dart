@@ -8,6 +8,7 @@ class RequestCard extends StatelessWidget {
   final String issue;
   final String time;
   final String image;
+  final VoidCallback? onTap;
 
   const RequestCard({
 
@@ -17,6 +18,7 @@ class RequestCard extends StatelessWidget {
     required this.issue,
     required this.time,
     required this.image,
+    this.onTap,
 
   });
 
@@ -26,272 +28,228 @@ class RequestCard extends StatelessWidget {
     return Padding(
 
       padding: const EdgeInsets.symmetric(
-        vertical:15,
+        horizontal: 22,
+        vertical: 18,
       ),
 
       child: Row(
 
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
 
         children:[
 
           Container(
 
-            width:70,
-            height:70,
+            width: 78,
+            height: 78,
 
-            decoration: BoxDecoration(
-
-              color: Colors.grey.shade100,
+            decoration: const BoxDecoration(
+              color: Color(0xffF7F7FA),
               shape: BoxShape.circle,
-
             ),
 
-            child: Padding(
+            child: Center(
 
-              padding: const EdgeInsets.all(14),
+              child: Transform.scale(
 
-              child: Image.asset(image),
+                scale: 1.35,
+
+                child: Image.asset(
+                  image,
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.contain,
+                ),
+
+              ),
 
             ),
 
           ),
 
-          const SizedBox(width:15),
+          const SizedBox(width: 18),
 
           Expanded(
 
-            child: Row(
+            child: Column(
 
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
 
               children:[
 
-                Expanded(
+                Row(
 
-                  child: Column(
+                  children:[
 
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                    Flexible(
 
-                    children:[
+                      child: Text(
 
-                      Row(
+                        title,
 
-                        children:[
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
 
-                          Flexible(
-
-                            child: Text(
-
-                              title,
-
-                              style: const TextStyle(
-
-                                fontSize:20,
-                                fontWeight:
-                                FontWeight.bold,
-
-                              ),
-
-                              overflow:
-                              TextOverflow.ellipsis,
-
-                            ),
-
-                          ),
-
-                          const SizedBox(width:8),
-
-                          Container(
-
-                            padding:
-                            const EdgeInsets.symmetric(
-                              horizontal:8,
-                              vertical:4,
-                            ),
-
-                            decoration: BoxDecoration(
-
-                              color:
-                              AppColors.lightPurple,
-
-                              borderRadius:
-                              BorderRadius.circular(8),
-
-                            ),
-
-                            child: const Text(
-                              "New",
-                              style: TextStyle(
-                                fontSize:12,
-                              ),
-                            ),
-
-                          )
-
-                        ],
-
-                      ),
-
-                      const SizedBox(height:10),
-
-                      Row(
-
-                        children:[
-
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size:16,
-                            color: Colors.grey,
-                          ),
-
-                          const SizedBox(width:5),
-
-                          Expanded(
-
-                            child: Text(
-
-                              location,
-
-                              style: const TextStyle(
-                                color: Colors.grey,
-                              ),
-
-                            ),
-
-                          )
-
-                        ],
-
-                      ),
-
-                      const SizedBox(height:6),
-
-                      Row(
-
-                        children:[
-
-                          const Icon(
-                            Icons.message_outlined,
-                            size:16,
-                            color: Colors.grey,
-                          ),
-
-                          const SizedBox(width:5),
-
-                          Expanded(
-
-                            child: Text(
-
-                              issue,
-
-                              style: const TextStyle(
-                                color: Colors.grey,
-                              ),
-
-                            ),
-
-                          )
-
-                        ],
-
-                      ),
-
-                      const SizedBox(height:6),
-
-                      Row(
-
-                        children:[
-
-                          const Icon(
-                            Icons.access_time,
-                            size:16,
-                            color: Colors.grey,
-                          ),
-
-                          const SizedBox(width:5),
-
-                          Text(
-
-                            time,
-
-                            style: const TextStyle(
-                              color: Colors.grey,
-                            ),
-
-                          )
-
-                        ],
-
-                      )
-
-                    ],
-
-                  ),
-
-                ),
-
-                const SizedBox(width:10),
-
-                Padding(
-
-                  padding: const EdgeInsets.only(
-                    top:35,
-                  ),
-
-                  child: GestureDetector(
-
-                    onTap:(){
-
-                      print(
-                          "Arrow clicked"
-                      );
-
-                    },
-
-                    child: Container(
-
-                      padding:
-                      const EdgeInsets.all(10),
-
-                      decoration: BoxDecoration(
-
-                        color:
-                        AppColors.lightPurple,
-
-                        borderRadius:
-                        BorderRadius.circular(12),
-
-                      ),
-
-                      child: const Icon(
-
-                        Icons.arrow_forward_ios,
-
-                        size:18,
-
-                        color:
-                        AppColors.primary,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xff171725),
+                        ),
 
                       ),
 
                     ),
 
-                  ),
+                    const SizedBox(width: 8),
 
-                )
+                    Container(
+
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
+
+                      decoration: BoxDecoration(
+                        color: const Color(0xffF4EEFF),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+
+                      child: const Text(
+
+                        "New",
+
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.primary,
+                        ),
+
+                      ),
+
+                    ),
+
+                  ],
+
+                ),
+
+                const SizedBox(height: 9),
+
+                _InfoLine(
+                  icon: Icons.location_on_outlined,
+                  text: location,
+                ),
+
+                const SizedBox(height: 7),
+
+                _InfoLine(
+                  icon: Icons.chat_bubble_outline,
+                  text: issue,
+                ),
+
+                const SizedBox(height: 7),
+
+                _InfoLine(
+                  icon: Icons.access_time,
+                  text: time,
+                ),
 
               ],
 
             ),
 
-          )
+          ),
+
+          const SizedBox(width: 8),
+
+          Padding(
+
+            padding: const EdgeInsets.only(
+              top: 34,
+            ),
+
+            child: InkWell(
+
+              borderRadius: BorderRadius.circular(12),
+
+              onTap: onTap,
+
+              child: Container(
+
+                width: 38,
+                height: 38,
+
+                decoration: BoxDecoration(
+                  color: const Color(0xffF3ECFF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+
+                child: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+
+              ),
+
+            ),
+
+          ),
 
         ],
 
       ),
+
+    );
+
+  }
+
+}
+
+class _InfoLine extends StatelessWidget {
+
+  final IconData icon;
+  final String text;
+
+  const _InfoLine({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context){
+
+    return Row(
+
+      children:[
+
+        Icon(
+          icon,
+          size: 16,
+          color: Color(0xff5F6A8A),
+        ),
+
+        SizedBox(width: 8),
+
+        Expanded(
+
+          child: Text(
+
+            text,
+
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xff5F6A8A),
+              fontWeight: FontWeight.w500,
+            ),
+
+          ),
+
+        ),
+
+      ],
 
     );
 

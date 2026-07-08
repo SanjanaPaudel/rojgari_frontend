@@ -28,6 +28,8 @@ class StatCard extends StatelessWidget {
 
       child: Column(
 
+        mainAxisSize: MainAxisSize.min,
+
         children:[
 
           Container(
@@ -61,10 +63,13 @@ class StatCard extends StatelessWidget {
 
             number,
 
+            maxLines:1,
+
             style: const TextStyle(
 
               fontSize:20,
               fontWeight: FontWeight.bold,
+              color: Color(0xff171725),
 
             ),
 
@@ -76,12 +81,17 @@ class StatCard extends StatelessWidget {
 
             title,
 
+            maxLines:1,
+
+            overflow: TextOverflow.ellipsis,
+
             textAlign: TextAlign.center,
 
             style: const TextStyle(
 
-              fontSize:11,
-              fontWeight: FontWeight.w500,
+              fontSize:10.5,
+              fontWeight: FontWeight.w600,
+              color: Color(0xff171725),
 
             ),
 
@@ -93,12 +103,17 @@ class StatCard extends StatelessWidget {
 
             subtitle,
 
+            maxLines:1,
+
+            overflow: TextOverflow.ellipsis,
+
             textAlign: TextAlign.center,
 
             style: TextStyle(
 
-              fontSize:10,
+              fontSize:9.5,
               color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
 
             ),
 
