@@ -59,7 +59,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
       setState(() {});
     });
 
-    _errorText = widget.errorMsg;
+    _errorText = widget.errorMsg; //widget,errorMsg is the error msg that is assigned to errorMsg during Custom_textfield call
     _hasError = widget.errorMsg != null;
   }
 
