@@ -1,8 +1,8 @@
 import 'dart:convert';
-
 import '../core/constants/api_urls.dart';
 import '../models/skill_model.dart';
 import 'api_service.dart';
+import 'package:http/http.dart' as http;
 
 class SkillService {
   final ApiService _apiService = ApiService();
@@ -23,24 +23,12 @@ class SkillService {
   }
 
   /// POST /worker/select-skills/
-  Future<String?> selectSkills(List<int> skillIds) async {
-    final response = await _apiService.post(
+  Future<http.Response> selectSkills(List<int> skillIds) async {
+    return await _apiService.post(
       ApiUrls.selectWorkerSkills,
       {
         "skills": skillIds,
       },
     );
-
-    final data = jsonDecode(response.body);
-
-    if (response.statusCode == 200) {
-      return null; // Success
-    }
-
-    if (data["skills"] != null) {
-      return data["skills"][0];
-    }
-
-    return "Something went wrong.";
   }
 }
