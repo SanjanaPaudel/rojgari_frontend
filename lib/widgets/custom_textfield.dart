@@ -8,7 +8,6 @@ enum FieldType {
   email,
   text,
 }
-
 class CustomTextField extends StatefulWidget {
 
   //Variable in CustomTextField

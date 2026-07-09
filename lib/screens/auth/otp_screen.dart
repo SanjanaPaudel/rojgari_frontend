@@ -1,24 +1,20 @@
 import 'dart:async'; // For Timer
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
+import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/widgets/otp_input.dart';
 import 'package:rojgari_frontend_one/services/auth_service.dart';
-
-import 'package:rojgari_frontend_one/screens/customer/customer_dashboard_screen.dart';
-import 'package:rojgari_frontend_one/screens/worker/worker_dashboard_screen.dart';
 
 
 class OTPScreen extends StatefulWidget {
   final String email; //the email to which the otp is send is now in widget.email
   final String phone; //needed because backend looks up the pending registration by phone number
-  final String role; //"customer" or "worker" - decides which dashboard to open after verification
 
   const OTPScreen({
     super.key,
     required this.email,
     required this.phone,
-    required this.role,
   });
 
   @override
@@ -533,9 +529,7 @@ class _OTPScreenState extends State<OTPScreen> { //Everything that changes while
                               Navigator.pushAndRemoveUntil(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => widget.role == "worker"
-                                      ? const WorkerDashboardScreen()
-                                      : const CustomerDashboardScreen(),
+                                  builder: (_) => LoginScreen(),
                                 ),
                                 (route) => false,
 
