@@ -57,13 +57,13 @@ class AuthService {
   }
 
   Future<Map<String, dynamic>> verifyOTP({
-    required String email,
+    required String phone,
     required String otp,
   }) async {
     final response = await _apiService.post(
       ApiUrls.verifyOtp,
       {
-        "email": email,
+        "phone_number": phone,
         "otp": otp,
       },
     );
@@ -74,12 +74,12 @@ class AuthService {
   }
 
   Future<Map<String, dynamic>> resendOTP({
-    required String email,
+    required String phone,
   }) async {
     final response = await _apiService.post(
       ApiUrls.resendOtp,
       {
-        "email": email,
+        "phone_number": phone,
       },
     );
 
