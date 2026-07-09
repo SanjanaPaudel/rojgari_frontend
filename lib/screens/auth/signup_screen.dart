@@ -137,7 +137,6 @@ class _CustomerSignupScreenState
     }
 
     setState(() {}); // tells the flutter to rebuild the textfield with the changes/errors
-
     return !hasError; // -> if validateFields() returns true means all fields are valid(validation pass) and continue else otherwise.
   }
 
@@ -582,7 +581,6 @@ class _CustomerSignupScreenState
                                 icon: Icons.arrow_forward,
                                 isLoading: isLoading,
                                 onPressed: () async {
-                                  // Stores user input
 
                                   if (!validateFields()) {
                                     return;
@@ -630,6 +628,8 @@ class _CustomerSignupScreenState
                                       MaterialPageRoute(
                                         builder: (_) => OTPScreen(
                                           email: emailController.text.trim(),
+                                          phone: phoneController.text.trim(),
+                                          role: isWorker ? "worker" : "customer",
                                         ),
                                       ),
                                     );
