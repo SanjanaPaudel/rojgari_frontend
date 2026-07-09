@@ -5,6 +5,13 @@
 //
 // using flutter_secure_storage.
 
+//Why Store the Token?
+//Imagine the user closes the app.
+//Tomorrow they reopen it.
+//The app reads
+// _storage.read(key:"access_token")
+// If token exists
+// No need to login again.
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class StorageService {

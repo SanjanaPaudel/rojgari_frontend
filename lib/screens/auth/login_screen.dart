@@ -4,6 +4,9 @@ import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/widgets/custom_textfield.dart';
 import 'package:rojgari_frontend_one/screens/auth/signup_screen.dart';
 import 'package:rojgari_frontend_one/services/auth_service.dart';
+import 'package:rojgari_frontend_one/services/storage_service.dart';
+import 'package:rojgari_frontend_one/screens/customer/customer_dashboard_screen.dart';
+import 'package:rojgari_frontend_one/screens/worker/worker_dashboard_screen.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -24,6 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Object used to communicate with backend APIs.
   final AuthService _authService = AuthService();
+  final StorageService _storageService = StorageService();
 
   bool isLoading = false; //Controls loading spinner of login button
 
@@ -48,6 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
     //Clear previous backend/frontend errors
     phoneError = null;
     passwordError = null;
+    loginError = null;
 
     // Phone
     if (phoneController.text.trim().isEmpty) {
@@ -295,6 +300,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
                               ),
 
+                              //================================
+                              //GENERAL LOGIN ERROR
+                              //================================
+                              if (loginError != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  loginError!,
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+
                               //=================================
                               //FORGET PASSWORD
                               //=================================
@@ -323,6 +344,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
 
+
+
                               //================================
                               //LOGIN
                               //================================
@@ -348,30 +371,39 @@ class _LoginScreenState extends State<LoginScreen> {
                                     setState(() {
                                       isLoading = false;
                                     });
-
                                     //clear and store backend errors
                                     setState(() { //Due to the setState , the customFiled is scheduled to rebuild by flutter immediately.  if any error msg (from backend) with error msg or if no error msg clears the variable and rebuilds
                                       phoneError = response["phone_number"]?.first; //"Look for a phone_number error in the backend response. If it exists, take the first error message from the list and store it in phoneError. If it doesn't exist, store null."
                                       passwordError = response["password"]?.first;
-                                      loginError = response["non_field_errors"]?.first;
+                                      loginError = response["detail"];
                                     });
+                                    print("loginError = $loginError");
 
-                                    // Stop if backend returned validation error
-                                    if (phoneError != null ||
-                                        passwordError != null ||
-                                        loginError != null ) {
-                                      return; // Stops executing onPressed() i.e don't navigate to the OTP screen and now flutter rebuilds the build()
+                                    if (response["access"] != null) {
+                                      await _storageService.saveAccessToken(response["access"]);
+                                      await _storageService.saveRefreshToken(response["refresh"]);
+                                      if (!mounted) return;
+
+                                      final nextScreen = response["next_screen"];
+
+                                      Widget destination;
+                                      if (nextScreen == "worker_dashboard") {
+                                        destination = const WorkerDashboardScreen();
+                                      } else if (nextScreen == "customer_dashboard") {
+                                        destination = const CustomerDashboardScreen();
+                                      } else {
+                                        // "select_skills" — no screen built for this yet, fall back for now
+                                        destination = const WorkerDashboardScreen();
+                                      }
+
+                                      Navigator.pushAndRemoveUntil(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => destination),
+                                            (route) => false,
+                                      );
+
+                                      return;
                                     }
-
-                                    // //Invalid User
-                                    // if (response["non_field_errors"] == "Invalid data. Expected a dictionary, but got str.") {
-                                    //   Navigator.push(
-                                    //     context,
-                                    //     MaterialPageRoute(
-                                    //       builder: (_) => const HomeScreen(),
-                                    //     ),
-                                    //   );
-                                    // }
 
                                   },
                               ),
@@ -418,7 +450,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                           color: AppColors.primary,
                                         ),
                                       )
-
                                   ),
                                 ],
                               ),
@@ -430,7 +461,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                     ),
                   ],
-               ),
+              ),
               ),
             ],
           ),

@@ -629,7 +629,6 @@ class _CustomerSignupScreenState
                                         builder: (_) => OTPScreen(
                                           email: emailController.text.trim(),
                                           phone: phoneController.text.trim(),
-                                          role: isWorker ? "worker" : "customer",
                                         ),
                                       ),
                                     );
