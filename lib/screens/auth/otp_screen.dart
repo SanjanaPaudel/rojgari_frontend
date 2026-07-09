@@ -231,7 +231,6 @@ class _OTPScreenState extends State<OTPScreen> { //Everything that changes while
                   ),
 
                   const SizedBox(height: 20),
-
                   const SizedBox(height: 0),
                   //--------------------------------
                   // TITLE AND PHONE

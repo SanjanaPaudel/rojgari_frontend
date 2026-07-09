@@ -116,7 +116,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
 
           // Back Button
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15),
+            padding: const EdgeInsets.symmetric(horizontal: 0),
             child: Row(
               children: [
                 InkWell(
@@ -150,25 +150,45 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
 
           const SizedBox(height: 32),
 
-          const Text(
-            "Select Your Skills",
-            style: TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1D2340),
-            ),
-          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Select Your Skills",
+                    style: TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1D2340),
+                    ),
+                  ),
 
-          const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-          Text(
-            "Choose all the services you are skilled in.\n"
-                "You can select multiple options.",
-            style: TextStyle(
-              fontSize: 16,
-              height: 1.5,
-              color: Colors.grey.shade600,
-            ),
+                  Text(
+                    "Choose all the services you are skilled in.\n"
+                        "You can select multiple options.",
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+
+                ],
+              ),
+
+              const SizedBox(width: 16),
+              Image.asset(
+                "assets/images/temple(skill).png",
+                width: 120,
+                height: 120,
+                fit: BoxFit.contain,
+              ),
+            ],
           ),
         ],
       ),
