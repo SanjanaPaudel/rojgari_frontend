@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import '../../models/skill_model.dart';
 import '../../services/skill_service.dart';
 import 'package:rojgari_frontend_one/widgets/skill_card.dart';
+import 'package:rojgari_frontend_one/widgets/custom_button.dart';
+import 'package:rojgari_frontend_one/screens/worker/worker_dashboard_screen.dart';
+
 
 class SkillSelectionScreen extends StatefulWidget {
   const SkillSelectionScreen({super.key});
@@ -18,7 +22,8 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
   final Set<int> _selectedSkillIds = {};
   bool _isLoading = true;
   bool _isSubmitting = false;
-  String? _errorMessage;
+  String? _loadError; // shown if the skill list fails to load
+  String? _submitError; // shown above the continue button if the backend any error like: "This field is required."
 
   @override
   void initState() {
@@ -44,7 +49,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = "Failed to load skills.";
+        _loadError = "Failed to load skills.";
       });
     }
   }
@@ -66,24 +71,40 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
   Future<void> _submitSkills() async {
     setState(() {
       _isSubmitting = true;
-      _errorMessage = null;
+      _submitError = null;
     });
 
-    final error =
+    final response =
     await _skillService.selectSkills(_selectedSkillIds.toList());
+
+    final data = jsonDecode(response.body);
 
     setState(() {
       _isSubmitting = false;
     });
 
-    if (error != null) {
-      setState(() {
-        _errorMessage = error;
-      });
+    if (response.statusCode == 200) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const WorkerDashboardScreen(),
+        ),
+      );
+
       return;
     }
 
-    // TODO: Navigate to Worker Dashboard
+    if (response.statusCode == 400) {
+      setState(() {
+        _submitError = data["skills"]?[0];
+      });
+
+      return;
+    }
+
+    setState(() {
+      _submitError = "Something went wrong.";
+    });
   }
 
   Widget _buildHeader() {
@@ -94,26 +115,36 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
         children: [
 
           // Back Button
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            child: Row(
+              children: [
+                InkWell(
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    height: 35,
+                    width: 35,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(.05),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 15,
+                    ),
                   ),
-                ],
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new,
-                size: 18,
-              ),
+                ),
+              ],
             ),
           ),
 
@@ -148,6 +179,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: TextField(
         controller: _searchController,
+        onChanged: _filterSkills,
         decoration: InputDecoration(
           hintText: "Search skills...",
           prefixIcon: const Icon(Icons.search),
@@ -239,16 +271,16 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
       );
     }
 
-    if (_errorMessage != null) {
+    if (_loadError != null) {
       return Center(
-        child: Text(_errorMessage!),
+        child: Text(_loadError!),
       );
     }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: GridView.builder(
-        itemCount: _allSkills.length,
+        itemCount: _filteredSkills.length,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
           crossAxisSpacing: 16,
@@ -256,7 +288,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
           childAspectRatio: 0.72,
         ),
         itemBuilder: (context, index) {
-          final skill = _allSkills[index];
+          final skill = _filteredSkills[index];
 
           return SkillCard(
             skill: skill,
@@ -278,35 +310,11 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
   Widget _buildContinueButton() {
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: _isSubmitting ? null : _submitSkills,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6A5AE0),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: _isSubmitting
-              ? const SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          )
-              : const Text(
-            "Continue",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
+      child: CustomButton(
+        text: "Continue",
+        isLoading: _isSubmitting,
+        icon: Icons.arrow_forward,
+        onPressed: _submitSkills,
       ),
     );
   }
@@ -341,11 +349,11 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
               child: _buildSkillGrid(),
             ),
 
-            if (_errorMessage != null)
+            if (_submitError != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
-                  _errorMessage!,
+                  _submitError!,
                   style: const TextStyle(
                     color: Colors.red,
                   ),
