@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:io';
 
+import 'package:rojgari_frontend_one/services/storage_service.dart';
+
 class ApiService {
 
 
@@ -13,9 +15,11 @@ class ApiService {
   // Send a POST request. Wait for the server's response. Return that response."
 
    Future<http.Response> post( String url,Map<String, dynamic> body,)async{
+     final token = await StorageService.getAccessToken();
      final response = await http.post( Uri.parse(url),
        headers: {
          "Content-Type": "application/json",
+         if (token != null) "Authorization": "Bearer $token",
        },
        body: jsonEncode(body),
      );
@@ -30,6 +34,20 @@ class ApiService {
   // response has -> statusCode, headers and body
 
 
+   Future<http.Response> get(String url) async {
+     final token = await StorageService.getAccessToken();
+     final response = await http.get(
+       Uri.parse(url),
+       headers: {
+         "Content-Type": "application/json",
+         if (token != null) "Authorization": "Bearer $token",
+       },
+     );
+
+     return response;
+   }
+
+
    //=====================
    // MULTIPART POST
   //=====================
@@ -38,10 +56,14 @@ class ApiService {
       Map<String, String> fields,
       File? image,
       ) async {
+    final token = await StorageService.getAccessToken();
     final request = http.MultipartRequest(
       "POST",
       Uri.parse(url),
     );
+    if (token != null) {
+      request.headers["Authorization"] = "Bearer $token";
+    }
 
     request.fields.addAll(fields);
 

@@ -27,7 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Object used to communicate with backend APIs.
   final AuthService _authService = AuthService();
-  final StorageService _storageService = StorageService();
 
   bool isLoading = false; //Controls loading spinner of login button
 
@@ -380,8 +379,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                     print("loginError = $loginError");
 
                                     if (response["access"] != null) {
-                                      await _storageService.saveAccessToken(response["access"]);
-                                      await _storageService.saveRefreshToken(response["refresh"]);
+                                      await StorageService.saveAccessToken(response["access"]);
+                                      await StorageService.saveRefreshToken(response["refresh"]);
                                       if (!mounted) return;
 
                                       final nextScreen = response["next_screen"];
