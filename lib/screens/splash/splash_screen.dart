@@ -1,6 +1,30 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+/*
+  ================= FUTURE IMPORTS FOR AUTO LOGIN =================
+
+  After your friend adds next_screen storage in StorageService,
+  you will need these imports.
+
+  IMPORTANT:
+  Name milauna parcha according to your real files/classes.
+
+  Example:
+
+  import '../../services/storage_service.dart';
+  import '../auth/login_screen.dart';
+  import '../customer/customer_home_screen.dart';
+  import '../technician/technician_home_screen.dart';
+
+  If your file/class names are different, change them.
+
+  Example:
+  If login class is LoginPage, use LoginPage instead of LoginScreen.
+  If technician dashboard class is TechnicianHomeScreen, use that.
+  If customer dashboard class is CustomerHomeScreen, use that.
+*/
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -12,7 +36,8 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _letterController;
   Timer? _timer;
-//To change the tome of holding splash screen.........
+
+  // To change the time of holding splash screen.
   static const int splashDurationSeconds = 8;
 
   @override
@@ -35,41 +60,105 @@ class _SplashScreenState extends State<SplashScreen>
   void _goToNextScreen() {
     if (!mounted) return;
 
-  //   /*
-  //   Later backend/storage logic:
-  //
-  //   1. Check if token exists
-  //   2. Check user role: customer or technician
-  //   3. Navigate to correct screen
-  // */
-  //
-  //   final bool isLoggedIn = false; // Later get this from StorageService
-  //   final String role = ""; // Later get this from backend/local storage
-  //
-  //   if (!isLoggedIn) {
-  //     Navigator.pushReplacement(
-  //       context,
-  //       MaterialPageRoute(
-  //         builder: (context) => const LoginScreen(),
-  //       ),
-  //     );
-  //   } else if (role == "customer") {
-  //     Navigator.pushReplacement(
-  //       context,
-  //       MaterialPageRoute(
-  //         builder: (context) => const CustomerHomeScreen(),
-  //       ),
-  //     );
-  //   } else if (role == "technician") {
-  //     Navigator.pushReplacement(
-  //       context,
-  //       MaterialPageRoute(
-  //         builder: (context) => const TechnicianHomeScreen(),
-  //       ),
-  //     );
-  //   }
-  // }
+    /*
+      ================= CURRENT FLOW =================
 
+      For now your splash screen goes to temporary screen only.
+
+      Current flow:
+      SplashScreen
+      ↓
+      _TemporaryNextScreen
+
+      Later, when your friend connects login + secure storage,
+      you will replace this whole _goToNextScreen() function.
+    */
+
+    /*
+      ================= FUTURE FLOW AFTER FRIEND ADDS next_screen =================
+
+      Your friend should save these during login success:
+
+      await StorageService.saveAccessToken(response['access']);
+      await StorageService.saveRefreshToken(response['refresh']);
+      await StorageService.saveNextScreen(response['next_screen']);
+
+      Backend response already gives:
+
+      role: "customer"
+      next_screen: "customer_dashboard"
+
+      or
+
+      role: "technician"
+      next_screen: "technician_dashboard"
+
+      Then splash screen will check:
+
+      1. access_token exists or not
+      2. next_screen value
+      3. Navigate to correct dashboard
+
+      LATER REPLACE THIS WHOLE FUNCTION:
+
+      Future<void> _goToNextScreen() async {
+        if (!mounted) return;
+
+        final String? accessToken = await StorageService.getAccessToken();
+        final String? nextScreen = await StorageService.getNextScreen();
+
+        // If no token, user is not logged in.
+        if (accessToken == null || accessToken.isEmpty) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const LoginScreen(),
+            ),
+          );
+          return;
+        }
+
+        // If token exists and backend had saved customer dashboard.
+        if (nextScreen == 'customer_dashboard') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CustomerHomeScreen(),
+            ),
+          );
+          return;
+        }
+
+        // If token exists and backend had saved technician dashboard.
+        if (nextScreen == 'technician_dashboard') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const TechnicianHomeScreen(),
+            ),
+          );
+          return;
+        }
+
+        // Safety case:
+        // Token exists but next_screen is missing/wrong.
+        // So clear storage and send user to login again.
+        await StorageService.clearTokens();
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const LoginScreen(),
+          ),
+        );
+      }
+
+      NOTE:
+      If const LoginScreen() gives error, use:
+      builder: (context) => LoginScreen(),
+
+      Same for CustomerHomeScreen and TechnicianHomeScreen.
+    */
 
     Navigator.pushReplacement(
       context,
@@ -278,7 +367,8 @@ class _WelcomeCard extends StatelessWidget {
                   begin: 0,
                   end: 1,
                 ),
-                //To change purple line>..............
+                // To change purple line time.
+                // Better later: use splashDurationSeconds here too.
                 duration: const Duration(seconds: 8),
                 builder: (context, value, child) {
                   return ClipRRect(
