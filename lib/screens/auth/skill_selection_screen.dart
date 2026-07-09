@@ -176,7 +176,29 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
                       height: 1.5,
                       color: Colors.grey.shade600,
                     ),
-                  ),
+                  )
+
+                  //Transform.translate(
+                  //   offset: const Offset(-60, 0),
+                  //   child: Image.asset(
+                  //     "assets/images/temple(skill).png",
+                  //     width: 140,
+                  //     fit: BoxFit.contain,
+                  //   ),
+                  // ),
+                  //
+                  // or clip it:
+                  //
+                  // ClipRect(
+                  //   child: Align(
+                  //     alignment: Alignment.centerRight,
+                  //     widthFactor: 0.55,
+                  //     child: Image.asset(
+                  //       "assets/images/temple(skill).png",
+                  //       width: 220,
+                  //     ),
+                  //   ),
+                  // ),,
 
                 ],
               ),
