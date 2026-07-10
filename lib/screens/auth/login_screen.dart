@@ -381,6 +381,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     if (response["access"] != null) {
                                       await StorageService.saveAccessToken(response["access"]);
                                       await StorageService.saveRefreshToken(response["refresh"]);
+                                      await StorageService.saveNextScreen(response["next_screen"]);
                                       if (!mounted) return;
 
                                       final nextScreen = response["next_screen"];

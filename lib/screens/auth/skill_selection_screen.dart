@@ -109,7 +109,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 16, 0, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -148,67 +148,47 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
             ),
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 8),
 
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Select Your Skills",
-                    style: TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1D2340),
+              SizedBox(
+                width: 215,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Select Your Skills",
+                      style: TextStyle(
+                        fontSize: 25,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1D2340),
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 0),
 
-                  Text(
-                    "Choose all the services you are skilled in.\n"
-                        "You can select multiple options.",
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.5,
-                      color: Colors.grey.shade600,
-                    ),
-                  )
-
-                  //Transform.translate(
-                  //   offset: const Offset(-60, 0),
-                  //   child: Image.asset(
-                  //     "assets/images/temple(skill).png",
-                  //     width: 140,
-                  //     fit: BoxFit.contain,
-                  //   ),
-                  // ),
-                  //
-                  // or clip it:
-                  //
-                  // ClipRect(
-                  //   child: Align(
-                  //     alignment: Alignment.centerRight,
-                  //     widthFactor: 0.55,
-                  //     child: Image.asset(
-                  //       "assets/images/temple(skill).png",
-                  //       width: 220,
-                  //     ),
-                  //   ),
-                  // ),,
-
-                ],
+                    Text(
+                      "Choose all the services you are skilled in."
+                          " You can select multiple options.",
+                      style: TextStyle(
+                        fontSize: 15,
+                        height: 1.5,
+                        color: Colors.grey.shade600,
+                      ),
+                    )
+                  ],
+                ),
               ),
 
-              const SizedBox(width: 16),
-              Image.asset(
-                "assets/images/temple(skill).png",
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
+              const SizedBox(width: 0),
+              Flexible( // Takes only the space available in the row
+                child: Image.asset(
+                  "assets/images/temple(skill).png",
+                  fit: BoxFit.contain,
+                ),
               ),
             ],
           ),
@@ -227,7 +207,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
           prefixIcon: const Icon(Icons.search),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(30),
             borderSide: BorderSide.none,
@@ -348,7 +328,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
         },
       ),
     );
-  }
+  } //Create skill container
   Widget _buildContinueButton() {
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -374,7 +354,6 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
             _buildSelectedSkills(),
 
             const SizedBox(height: 20),
-
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 24),
               child: Text(
