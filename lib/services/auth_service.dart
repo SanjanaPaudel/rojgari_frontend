@@ -5,6 +5,7 @@ import '../core/constants/api_urls.dart';
 import 'api_service.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'storage_service.dart';
 
 class AuthService {
   final ApiService _apiService = ApiService(); // Create an object of ApiService class . An underscore means Private this file
@@ -22,7 +23,12 @@ class AuthService {
     );
 
     final data = jsonDecode(response.body);
-
+    // Save tokens only if login was successful
+    if (response.statusCode == 200) {
+      await StorageService.saveAccessToken(data["access"]);
+      await StorageService.saveRefreshToken(data["refresh"]);
+      await StorageService.saveNextScreen(data["next_screen"]);
+    }
     return data;
 
   }
