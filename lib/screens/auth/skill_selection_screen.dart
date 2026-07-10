@@ -105,7 +105,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
     setState(() {
       _submitError = "Something went wrong.";
     });
-  }
+  } //skill id send to backend
 
   Widget _buildHeader() {
     return Padding(
