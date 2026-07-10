@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-// import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
+import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
 // import 'screens/auth/signup_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/otp_screen.dart';
 import 'package:rojgari_frontend_one/screens/auth/reset_passord_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/forget_password_email_screen.dart';
-import 'package:rojgari_frontend_one/screens/auth/skill_selection_screen.dart';
+// import 'package:rojgari_frontend_one/screens/auth/skill_selection_screen.dart';
 
 
 
@@ -32,11 +32,11 @@ class MyApp extends StatelessWidget {
 
       // home: const CustomerSignupScreen(),
       // home: WelcomeScreen(),
-      // home: LoginScreen(),
+      home: LoginScreen(),
       // home: const TechnicianHomeScreen(),
       // home: ResetPasswordScreen(),
       // home: ForgotPasswordEmailScreen(),
-      home: SkillSelectionScreen()
+      // home: SkillSelectionScreen()
 
     );
   }
