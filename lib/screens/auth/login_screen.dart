@@ -7,6 +7,7 @@ import 'package:rojgari_frontend_one/services/auth_service.dart';
 import 'package:rojgari_frontend_one/services/storage_service.dart';
 import 'package:rojgari_frontend_one/screens/customer/customer_dashboard_screen.dart';
 import 'package:rojgari_frontend_one/screens/worker/worker_dashboard_screen.dart';
+import 'package:rojgari_frontend_one/screens/auth/skill_selection_screen.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -391,9 +392,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                         destination = const WorkerDashboardScreen();
                                       } else if (nextScreen == "customer_dashboard") {
                                         destination = const CustomerDashboardScreen();
+                                      } else if (nextScreen == "select_skills") {
+                                        destination = const SkillSelectionScreen();
                                       } else {
-                                        // "select_skills" — no screen built for this yet, fall back for now
-                                        destination = const WorkerDashboardScreen();
+                                        destination = const WorkerDashboardScreen(); // safe fallback only
                                       }
 
                                       Navigator.pushAndRemoveUntil(

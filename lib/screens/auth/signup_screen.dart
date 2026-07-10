@@ -599,6 +599,7 @@ class _CustomerSignupScreenState
                                     profilePhoto: _selectedImage,
                                     role: isWorker ? "worker" : "customer",
                                   );
+                                  print("SIGNUP RESPONSE: $response");
 
                                   setState(() {
                                     isLoading = false;
@@ -612,6 +613,7 @@ class _CustomerSignupScreenState
                                     confirmPasswordError = response["confirm_password"]?.first;
                                     fullNameError = response["full_name"]?.first;
                                   });
+
 
                                   // Stop if backend returned validation error
                                   if (phoneError != null ||
