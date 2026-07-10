@@ -31,9 +31,9 @@ dependencies:
   flutter:
     sdk: flutter
 
-  image_picker: ^1.1.2
+  image_picker: ^1.2.3
 
-  http: ^1.2.2
+  http: ^1.6.0
 
   dio: ^5.8.0+1
   flutter_secure_storage: ^10.3.1
