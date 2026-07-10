@@ -9,6 +9,31 @@ import 'package:rojgari_frontend_one/services/storage_service.dart';
 import '../core/constants/api_urls.dart';
 
 class ApiService {
+  static const String sessionExpired = "Session Expired. Please login again.";
+
+  Future<String?> _getValidAccessToken() async {
+    String? token = await StorageService.getAccessToken();
+
+    if (token == null) {
+      return null;
+    }
+
+    return token;
+  }
+
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await _getValidAccessToken();
+
+    return {
+      "Content-Type": "application/json",
+      if (token != null) "Authorization": "Bearer $token",
+    };
+  }
+
+  Future<void> _logoutUser() async {
+    await StorageService.clearTokens();
+    throw Exception(ApiService.sessionExpired);
+  }
 
 
   //"Create a function called post.
@@ -24,36 +49,23 @@ class ApiService {
 
     http.Response response = await http.post(
       Uri.parse(url),
-      headers: {
-        "Content-Type": "application/json",
-        if (token != null)
-          "Authorization": "Bearer $token",
-      },
+      headers: await _getHeaders(),
       body: jsonEncode(body),
     );
 
     if (response.statusCode == 401) {
 
       final refreshed = await _refreshAccessToken();
-
-      if (refreshed) {
-
-        token = await StorageService.getAccessToken();
-
-        response = await http.post(
-          Uri.parse(url),
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer $token",
-          },
-          body: jsonEncode(body),
-        );
-
-      } else {
-        throw Exception("Session expired. Please login again.");
+      if (!refreshed) {
+        await _logoutUser();
       }
-    }
 
+      response = await http.post(
+        Uri.parse(url),
+        headers: await _getHeaders(),
+        body: jsonEncode(body),
+      );
+    }
     return response;
   }
    // Future<http.Response> is return type of post(). In Future comes http.Response
@@ -70,30 +82,20 @@ class ApiService {
 
     http.Response response = await http.get(
       Uri.parse(url),
-      headers: {
-        "Content-Type": "application/json",
-        if (token != null) "Authorization": "Bearer $token",
-      },
+      headers: await _getHeaders(),
     );
 
     if (response.statusCode == 401) {
       final refreshed = await _refreshAccessToken();
-
-      if (refreshed) {
-        token = await StorageService.getAccessToken();
-
-        response = await http.get(
-          Uri.parse(url),
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer $token",
-          },
-        );
-      } else {
-        throw Exception("Session expired. Please login again.");
+      if (!refreshed) {
+        await _logoutUser();
       }
-    }
 
+      response = await http.get(
+        Uri.parse(url),
+        headers: await _getHeaders(),
+      );
+    }
     return response;
   }
 
@@ -107,12 +109,12 @@ class ApiService {
       File? image,
       ) async {
 
-    String? token = await StorageService.getAccessToken();
-
     http.MultipartRequest request = http.MultipartRequest(
       "POST",
       Uri.parse(url),
     );
+
+    final token = await _getValidAccessToken();
 
     if (token != null) {
       request.headers["Authorization"] = "Bearer $token";
@@ -131,24 +133,25 @@ class ApiService {
 
     http.StreamedResponse response = await request.send();
 
-    // Access token expired
     if (response.statusCode == 401) {
+
       final refreshed = await _refreshAccessToken();
 
       if (!refreshed) {
-        throw Exception("Session expired. Please login again.");
+        await _logoutUser();
       }
 
-      // Get the newly saved access token
-      token = await StorageService.getAccessToken();
-
-      // MultipartRequest cannot be reused, so create a new one
+      // MultipartRequest cannot be reused.
       request = http.MultipartRequest(
         "POST",
         Uri.parse(url),
       );
 
-      request.headers["Authorization"] = "Bearer $token";
+      final newToken = await _getValidAccessToken();
+
+      if (newToken != null) {
+        request.headers["Authorization"] = "Bearer $newToken";
+      }
 
       request.fields.addAll(fields);
 
@@ -195,7 +198,6 @@ class ApiService {
      }
 
      await StorageService.clearTokens();
-
      return false;
    }
 }
