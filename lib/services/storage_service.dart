@@ -27,6 +27,11 @@ class StorageService {
     await _storage.write(key: 'refresh_token', value: token);
   }
 
+  // Save next screen
+  static Future<void> saveNextScreen(String next_screen) async {
+    await _storage.write(key: 'next_screen', value: next_screen);
+  }
+
   // Get Access Token
   static Future<String?> getAccessToken() async {
     return await _storage.read(key: 'access_token');
@@ -35,6 +40,11 @@ class StorageService {
   // Get Refresh Token
   static Future<String?> getRefreshToken() async {
     return await _storage.read(key: 'refresh_token');
+  }
+
+  // Get next screen
+  static Future<String?> getNextScreen() async {
+    return await _storage.read(key: 'next_screen');
   }
 
   // Delete All Tokens
