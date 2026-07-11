@@ -79,7 +79,6 @@ class ApiService {
 
   Future<http.Response> get(String url) async {
     String? token = await StorageService.getAccessToken();
-
     http.Response response = await http.get(
       Uri.parse(url),
       headers: await _getHeaders(),
