@@ -39,7 +39,10 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
 
   Future<void> _loadSkills() async {
     try {
-      final skills = await _skillService.getSkills();
+      final skills = await _skillService.getSkills(); // Now skills has the list of the different skill(id,name etc...)
+      print("Status Code: $skills");
+      print("Raw Response:");
+      print(skills);
 
       setState(() {
         _allSkills = skills;
@@ -296,6 +299,16 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
     if (_loadError != null) {
       return Center(
         child: Text(_loadError!),
+      );
+    }
+
+    // NEW — add this block here
+    if (_filteredSkills.isEmpty) {
+      return const Center(
+        child: Text(
+          "No skills available right now.",
+          style: TextStyle(color: Colors.grey),
+        ),
       );
     }
 

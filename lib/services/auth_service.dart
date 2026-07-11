@@ -23,6 +23,7 @@ class AuthService {
     );
 
     final data = jsonDecode(response.body);
+
     // Save tokens only if login was successful
     if (response.statusCode == 200) {
       await StorageService.saveAccessToken(data["access"]);
