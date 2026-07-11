@@ -11,6 +11,9 @@ class SkillService {
 
   Future<List<Skill>> getSkills() async {  //It returns the list of skill obj in comming future
     final response = await _apiService.get(ApiUrls.workerSkills);
+    print("Status Code: $response{skills}");
+    print("Raw Response:");
+    print(response.body);
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body); //"The backend's response arrives as a raw JSON string. jsonDecode parses that string and turns it into a nested Dart Map, which gets stored in data."
