@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../../models/skill_model.dart';
 import '../../services/skill_service.dart';
+import '../../services/storage_service.dart';
 import 'package:rojgari_frontend_one/widgets/skill_card.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/screens/technician/technician_home_screen.dart';
@@ -82,6 +83,8 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
     });
 
     if (response.statusCode == 200) {
+      await StorageService.saveNextScreen("worker_dashboard");
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(

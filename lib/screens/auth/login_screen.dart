@@ -363,48 +363,56 @@ class _LoginScreenState extends State<LoginScreen> {
                                       isLoading = true;
                                     });
 
-                                    final response = await _authService.login(
-                                      phone: phoneController.text.trim(),
-                                      password: passwordController.text,
-                                    );
-
-                                    setState(() {
-                                      isLoading = false;
-                                    });
-                                    //clear and store backend errors
-                                    setState(() { //Due to the setState , the customFiled is scheduled to rebuild by flutter immediately.  if any error msg (from backend) with error msg or if no error msg clears the variable and rebuilds
-                                      phoneError = response["phone_number"]?.first; //"Look for a phone_number error in the backend response. If it exists, take the first error message from the list and store it in phoneError. If it doesn't exist, store null."
-                                      passwordError = response["password"]?.first;
-                                      loginError = response["detail"];
-                                    });
-                                    print("loginError = $loginError");
-
-                                    if (response["access"] != null) {
-                                      await StorageService.saveAccessToken(response["access"]);
-                                      await StorageService.saveRefreshToken(response["refresh"]);
-                                      await StorageService.saveNextScreen(response["next_screen"]);
-                                      if (!mounted) return;
-
-                                      final nextScreen = response["next_screen"];
-
-                                      Widget destination;
-                                      if (nextScreen == "worker_dashboard") {
-                                        destination = const TechnicianHomeScreen();
-                                      } else if (nextScreen == "customer_dashboard") {
-                                        destination = const CustomerHomeScreen();
-                                      } else if (nextScreen == "select_skills") {
-                                        destination = const SkillSelectionScreen();
-                                      } else {
-                                        destination = const TechnicianHomeScreen(); // safe fallback only
-                                      }
-
-                                      Navigator.pushAndRemoveUntil(
-                                        context,
-                                        MaterialPageRoute(builder: (_) => destination),
-                                            (route) => false,
+                                    try {
+                                      final response = await _authService.login(
+                                        phone: phoneController.text.trim(),
+                                        password: passwordController.text,
                                       );
 
-                                      return;
+                                      setState(() {
+                                        isLoading = false;
+                                      });
+                                      //clear and store backend errors
+                                      setState(() { //Due to the setState , the customFiled is scheduled to rebuild by flutter immediately.  if any error msg (from backend) with error msg or if no error msg clears the variable and rebuilds
+                                        phoneError = response["phone_number"]?.first; //"Look for a phone_number error in the backend response. If it exists, take the first error message from the list and store it in phoneError. If it doesn't exist, store null."
+                                        passwordError = response["password"]?.first;
+                                        loginError = response["detail"];
+                                      });
+                                      print("loginError = $loginError");
+
+                                      if (response["access"] != null) {
+                                        await StorageService.saveAccessToken(response["access"]);
+                                        await StorageService.saveRefreshToken(response["refresh"]);
+                                        await StorageService.saveNextScreen(response["next_screen"]);
+                                        if (!mounted) return;
+
+                                        final nextScreen = response["next_screen"];
+
+                                        Widget destination;
+                                        if (nextScreen == "worker_dashboard") {
+                                          destination = const TechnicianHomeScreen();
+                                        } else if (nextScreen == "customer_dashboard") {
+                                          destination = const CustomerHomeScreen();
+                                        } else if (nextScreen == "select_skills") {
+                                          destination = const SkillSelectionScreen();
+                                        } else {
+                                          destination = const TechnicianHomeScreen(); // safe fallback only
+                                        }
+
+                                        Navigator.pushAndRemoveUntil(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => destination),
+                                              (route) => false,
+                                        );
+
+                                        return;
+                                      }
+                                    } catch (e) {
+                                      setState(() {
+                                        isLoading = false;
+                                        loginError = "An unexpected error occurred. Please check your connection and try again.";
+                                      });
+                                      print("loginException = $e");
                                     }
 
                                   },
