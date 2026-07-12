@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 
 import '../../core/constants/colors.dart';
+import '../../core/constants/api_urls.dart';
 import '../../data/technician_dummy_data.dart';
+import '../../services/api_service.dart';
+import '../../services/storage_service.dart';
+import '../auth/skill_selection_screen.dart';
 
 import '../../widgets/technician/dashboard_appbar.dart';
 import '../../widgets/technician/profile_header.dart';
@@ -22,6 +27,7 @@ class TechnicianHomeScreen extends StatefulWidget {
 class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
   late bool isOnline;
+  bool _isLoading = true;
 
   // BACKEND READY:
   // Later these counts will come from backend dashboard API.
@@ -61,11 +67,71 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     // For now this comes from dummy data.
     // Later this value will come from dashboard API.
     isOnline = technicianData.online;
+    _checkSkillsAndLoadDashboard();
 
+  }
+
+  Future<void> _checkSkillsAndLoadDashboard() async {
+    final ApiService apiService = ApiService();
+    try {
+      final response = await apiService.get(ApiUrls.workerDashboard);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        final bool hasSelectedSkills = data['has_selected_skills'] ?? true;
+        if (!hasSelectedSkills) {
+          await StorageService.saveNextScreen("select_skills");
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SkillSelectionScreen(),
+              ),
+            );
+          }
+          return;
+        }
+
+        // Save local next_screen state since they have skills
+        await StorageService.saveNextScreen("worker_dashboard");
+
+        if (mounted) {
+          setState(() {
+            if (data['online'] != null) {
+              isOnline = data['online'];
+            }
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print("Error loading worker dashboard: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context){
+
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            color: AppColors.primary,
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
 

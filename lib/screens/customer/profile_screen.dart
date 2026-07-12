@@ -10,6 +10,8 @@ import '../../widgets/customer/profile_photo_viewer.dart';
 import '../auth/logIn_screen.dart';
 import 'customer_home_screen.dart';
 import 'edit_profile_screen.dart';
+// import 'package:rojgari_frontend_one/services/storage_service.dart';
+
 
 class CustomerProfileScreen extends StatefulWidget {
   const CustomerProfileScreen({super.key});
@@ -97,7 +99,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       // token, refresh token, saved role, next-screen value, and any cached
       // customer profile stored in the same secure storage. If separate cache
       // storage is added, clear that customer profile here as well.
-      await StorageService().clearTokens();
+      await StorageService.clearTokens();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const LoginScreen()),

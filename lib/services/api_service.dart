@@ -76,7 +76,7 @@ class ApiService {
       body: jsonEncode(body),
     );
 
-    if (response.statusCode == 401) {
+    if (response.statusCode == 401 && !_isPublicAuthEndpoint(url)) {
       final refreshed = await _handleTokenRefresh();
       if (!refreshed) {
         await _logoutUser();
@@ -97,7 +97,7 @@ class ApiService {
       headers: await _getHeaders(),
     );
 
-    if (response.statusCode == 401) {
+    if (response.statusCode == 401 && !_isPublicAuthEndpoint(url)) {
       final refreshed = await _handleTokenRefresh();
       if (!refreshed) {
         await _logoutUser();
@@ -143,7 +143,7 @@ class ApiService {
 
     http.StreamedResponse response = await request.send();
 
-    if (response.statusCode == 401) {
+    if (response.statusCode == 401 && !_isPublicAuthEndpoint(url)) {
       final refreshed = await _handleTokenRefresh();
 
       if (!refreshed) {
@@ -177,6 +177,13 @@ class ApiService {
     }
 
     return response;
+  }
+
+  bool _isPublicAuthEndpoint(String url) {
+    return url == ApiUrls.login ||
+        url == ApiUrls.signup ||
+        url == ApiUrls.verifyOtp ||
+        url == ApiUrls.resendOtp;
   }
 
   bool _isTokenExpired(String token) {

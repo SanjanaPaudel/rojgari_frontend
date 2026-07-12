@@ -31,7 +31,7 @@ class _SplashScreenState extends State<SplashScreen>
   Timer? _timer;
 
   // To change the time of holding splash screen.
-  static const int splashDurationSeconds = 3;
+  static const int splashDurationSeconds = 1;
 
   @override
   void initState() {
