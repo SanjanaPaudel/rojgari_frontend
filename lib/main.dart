@@ -13,23 +13,23 @@ import 'screens/splash/splash_screen.dart';
 // import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
 // import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
 // import 'core/theme/app_theme.dart';
+import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
+// import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
+import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
 
 void main() {
-  runApp(
-    const MyApp(),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-
   const MyApp({super.key});
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: NavigationService.navigatorKey,
       debugShowCheckedModeBanner: false,
+
       // home: OTPScreen(
       //   email: "email",
       // ),
@@ -44,9 +44,9 @@ class MyApp extends StatelessWidget {
       // home: ForgotPasswordEmailScreen(),
       // home: SkillSelectionScreen()
       home: SplashScreen(),
+      // home: const CustomerHomeScreen(),
+      // home: const CustomerProfileScreen(),
       // home: const TechnicianHomeScreen(),
-
-
     );
   }
 }
