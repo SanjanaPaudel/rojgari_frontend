@@ -35,69 +35,89 @@ class SkillCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Stack(
-          children: [
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double cardWidth = constraints.maxWidth;
 
-            // Selection icon
-            Positioned(
-              top: 12,
-              right: 8,
-              child: Icon(
-                isSelected
-                    ? Icons.check_circle
-                    : Icons.radio_button_unchecked,
-                color: isSelected
-                    ? const Color(0xFF6A5AE0)
-                    : Colors.grey,
-              ),
-            ),
+            // Responsive scale calculations
+            final double containerSize = (cardWidth * 0.35).clamp(40.0, 64.0);
+            final double iconSize = containerSize * 0.8;
+            final double selectIconSize = (cardWidth * 0.12).clamp(16.0, 22.0);
+            final double spacingSize = (cardWidth * 0.08).clamp(8.0, 14.0);
+            final double titleFontSize = (cardWidth * 0.1).clamp(11.0, 15.0);
+            final double descFontSize = (cardWidth * 0.5).clamp(9.0, 11.5);
+            final double paddingSize = (cardWidth * 0.1).clamp(10.0, 18.0);
 
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+            return Stack(
+              children: [
+                // Selection check icon
+                Positioned(
+                  top: paddingSize * 0.7,
+                  right: paddingSize * 0.5,
+                  child: Icon(
+                    isSelected
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    color: isSelected
+                        ? const Color(0xFF6A5AE0)
+                        : Colors.grey,
+                    size: selectIconSize,
+                  ),
+                ),
 
-                  // icon from backend
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4F4F8),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.handyman,
-                      size: 30,
-                      color: Color(0xFF6A5AE0),
+                Padding(
+                  padding: EdgeInsets.all(paddingSize),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Skill handyman icon container
+                        Container(
+                          width: containerSize,
+                          height: containerSize,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF4F4F8),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.handyman,
+                            size: iconSize,
+                            color: const Color(0xFF6A5AE0),
+                          ),
+                        ),
+
+                        SizedBox(height: spacingSize),
+
+                        Text(
+                          skill.name,
+                          style: TextStyle(
+                            fontSize: titleFontSize,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+
+                        if (skill.description != null &&
+                            skill.description!.isNotEmpty) ...[
+                          SizedBox(height: spacingSize * 0.5),
+                          Text(
+                            skill.description!,
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.grey.shade600,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-
-                  const SizedBox(height: 14),
-
-                  Text(
-                    skill.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  // Text(
-                  //   skill.description,
-                  //   style: TextStyle(
-                  //     fontSize: 10,
-                  //     color: Colors.grey.shade600,
-                  //   ),
-                  //   textAlign: TextAlign.center,
-                  // ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

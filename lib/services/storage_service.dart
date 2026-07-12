@@ -49,6 +49,8 @@ class StorageService {
 
   // Delete All Tokens
   static Future<void> clearTokens() async {
-    await _storage.deleteAll();
+    await _storage.delete(key: 'access_token');
+    await _storage.delete(key: 'refresh_token');
+    await _storage.delete(key: 'next_screen');
   }
 }

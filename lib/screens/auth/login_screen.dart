@@ -5,8 +5,8 @@ import 'package:rojgari_frontend_one/widgets/custom_textfield.dart';
 import 'package:rojgari_frontend_one/screens/auth/signup_screen.dart';
 import 'package:rojgari_frontend_one/services/auth_service.dart';
 import 'package:rojgari_frontend_one/services/storage_service.dart';
-import 'package:rojgari_frontend_one/screens/customer/customer_dashboard_screen.dart';
-import 'package:rojgari_frontend_one/screens/worker/worker_dashboard_screen.dart';
+import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
+import 'package:rojgari_frontend_one/screens/technician/technician_home_screen.dart';
 import 'package:rojgari_frontend_one/screens/auth/skill_selection_screen.dart';
 
 
@@ -389,13 +389,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
                                       Widget destination;
                                       if (nextScreen == "worker_dashboard") {
-                                        destination = const WorkerDashboardScreen();
+                                        destination = const TechnicianHomeScreen();
                                       } else if (nextScreen == "customer_dashboard") {
-                                        destination = const CustomerDashboardScreen();
+                                        destination = const CustomerHomeScreen();
                                       } else if (nextScreen == "select_skills") {
                                         destination = const SkillSelectionScreen();
                                       } else {
-                                        destination = const WorkerDashboardScreen(); // safe fallback only
+                                        destination = const TechnicianHomeScreen(); // safe fallback only
                                       }
 
                                       Navigator.pushAndRemoveUntil(

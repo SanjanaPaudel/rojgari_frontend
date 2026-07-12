@@ -2,15 +2,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
 import 'package:rojgari_frontend_one/screens/technician/technician_home_screen.dart';
-import 'package:rojgari_frontend_one/screens/customer/customer_dashboard_screen.dart';
+import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
+import 'package:rojgari_frontend_one/screens/auth/skill_selection_screen.dart';
 import 'package:rojgari_frontend_one/services/storage_service.dart';
+import 'package:rojgari_frontend_one/services/api_service.dart';
 
 
 
 
 
 /*
-
   import '../../services/storage_service.dart';
   import '../auth/login_screen.dart';
   import '../customer/customer_home_screen.dart';
@@ -49,113 +50,43 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  void _goToNextScreen() {
+  Future<void> _goToNextScreen() async {
     if (!mounted) return;
 
-    /*
-      ================= CURRENT FLOW =================
+    final ApiService apiService = ApiService();
+    final bool isSessionValid = await apiService.checkAndRefreshSession();
 
-      For now your splash screen goes to temporary screen only.
+    if (!mounted) return;
 
-      Current flow:
-      SplashScreen
-      ↓
-      _TemporaryNextScreen
+    if (!isSessionValid) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LoginScreen(),
+        ),
+      );
+      return;
+    }
 
-      Later, when your friend connects login + secure storage,
-      you will replace this whole _goToNextScreen() function.
-    */
+    final String? nextScreen = await StorageService.getNextScreen();
 
-    /*
-      ================= FUTURE FLOW AFTER FRIEND ADDS next_screen =================
-
-      Your friend should save these during login success:
-
-      await StorageService.saveAccessToken(response['access']);
-      await StorageService.saveRefreshToken(response['refresh']);
-      await StorageService.saveNextScreen(response['next_screen']);
-
-      Backend response already gives:
-
-      role: "customer"
-      next_screen: "customer_dashboard"
-
-      or
-
-      role: "technician"
-      next_screen: "technician_dashboard"
-
-      Then splash screen will check:
-
-      1. access_token exists or not
-      2. next_screen value
-      3. Navigate to correct dashboard
-
-      LATER REPLACE THIS WHOLE FUNCTION:
-
-      Future<void> _goToNextScreen() async {
-        if (!mounted) return;
-
-        final String? accessToken = await StorageService.getAccessToken();
-        final String? nextScreen = await StorageService.getNextScreen();
-
-        // If no token, user is not logged in.
-        if (accessToken == null || accessToken.isEmpty) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const LoginScreen(),
-            ),
-          );
-          return;
-        }
-
-        // If token exists and backend had saved customer dashboard.
-        if (nextScreen == 'customer_dashboard') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const CustomerHomeScreen(),
-            ),
-          );
-          return;
-        }
-
-        // If token exists and backend had saved technician dashboard.
-        if (nextScreen == 'technician_dashboard') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const TechnicianHomeScreen(),
-            ),
-          );
-          return;
-        }
-
-        // Safety case:
-        // Token exists but next_screen is missing/wrong.
-        // So clear storage and send user to login again.
-        await StorageService.clearTokens();
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const LoginScreen(),
-          ),
-        );
-      }
-
-      NOTE:
-      If const LoginScreen() gives error, use:
-      builder: (context) => LoginScreen(),
-
-      Same for CustomerHomeScreen and TechnicianHomeScreen.
-    */
+    Widget destination;
+    if (nextScreen == 'customer_dashboard') {
+      destination = const CustomerHomeScreen();
+    } else if (nextScreen == 'worker_dashboard') {
+      destination = const TechnicianHomeScreen();
+    } else if (nextScreen == 'select_skills') {
+      destination = const SkillSelectionScreen();
+    } else {
+      // Fallback: token valid but next_screen key missing or unrecognized
+      await StorageService.clearTokens();
+      destination = LoginScreen();
+    }
 
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => const _TemporaryNextScreen(),
+        builder: (context) => destination,
       ),
     );
   }
