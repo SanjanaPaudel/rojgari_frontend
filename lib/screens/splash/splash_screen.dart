@@ -1,28 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
+import 'package:rojgari_frontend_one/screens/technician/technician_home_screen.dart';
+import 'package:rojgari_frontend_one/screens/customer/customer_dashboard_screen.dart';
+import 'package:rojgari_frontend_one/services/storage_service.dart';
+
+
+
+
 
 /*
-  ================= FUTURE IMPORTS FOR AUTO LOGIN =================
-
-  After your friend adds next_screen storage in StorageService,
-  you will need these imports.
-
-  IMPORTANT:
-  Name milauna parcha according to your real files/classes.
-
-  Example:
 
   import '../../services/storage_service.dart';
   import '../auth/login_screen.dart';
   import '../customer/customer_home_screen.dart';
   import '../technician/technician_home_screen.dart';
-
-  If your file/class names are different, change them.
-
-  Example:
-  If login class is LoginPage, use LoginPage instead of LoginScreen.
-  If technician dashboard class is TechnicianHomeScreen, use that.
-  If customer dashboard class is CustomerHomeScreen, use that.
 */
 
 class SplashScreen extends StatefulWidget {
@@ -38,7 +30,7 @@ class _SplashScreenState extends State<SplashScreen>
   Timer? _timer;
 
   // To change the time of holding splash screen.
-  static const int splashDurationSeconds = 8;
+  static const int splashDurationSeconds = 3;
 
   @override
   void initState() {

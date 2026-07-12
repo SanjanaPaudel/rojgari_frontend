@@ -41,7 +41,7 @@ class SkillCard extends StatelessWidget {
             // Selection icon
             Positioned(
               top: 12,
-              right: 12,
+              right: 8,
               child: Icon(
                 isSelected
                     ? Icons.check_circle
@@ -60,8 +60,8 @@ class SkillCard extends StatelessWidget {
 
                   // icon from backend
                   Container(
-                    width: 58,
-                    height: 58,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: const Color(0xFFF4F4F8),
                       shape: BoxShape.circle,
@@ -86,14 +86,14 @@ class SkillCard extends StatelessWidget {
 
                   const SizedBox(height: 6),
 
-                  Text(
-                    skill.description,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                  // Text(
+                  //   skill.description,
+                  //   style: TextStyle(
+                  //     fontSize: 10,
+                  //     color: Colors.grey.shade600,
+                  //   ),
+                  //   textAlign: TextAlign.center,
+                  // ),
                 ],
               ),
             ),

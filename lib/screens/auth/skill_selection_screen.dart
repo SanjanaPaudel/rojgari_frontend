@@ -40,9 +40,6 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
   Future<void> _loadSkills() async {
     try {
       final skills = await _skillService.getSkills(); // Now skills has the list of the different skill(id,name etc...)
-      print("Status Code: $skills");
-      print("Raw Response:");
-      print(skills);
 
       setState(() {
         _allSkills = skills;
@@ -56,7 +53,6 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
       });
     }
   }
-
   void _filterSkills(String query) {
     setState(() {
       if (query.trim().isEmpty) {
@@ -70,7 +66,6 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
       }
     });
   }
-
   Future<void> _submitSkills() async {
     setState(() {
       _isSubmitting = true;
@@ -109,7 +104,6 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
       _submitError = "Something went wrong.";
     });
   } //skill id send to backend
-
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 0, 24),
@@ -342,6 +336,26 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
       ),
     );
   } //Create skill container
+  double _calculateGridHeight(BuildContext context) {
+    const horizontalPadding = 24.0 * 2;
+    const crossAxisSpacing = 16.0;
+    const mainAxisSpacing = 16.0;
+    const crossAxisCount = 3;
+    const childAspectRatio = 0.72;
+    const visibleRows = 3;
+
+    final availableWidth =
+        MediaQuery.of(context).size.width - horizontalPadding;
+
+    final cardWidth =
+        (availableWidth - (crossAxisSpacing * (crossAxisCount - 1))) /
+            crossAxisCount;
+
+    final cardHeight = cardWidth / childAspectRatio;
+
+    return (cardHeight * visibleRows) +
+        (mainAxisSpacing * (visibleRows - 1));
+  }
   Widget _buildContinueButton() {
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -379,7 +393,8 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
             ),
 
             const SizedBox(height: 16),
-            Expanded(
+            SizedBox(
+              height: _calculateGridHeight(context),
               child: _buildSkillGrid(),
             ),
 
