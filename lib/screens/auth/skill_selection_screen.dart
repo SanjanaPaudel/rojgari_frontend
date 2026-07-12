@@ -4,7 +4,7 @@ import '../../models/skill_model.dart';
 import '../../services/skill_service.dart';
 import 'package:rojgari_frontend_one/widgets/skill_card.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
-import 'package:rojgari_frontend_one/screens/worker/worker_dashboard_screen.dart';
+import 'package:rojgari_frontend_one/screens/technician/technician_home_screen.dart';
 
 
 class SkillSelectionScreen extends StatefulWidget {
@@ -85,7 +85,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => const WorkerDashboardScreen(),
+          builder: (_) => const TechnicianHomeScreen(),
         ),
       );
 
@@ -105,8 +105,14 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
     });
   } //skill id send to backend
   Widget _buildHeader() {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenHeight = MediaQuery.of(context).size.height;
+
+    // Adaptive illustration visibility based on viewport dimensions
+    final bool showIllustration = screenWidth > 400 && screenHeight > 500;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 0, 24),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -149,10 +155,9 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
 
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                width: 215,
+              Expanded(
+                flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -165,11 +170,10 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 0),
+                    const SizedBox(height: 6),
 
                     Text(
-                      "Choose all the services you are skilled in."
-                          " You can select multiple options.",
+                      "Choose all the services you are skilled in.",
                       style: TextStyle(
                         fontSize: 15,
                         height: 1.5,
@@ -180,13 +184,16 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
                 ),
               ),
 
-              const SizedBox(width: 0),
-              Flexible( // Takes only the space available in the row
-                child: Image.asset(
-                  "assets/images/temple(skill).png",
-                  fit: BoxFit.contain,
+              if (showIllustration) ...[
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 2,
+                  child: Image.asset(
+                    "assets/images/temple(skill).png",
+                    fit: BoxFit.contain,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ],
@@ -306,12 +313,20 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
       );
     }
 
+    final double screenWidth = MediaQuery.of(context).size.width;
+    int crossAxisCount = 2;
+    if (screenWidth >= 900) {
+      crossAxisCount = 5;
+    } else if (screenWidth >= 600) {
+      crossAxisCount = 3;
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: GridView.builder(
         itemCount: _filteredSkills.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
           childAspectRatio: 0.72,
@@ -336,26 +351,6 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
       ),
     );
   } //Create skill container
-  double _calculateGridHeight(BuildContext context) {
-    const horizontalPadding = 24.0 * 2;
-    const crossAxisSpacing = 16.0;
-    const mainAxisSpacing = 16.0;
-    const crossAxisCount = 3;
-    const childAspectRatio = 0.72;
-    const visibleRows = 3;
-
-    final availableWidth =
-        MediaQuery.of(context).size.width - horizontalPadding;
-
-    final cardWidth =
-        (availableWidth - (crossAxisSpacing * (crossAxisCount - 1))) /
-            crossAxisCount;
-
-    final cardHeight = cardWidth / childAspectRatio;
-
-    return (cardHeight * visibleRows) +
-        (mainAxisSpacing * (visibleRows - 1));
-  }
   Widget _buildContinueButton() {
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -393,8 +388,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
             ),
 
             const SizedBox(height: 16),
-            SizedBox(
-              height: _calculateGridHeight(context),
+            Expanded(
               child: _buildSkillGrid(),
             ),
 
