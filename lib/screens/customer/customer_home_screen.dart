@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
+import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
+
 
 class CustomerHomeScreen extends StatelessWidget {
   const CustomerHomeScreen({super.key});

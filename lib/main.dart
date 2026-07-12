@@ -13,9 +13,9 @@ import 'screens/splash/splash_screen.dart';
 // import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
 // import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
 // import 'core/theme/app_theme.dart';
-import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
+// import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
 // import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
-import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
+// import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
 
 void main() {
   runApp(const MyApp());
