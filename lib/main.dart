@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
-import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
+// import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
+import 'package:rojgari_frontend_one/screens/technician/profile_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/logIn_screen.dart';
 // import 'screens/auth/signup_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/otp_screen.dart';
@@ -28,7 +29,8 @@ class MyApp extends StatelessWidget {
 
       // home: const CustomerSignupScreen(),
       // home: WelcomeScreen(),
-      home: const CustomerHomeScreen(),
+      // home: const CustomerHomeScreen(),
+      home: const TechnicianProfileScreen(),
 
       // home: const TechnicianHomeScreen(),
     );

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class StatCard extends StatelessWidget {
-
   final String number;
   final String title;
   final String subtitle;
@@ -10,7 +9,6 @@ class StatCard extends StatelessWidget {
   final Color bgColor;
 
   const StatCard({
-
     super.key,
     required this.number,
     required this.title,
@@ -18,98 +16,75 @@ class StatCard extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.bgColor,
-
   });
 
   @override
-  Widget build(BuildContext context){
-
+  Widget build(BuildContext context) {
     return Expanded(
-
       child: Column(
+        mainAxisSize: MainAxisSize.min,
 
-        children:[
-
+        children: [
           Container(
+            width: 40,
+            height: 40,
 
-            width:40,
-            height:40,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: bgColor),
 
-            decoration: BoxDecoration(
-
-              shape: BoxShape.circle,
-
-              color:bgColor,
-
-            ),
-
-            child: Icon(
-
-              icon,
-
-              color:iconColor,
-
-              size:20,
-
-            ),
-
+            child: Icon(icon, color: iconColor, size: 20),
           ),
 
-          const SizedBox(height:10),
+          const SizedBox(height: 10),
 
           Text(
-
             number,
 
+            maxLines: 1,
+
             style: const TextStyle(
-
-              fontSize:20,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
-
+              color: Color(0xff171725),
             ),
-
           ),
 
-          const SizedBox(height:5),
+          const SizedBox(height: 5),
 
           Text(
-
             title,
+
+            maxLines: 1,
+
+            overflow: TextOverflow.ellipsis,
 
             textAlign: TextAlign.center,
 
             style: const TextStyle(
-
-              fontSize:11,
-              fontWeight: FontWeight.w500,
-
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: Color(0xff171725),
             ),
-
           ),
 
-          const SizedBox(height:3),
+          const SizedBox(height: 3),
 
           Text(
-
             subtitle,
+
+            maxLines: 1,
+
+            overflow: TextOverflow.ellipsis,
 
             textAlign: TextAlign.center,
 
             style: TextStyle(
-
-              fontSize:10,
+              fontSize: 9.5,
               color: Colors.grey.shade600,
-
+              fontWeight: FontWeight.w500,
             ),
-
-          )
-
+          ),
         ],
-
       ),
-
     );
-
   }
-
 }
