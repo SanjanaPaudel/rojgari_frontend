@@ -12,7 +12,7 @@ import '../../widgets/technician/dashboard_appbar.dart';
 import '../../widgets/technician/profile_header.dart';
 import '../../widgets/technician/stat_card.dart';
 import '../../widgets/technician/request_card.dart';
-import '../../widgets/technician/online_status_card.dart';
+// import '../../widgets/technician/online_status_card.dart';
 import '../../widgets/technician/pro_tip_card.dart';
 
 class TechnicianHomeScreen extends StatefulWidget {
@@ -288,25 +288,25 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
               _incomingRequestsSection(),
 
-              OnlineStatusCard(
-
-                isOnline: isOnline,
-
-                onToggle:(){
-
-                  setState(() {
-
-                    isOnline = !isOnline;
-
-                  });
+              // OnlineStatusCard(
+              //
+              //   isOnline: isOnline,
+              //
+              //   onToggle:(){
+              //
+              //     setState(() {
+              //
+              //       isOnline = !isOnline;
+              //
+              //     });
 
                   // BACKEND PLACE:
                   // Later connect backend here:
                   // await technicianService.updateOnlineStatus(isOnline);
 
-                },
+                // },
 
-              ),
+              // ),
 
               ProTipCard(
                 onTap: () {
