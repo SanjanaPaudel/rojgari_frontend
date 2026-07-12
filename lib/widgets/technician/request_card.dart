@@ -2,299 +2,142 @@ import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 
 class RequestCard extends StatelessWidget {
-
   final String title;
   final String location;
   final String issue;
   final String time;
   final String image;
+  final VoidCallback? onTap;
 
   const RequestCard({
-
     super.key,
     required this.title,
     required this.location,
     required this.issue,
     required this.time,
     required this.image,
-
+    this.onTap,
   });
 
   @override
-  Widget build(BuildContext context){
-
-    return Padding(
-
-      padding: const EdgeInsets.symmetric(
-        vertical:15,
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xffE9E5EF)),
       ),
-
-      child: Row(
-
-        crossAxisAlignment: CrossAxisAlignment.start,
-
-        children:[
-
-          Container(
-
-            width:70,
-            height:70,
-
-            decoration: BoxDecoration(
-
-              color: Colors.grey.shade100,
-              shape: BoxShape.circle,
-
-            ),
-
-            child: Padding(
-
-              padding: const EdgeInsets.all(14),
-
-              child: Image.asset(image),
-
-            ),
-
-          ),
-
-          const SizedBox(width:15),
-
-          Expanded(
-
-            child: Row(
-
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
-
-              children:[
-
-                Expanded(
-
-                  child: Column(
-
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
-                    children:[
-
-                      Row(
-
-                        children:[
-
-                          Flexible(
-
-                            child: Text(
-
-                              title,
-
-                              style: const TextStyle(
-
-                                fontSize:20,
-                                fontWeight:
-                                FontWeight.bold,
-
-                              ),
-
-                              overflow:
-                              TextOverflow.ellipsis,
-
-                            ),
-
-                          ),
-
-                          const SizedBox(width:8),
-
-                          Container(
-
-                            padding:
-                            const EdgeInsets.symmetric(
-                              horizontal:8,
-                              vertical:4,
-                            ),
-
-                            decoration: BoxDecoration(
-
-                              color:
-                              AppColors.lightPurple,
-
-                              borderRadius:
-                              BorderRadius.circular(8),
-
-                            ),
-
-                            child: const Text(
-                              "New",
-                              style: TextStyle(
-                                fontSize:12,
-                              ),
-                            ),
-
-                          )
-
-                        ],
-
-                      ),
-
-                      const SizedBox(height:10),
-
-                      Row(
-
-                        children:[
-
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size:16,
-                            color: Colors.grey,
-                          ),
-
-                          const SizedBox(width:5),
-
-                          Expanded(
-
-                            child: Text(
-
-                              location,
-
-                              style: const TextStyle(
-                                color: Colors.grey,
-                              ),
-
-                            ),
-
-                          )
-
-                        ],
-
-                      ),
-
-                      const SizedBox(height:6),
-
-                      Row(
-
-                        children:[
-
-                          const Icon(
-                            Icons.message_outlined,
-                            size:16,
-                            color: Colors.grey,
-                          ),
-
-                          const SizedBox(width:5),
-
-                          Expanded(
-
-                            child: Text(
-
-                              issue,
-
-                              style: const TextStyle(
-                                color: Colors.grey,
-                              ),
-
-                            ),
-
-                          )
-
-                        ],
-
-                      ),
-
-                      const SizedBox(height:6),
-
-                      Row(
-
-                        children:[
-
-                          const Icon(
-                            Icons.access_time,
-                            size:16,
-                            color: Colors.grey,
-                          ),
-
-                          const SizedBox(width:5),
-
-                          Text(
-
-                            time,
-
-                            style: const TextStyle(
-                              color: Colors.grey,
-                            ),
-
-                          )
-
-                        ],
-
-                      )
-
-                    ],
-
-                  ),
-
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                padding: const EdgeInsets.all(5),
+                decoration: const BoxDecoration(
+                  color: Color(0xffF5F1FC),
+                  shape: BoxShape.circle,
                 ),
-
-                const SizedBox(width:10),
-
-                Padding(
-
-                  padding: const EdgeInsets.only(
-                    top:35,
-                  ),
-
-                  child: GestureDetector(
-
-                    onTap:(){
-
-                      print(
-                          "Arrow clicked"
-                      );
-
-                    },
-
-                    child: Container(
-
-                      padding:
-                      const EdgeInsets.all(10),
-
-                      decoration: BoxDecoration(
-
-                        color:
-                        AppColors.lightPurple,
-
-                        borderRadius:
-                        BorderRadius.circular(12),
-
-                      ),
-
-                      child: const Icon(
-
-                        Icons.arrow_forward_ios,
-
-                        size:18,
-
-                        color:
-                        AppColors.primary,
-
-                      ),
-
+                child: Image.asset(image, fit: BoxFit.contain),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xff171725),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xffF4EEFF),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: const Text(
+                            'New',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-
-                  ),
-
-                )
-
-              ],
-
-            ),
-
-          )
-
-        ],
-
+                    const SizedBox(height: 6),
+                    _InfoLine(icon: Icons.location_on_outlined, text: location),
+                    const SizedBox(height: 4),
+                    _InfoLine(icon: Icons.access_time, text: time),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xffF3ECFF),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 15,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-
     );
-
   }
+}
 
+class _InfoLine extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _InfoLine({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: const Color(0xff5F6A8A)),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: Color(0xff5F6A8A),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

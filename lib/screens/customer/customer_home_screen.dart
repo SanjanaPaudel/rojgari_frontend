@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
+import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
 
 class CustomerHomeScreen extends StatelessWidget {
   const CustomerHomeScreen({super.key});
@@ -172,9 +173,9 @@ class CustomerHomeScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                 child: _TopBar(notificationCount: _notificationCount),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 0),
               const _ProfileHeader(userName: _userName),
-              const SizedBox(height: 22),
+              const SizedBox(height: 10),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: _SectionTitle(title: 'Categories'),
@@ -234,7 +235,7 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 72,
+      height: 66,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -246,9 +247,12 @@ class _TopBar extends StatelessWidget {
               borderColor: Colors.transparent,
               iconSize: 30,
               onTap: () {
-                // NAVIGATION TODO:
-                // Replace this with Scaffold.of(context).openDrawer()
-                // or navigate to a customer menu page when that page is ready.
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const CustomerProfileScreen(),
+                  ),
+                );
               },
             ),
           ),
@@ -316,7 +320,7 @@ class _ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 176,
+      height: 132,
       child: Stack(
         children: [
           Positioned.fill(
@@ -326,8 +330,8 @@ class _ProfileHeader extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFFFFFFFF),
-                    Color(0xFFFAF7FF),
+                    Color(0xFFFBF9FF),
+                    Color(0xFFFBF9FF),
                     Color(0xFFF0E9FF),
                   ],
                 ),
@@ -335,20 +339,20 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
           Positioned(
-            right: -64,
-            bottom: -24,
+            right: -34,
+            top: -54,
             child: Opacity(
-              opacity: .76,
+              opacity: .48,
               child: Image.asset(
                 'assets/images/house(login).png',
-                width: 340,
-                height: 230,
+                width: 318,
+                height: 205,
                 fit: BoxFit.contain,
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(40, 26, 96, 22),
+            padding: const EdgeInsets.fromLTRB(32, 43, 36, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -361,7 +365,7 @@ class _ProfileHeader extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 8),
                 const Text(
                   'What service do you need today?',
                   style: TextStyle(
@@ -434,7 +438,7 @@ class _CategoryCarouselState extends State<_CategoryCarousel> {
           child: GridView.builder(
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
+            physics: const ClampingScrollPhysics(),
             itemCount: widget.categories.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
@@ -494,7 +498,10 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: category.backgroundColor,
+      color: Color.alphaBlend(
+        category.backgroundColor.withValues(alpha: .62),
+        Colors.white,
+      ),
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -510,7 +517,9 @@ class _CategoryCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: category.borderColor),
+            border: Border.all(
+              color: category.borderColor.withValues(alpha: .62),
+            ),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x0D000000),

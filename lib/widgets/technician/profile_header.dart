@@ -1,313 +1,401 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 
 class ProfileHeader extends StatelessWidget {
-  const ProfileHeader({super.key});
+  final String name;
+  final double rating;
+  final String profession;
+  final String experienceText;
+  final bool isVerified;
+  final String avatarImage;
+  final Uint8List? avatarBytes;
+  final bool isOnline;
+  final ValueChanged<bool>? onStatusChanged;
+
+  const ProfileHeader({
+    super.key,
+    required this.name,
+    required this.rating,
+    required this.profession,
+    required this.experienceText,
+    required this.isVerified,
+    required this.avatarImage,
+    this.avatarBytes,
+    required this.isOnline,
+    this.onStatusChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-
     return SizedBox(
-
-      height:145,
+      height: 145,
 
       child: Stack(
-
-        children:[
-
-          // TEMPLE IMAGE
-
+        children: [
           Positioned(
-
-            right:-65,
-            top:-10,
+            right: -65,
+            top: -10,
 
             child: Opacity(
-
-              opacity:0.40,
+              opacity: 0.40,
 
               child: Image.asset(
-
                 "assets/images/background_temple.png",
 
-                width:290,
-                height:165,
+                width: 290,
+                height: 165,
 
                 fit: BoxFit.cover,
-
               ),
-
             ),
-
           ),
 
           Padding(
-
-            padding: const EdgeInsets.symmetric(
-              horizontal:20,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
 
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
 
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
-
-              children:[
-
-                // PROFILE IMAGE
-
+              children: [
                 Padding(
-
-                  padding: const EdgeInsets.only(
-                    top:28,
-                  ),
+                  padding: const EdgeInsets.only(top: 28),
 
                   child: Container(
-
-                    width:120,
-                    height:120,
+                    width: 104,
+                    height: 104,
 
                     decoration: BoxDecoration(
-
                       shape: BoxShape.circle,
-                      color: Colors.grey.shade200,
-
-                    ),
-
-                    child: ClipOval(
-
-                      child: Padding(
-
-                        padding: const EdgeInsets.only(
-                          top: 8,
-                        ),
-
-                        child: Transform.scale(
-
-                          scale: 1.15,
-
-                          child: Image.asset(
-
-                            "assets/images/technician_avatar.png",
-
-                            fit: BoxFit.contain,
-
-                            alignment: Alignment.bottomCenter,
-
-                          ),
-
-                        ),
-
+                      color: const Color(0xFFF0EFF4),
+                      border: Border.all(
+                        color: const Color(0xFFE8E3F3),
+                        width: 2,
                       ),
-
                     ),
-
+                    clipBehavior: Clip.antiAlias,
+                    child: _ProfileImage(
+                      imagePath: avatarImage,
+                      imageBytes: avatarBytes,
+                    ),
                   ),
-
                 ),
 
-                const SizedBox(width:12),
+                const SizedBox(width: 12),
 
                 Expanded(
-
                   child: Padding(
-
-                    padding: const EdgeInsets.only(
-                      top:28,
-                    ),
+                    padding: const EdgeInsets.only(top: 28),
 
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
 
-                      crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Hello, $name 👋",
 
-                      children:[
+                          maxLines: 1,
 
-                        const Text(
+                          overflow: TextOverflow.ellipsis,
 
-                          "Hello, Rajan 👋",
-
-                          style: TextStyle(
-
-                            fontSize:18,
-                            fontWeight:
-                            FontWeight.bold,
-
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
-
                         ),
 
-                        const SizedBox(height:4),
+                        const SizedBox(height: 4),
 
                         Row(
-
-                          children:[
-
+                          children: [
                             Container(
-
-                              padding:
-                              const EdgeInsets.symmetric(
-                                horizontal:7,
-                                vertical:4,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 4,
                               ),
 
                               decoration: BoxDecoration(
+                                color: AppColors.primary,
 
-                                color:
-                                AppColors.primary,
-
-                                borderRadius:
-                                BorderRadius.circular(8),
-
+                                borderRadius: BorderRadius.circular(8),
                               ),
 
-                              child: const Row(
-
-                                children:[
-
-                                  Icon(
+                              child: Row(
+                                children: [
+                                  const Icon(
                                     Icons.star,
-                                    size:12,
+                                    size: 12,
                                     color: Colors.yellow,
                                   ),
 
-                                  SizedBox(width:3),
+                                  const SizedBox(width: 3),
 
                                   Text(
+                                    rating.toStringAsFixed(1),
 
-                                    "4.8",
-
-                                    style: TextStyle(
-
-                                      fontSize:12,
-                                      fontWeight:
-                                      FontWeight.bold,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
 
                                       color: Colors.white,
-
                                     ),
-
-                                  )
-
+                                  ),
                                 ],
-
                               ),
-
                             ),
 
-                            const SizedBox(width:7),
+                            const SizedBox(width: 7),
 
                             const Flexible(
-
                               child: Text(
-
                                 "Top Rated Worker",
 
-                                overflow:
-                                TextOverflow.ellipsis,
+                                overflow: TextOverflow.ellipsis,
 
                                 style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.primary,
 
-                                  fontSize:12,
-                                  color:
-                                  AppColors.primary,
-
-                                  fontWeight:
-                                  FontWeight.w600,
-
+                                  fontWeight: FontWeight.w600,
                                 ),
-
                               ),
-
-                            )
-
+                            ),
                           ],
-
                         ),
 
-                        const SizedBox(height:5),
+                        const SizedBox(height: 5),
 
-                        const Text(
+                        Text(
+                          "$profession • $experienceText",
 
-                          "Plumber • 3+ Years Experience",
+                          overflow: TextOverflow.ellipsis,
 
-                          overflow:
-                          TextOverflow.ellipsis,
-
-                          style: TextStyle(
-
-                            fontSize:12,
+                          style: const TextStyle(
+                            fontSize: 12,
 
                             color: Color(0xff555555),
 
-                            fontWeight:
-                            FontWeight.w500,
-
+                            fontWeight: FontWeight.w500,
                           ),
-
                         ),
 
-                        const SizedBox(height:5),
+                        const SizedBox(height: 5),
 
-                        const Row(
-
-                          children:[
-
+                        Row(
+                          children: [
                             Icon(
+                              isVerified
+                                  ? Icons.verified_user
+                                  : Icons.info_outline,
 
-                              Icons.verified_user,
+                              size: 16,
 
-                              size:16,
-
-                              color:
-                              AppColors.primary,
-
+                              color: isVerified
+                                  ? AppColors.primary
+                                  : Colors.grey,
                             ),
 
-                            SizedBox(width:4),
+                            const SizedBox(width: 4),
 
                             Text(
-
-                              "Verified",
+                              isVerified ? "Verified" : "Verify Now",
 
                               style: TextStyle(
+                                fontSize: 12,
 
-                                fontSize:12,
+                                color: isVerified
+                                    ? AppColors.primary
+                                    : Colors.grey,
 
-                                color:
-                                AppColors.primary,
-
-                                fontWeight:
-                                FontWeight.w600,
-
+                                fontWeight: FontWeight.w600,
                               ),
+                            ),
 
-                            )
+                            const Spacer(),
 
+                            PopupMenuButton<bool>(
+                              tooltip: "Change availability",
+                              onSelected: onStatusChanged,
+                              position: PopupMenuPosition.under,
+                              color: Colors.white,
+                              surfaceTintColor: Colors.white,
+                              elevation: 6,
+                              constraints: const BoxConstraints(
+                                minWidth: 116,
+                                maxWidth: 116,
+                              ),
+                              menuPadding: const EdgeInsets.symmetric(
+                                vertical: 5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: const BorderSide(
+                                  color: Color(0xffE9E5EF),
+                                ),
+                              ),
+                              itemBuilder: (context) => [
+                                PopupMenuItem<bool>(
+                                  value: true,
+                                  height: 34,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                  ),
+                                  child: _StatusOption(
+                                    label: "Online",
+                                    color: const Color(0xff22A447),
+                                    isSelected: isOnline,
+                                  ),
+                                ),
+                                PopupMenuItem<bool>(
+                                  value: false,
+                                  height: 34,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                  ),
+                                  child: _StatusOption(
+                                    label: "Offline",
+                                    color: const Color(0xff8A8F98),
+                                    isSelected: !isOnline,
+                                  ),
+                                ),
+                              ],
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isOnline
+                                      ? const Color(0xffEAF8EF)
+                                      : const Color(0xffF1F2F4),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isOnline
+                                        ? const Color(0xffBDE8CA)
+                                        : const Color(0xffD8DADE),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 7,
+                                      height: 7,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: isOnline
+                                            ? const Color(0xff22A447)
+                                            : const Color(0xff8A8F98),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      isOnline ? "Online" : "Offline",
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isOnline
+                                            ? const Color(0xff18833A)
+                                            : const Color(0xff6F747C),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Icon(
+                                      Icons.keyboard_arrow_down,
+                                      size: 15,
+                                      color: isOnline
+                                          ? const Color(0xff18833A)
+                                          : const Color(0xff6F747C),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ],
-
-                        )
-
+                        ),
                       ],
-
                     ),
-
                   ),
-
-                )
-
+                ),
               ],
-
             ),
-
-          )
-
+          ),
         ],
-
       ),
-
     );
-
   }
+}
 
+class _StatusOption extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool isSelected;
+
+  const _StatusOption({
+    required this.label,
+    required this.color,
+    required this.isSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 9,
+          height: 9,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ),
+        if (isSelected) Icon(Icons.check_rounded, size: 15, color: color),
+      ],
+    );
+  }
+}
+
+class _ProfileImage extends StatelessWidget {
+  final String imagePath;
+  final Uint8List? imageBytes;
+
+  const _ProfileImage({required this.imagePath, this.imageBytes});
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageBytes?.isNotEmpty ?? false) {
+      return Image.memory(
+        imageBytes!,
+        fit: BoxFit.contain,
+        alignment: Alignment.topCenter,
+      );
+    }
+    if (imagePath.startsWith("http")) {
+      return Image.network(
+        imagePath,
+        fit: BoxFit.contain,
+        alignment: Alignment.topCenter,
+
+        errorBuilder: (context, error, stackTrace) {
+          return Image.asset(
+            "assets/images/technician_avatar.png",
+
+            fit: BoxFit.contain,
+            alignment: Alignment.topCenter,
+          );
+        },
+      );
+    }
+
+    return Image.asset(
+      imagePath,
+      fit: BoxFit.contain,
+      alignment: Alignment.topCenter,
+    );
+  }
 }
