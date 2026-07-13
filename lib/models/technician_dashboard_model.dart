@@ -1,5 +1,4 @@
 class TechnicianDashboard {
-
   final String name;
   final double rating;
   final int completedJobs;
@@ -12,7 +11,6 @@ class TechnicianDashboard {
   final String avatarImage;
 
   TechnicianDashboard({
-
     required this.name,
     required this.rating,
     required this.completedJobs,
@@ -23,7 +21,5 @@ class TechnicianDashboard {
     required this.experienceText,
     required this.isVerified,
     required this.avatarImage,
-
   });
-
 }

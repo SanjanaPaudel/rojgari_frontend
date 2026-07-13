@@ -10,8 +10,6 @@ import '../../widgets/customer/profile_photo_viewer.dart';
 import '../auth/logIn_screen.dart';
 import 'customer_home_screen.dart';
 import 'edit_profile_screen.dart';
-// import 'package:rojgari_frontend_one/services/storage_service.dart';
-
 
 class CustomerProfileScreen extends StatefulWidget {
   const CustomerProfileScreen({super.key});
@@ -75,7 +73,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     // profile only with the address returned by the successful API response.
     // Do not show the success message when the request fails.
     setState(
-      () => _profile = EditableCustomerProfile(
+          () => _profile = EditableCustomerProfile(
         name: _profile.name,
         address: address,
         phone: _profile.phone,
@@ -103,7 +101,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-        (route) => false,
+            (route) => false,
       );
     } catch (_) {
       if (!mounted) return;
@@ -258,11 +256,11 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                         onPressed: _loggingOut ? null : _logout,
                         icon: _loggingOut
                             ? const SizedBox.square(
-                                dimension: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
+                          dimension: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        )
                             : const Icon(Icons.logout_rounded),
                         label: const Text('Log Out'),
                         style: OutlinedButton.styleFrom(

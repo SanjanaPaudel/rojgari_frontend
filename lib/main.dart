@@ -47,6 +47,9 @@ class MyApp extends StatelessWidget {
       // home: const CustomerHomeScreen(),
       // home: const CustomerProfileScreen(),
       // home: const TechnicianHomeScreen(),
+      //home: const TechnicianProfileScreen(),
+
+
     );
   }
 }

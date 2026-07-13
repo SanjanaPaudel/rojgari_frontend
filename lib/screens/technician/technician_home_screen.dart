@@ -1,22 +1,31 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 
 import '../../core/constants/colors.dart';
-import '../../core/constants/api_urls.dart';
 import '../../data/technician_dummy_data.dart';
-import '../../services/api_service.dart';
-import '../../services/storage_service.dart';
-import '../auth/skill_selection_screen.dart';
+import '../../models/technician_model.dart';
 
 import '../../widgets/technician/dashboard_appbar.dart';
 import '../../widgets/technician/profile_header.dart';
 import '../../widgets/technician/stat_card.dart';
 import '../../widgets/technician/request_card.dart';
-// import '../../widgets/technician/online_status_card.dart';
 import '../../widgets/technician/pro_tip_card.dart';
+import 'profile_screen.dart';
 
 class TechnicianHomeScreen extends StatefulWidget {
-  const TechnicianHomeScreen({super.key});
+  const TechnicianHomeScreen({
+    super.key,
+    this.initialTechnician,
+    this.signupSelectedSkills,
+  });
+
+  final TechnicianModel? initialTechnician;
+  final List<String>? signupSelectedSkills;
+
+  // SKILL FLOW INTEGRATION: After your friend's signup skill screen returns,
+  // open the dashboard like this:
+  // TechnicianHomeScreen(signupSelectedSkills: selectedSkillNames)
+  // When the backend is connected, prefer initialTechnician with selectedSkills
+  // populated from the authenticated technician profile response.
 
   @override
   State<TechnicianHomeScreen> createState() => _TechnicianHomeScreenState();
@@ -24,7 +33,7 @@ class TechnicianHomeScreen extends StatefulWidget {
 
 class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   late bool isOnline;
-  bool _isLoading = true;
+  late TechnicianModel _profile;
 
   // BACKEND READY:
   // Later these counts will come from backend dashboard API.
@@ -61,101 +70,50 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     // For now this comes from dummy data.
     // Later this value will come from dashboard API.
     isOnline = technicianData.online;
-    _checkSkillsAndLoadDashboard();
-
-  }
-
-  Future<void> _checkSkillsAndLoadDashboard() async {
-    final ApiService apiService = ApiService();
-    try {
-      final response = await apiService.get(ApiUrls.workerDashboard);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        final bool hasSelectedSkills = data['has_selected_skills'] ?? true;
-        if (!hasSelectedSkills) {
-          await StorageService.saveNextScreen("select_skills");
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const SkillSelectionScreen(),
-              ),
+    _profile =
+        widget.initialTechnician ??
+            TechnicianModel(
+              fullName: technicianData.name,
+              phone: '',
+              email: '',
+              about: '',
+              profileImageUrl: null,
+              selectedSkills: widget.signupSelectedSkills ?? const [],
             );
-          }
-          return;
-        }
-
-        // Save local next_screen state since they have skills
-        await StorageService.saveNextScreen("worker_dashboard");
-
-        if (mounted) {
-          setState(() {
-            if (data['online'] != null) {
-              isOnline = data['online'];
-            }
-            _isLoading = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      print("Error loading worker dashboard: $e");
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   @override
-  Widget build(BuildContext context){
-
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(
-            color: AppColors.primary,
-          ),
-        ),
-      );
-    }
-
+  Widget build(BuildContext context) {
     return Scaffold(
-
       body: SafeArea(
-
         child: SingleChildScrollView(
-
           child: Column(
-
-            children:[
-
-              const SizedBox(height:0),
+            children: [
+              const SizedBox(height: 0),
 
               Transform.translate(
-
-                offset: const Offset(0,-3),
+                offset: const Offset(0, -3),
 
                 child: DashboardAppbar(
                   messageCount: unreadMessageCount,
 
                   notificationCount: unreadNotificationCount,
 
-                  onMenuTap: () {
-                    // NAVIGATION PLACE:
-                    // Later open drawer/menu here:
-                    // Scaffold.of(context).openDrawer();
-                    // OR:
-                    // Navigator.pushNamed(context, AppRoutes.menu);
-
-                    print("Menu clicked");
+                  onMenuTap: () async {
+                    final updatedProfile =
+                    await Navigator.push<TechnicianModel>(
+                      context,
+                      MaterialPageRoute<TechnicianModel>(
+                        builder: (_) => TechnicianProfileScreen(
+                          initialSelectedSkills: _profile.selectedSkills,
+                        ),
+                      ),
+                    );
+                    if (!mounted || updatedProfile == null) return;
+                    // BACKEND TODO: Once the dashboard/profile GET endpoints
+                    // share one authenticated TechnicianModel, replace this
+                    // returned in-memory update with repository/app state.
+                    setState(() => _profile = updatedProfile);
                   },
 
                   onMessageTap: () {
@@ -180,7 +138,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                 offset: const Offset(0, -20),
 
                 child: ProfileHeader(
-                  name: technicianData.name,
+                  name: _profile.fullName.trim().split(RegExp(r'\s+')).first,
 
                   rating: technicianData.rating,
 
@@ -188,9 +146,14 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
                   experienceText: technicianData.experienceText,
 
-                  isVerified: technicianData.isVerified,
+                  isVerified: _profile.canAcceptJobs,
 
-                  avatarImage: technicianData.avatarImage,
+                  avatarImage:
+                  _profile.profileImageUrl?.trim().isNotEmpty == true
+                      ? _profile.profileImageUrl!
+                      : technicianData.avatarImage,
+
+                  avatarBytes: _profile.localProfileImageBytes,
 
                   isOnline: isOnline,
 
@@ -205,7 +168,6 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                     // notifications to this technician.
                   },
                 ),
-
               ),
 
               Container(
@@ -221,10 +183,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
                   borderRadius: BorderRadius.circular(25),
 
-                  border: Border.all(
-                    color: const Color(0xffEEEEEE),
-                  ),
-
+                  border: Border.all(color: const Color(0xffEEEEEE)),
                 ),
 
                 child: Row(
@@ -288,26 +247,6 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
               _incomingRequestsSection(),
 
-              // OnlineStatusCard(
-              //
-              //   isOnline: isOnline,
-              //
-              //   onToggle:(){
-              //
-              //     setState(() {
-              //
-              //       isOnline = !isOnline;
-              //
-              //     });
-
-                  // BACKEND PLACE:
-                  // Later connect backend here:
-                  // await technicianService.updateOnlineStatus(isOnline);
-
-                // },
-
-              // ),
-
               ProTipCard(
                 onTap: () {
                   // NAVIGATION PLACE:
@@ -328,19 +267,14 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
   Widget _incomingRequestsSection() {
     return Container(
-
-      margin: const EdgeInsets.symmetric(
-        horizontal: 22,
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: 22),
 
       decoration: BoxDecoration(
         color: Colors.white,
 
         borderRadius: BorderRadius.circular(25),
 
-        border: Border.all(
-          color: const Color(0xffEFE6FF),
-        ),
+        border: Border.all(color: const Color(0xffEFE6FF)),
 
         boxShadow: [
           BoxShadow(
@@ -354,11 +288,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
       child: Column(
         children: [
           Container(
-
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 20,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
 
             decoration: const BoxDecoration(
               color: Color(0xffFCFAFF),
@@ -476,11 +406,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                   },
 
                   child: const Padding(
-
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 2,
-                      vertical: 8,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 2, vertical: 8),
 
                     child: Row(
                       children: [
@@ -501,23 +427,15 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                           color: AppColors.primary,
                           size: 15,
                         ),
-
                       ],
-
                     ),
-
                   ),
-
                 ),
-
               ],
-
             ),
-
           ),
 
           ListView.separated(
-
             shrinkWrap: true,
 
             physics: const NeverScrollableScrollPhysics(),
@@ -537,7 +455,6 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
               // Frontend should map serviceType to a local asset image.
 
               return RequestCard(
-
                 title: request["title"]!,
                 location: request["location"]!,
                 issue: request["issue"]!,
@@ -554,23 +471,14 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                   // );
 
                   print("${request["title"]} clicked");
-
                 },
-
               );
-
             },
-
           ),
 
           const SizedBox(height: 8),
-
         ],
-
       ),
-
     );
-
   }
-
 }
