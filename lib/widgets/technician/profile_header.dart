@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 
@@ -8,6 +10,7 @@ class ProfileHeader extends StatelessWidget {
   final String experienceText;
   final bool isVerified;
   final String avatarImage;
+  final Uint8List? avatarBytes;
   final bool isOnline;
   final ValueChanged<bool>? onStatusChanged;
 
@@ -19,6 +22,7 @@ class ProfileHeader extends StatelessWidget {
     required this.experienceText,
     required this.isVerified,
     required this.avatarImage,
+    this.avatarBytes,
     required this.isOnline,
     this.onStatusChanged,
   });
@@ -59,24 +63,21 @@ class ProfileHeader extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 28),
 
                   child: Container(
-                    width: 120,
-                    height: 120,
+                    width: 104,
+                    height: 104,
 
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.grey.shade200,
-                    ),
-
-                    child: ClipOval(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 8),
-
-                        child: Transform.scale(
-                          scale: 1.15,
-
-                          child: _ProfileImage(imagePath: avatarImage),
-                        ),
+                      color: const Color(0xFFF0EFF4),
+                      border: Border.all(
+                        color: const Color(0xFFE8E3F3),
+                        width: 2,
                       ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: _ProfileImage(
+                      imagePath: avatarImage,
+                      imageBytes: avatarBytes,
                     ),
                   ),
                 ),
@@ -198,7 +199,7 @@ class ProfileHeader extends StatelessWidget {
                             const SizedBox(width: 4),
 
                             Text(
-                              isVerified ? "Verified" : "Not Verified",
+                              isVerified ? "Verified" : "Verify Now",
 
                               style: TextStyle(
                                 fontSize: 12,
@@ -361,26 +362,31 @@ class _StatusOption extends StatelessWidget {
 
 class _ProfileImage extends StatelessWidget {
   final String imagePath;
+  final Uint8List? imageBytes;
 
-  const _ProfileImage({required this.imagePath});
+  const _ProfileImage({required this.imagePath, this.imageBytes});
 
   @override
   Widget build(BuildContext context) {
+    if (imageBytes?.isNotEmpty ?? false) {
+      return Image.memory(
+        imageBytes!,
+        fit: BoxFit.contain,
+        alignment: Alignment.topCenter,
+      );
+    }
     if (imagePath.startsWith("http")) {
       return Image.network(
         imagePath,
-
         fit: BoxFit.contain,
-
-        alignment: Alignment.bottomCenter,
+        alignment: Alignment.topCenter,
 
         errorBuilder: (context, error, stackTrace) {
           return Image.asset(
             "assets/images/technician_avatar.png",
 
             fit: BoxFit.contain,
-
-            alignment: Alignment.bottomCenter,
+            alignment: Alignment.topCenter,
           );
         },
       );
@@ -388,10 +394,8 @@ class _ProfileImage extends StatelessWidget {
 
     return Image.asset(
       imagePath,
-
       fit: BoxFit.contain,
-
-      alignment: Alignment.bottomCenter,
+      alignment: Alignment.topCenter,
     );
   }
 }
