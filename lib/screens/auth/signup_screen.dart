@@ -599,7 +599,7 @@ class _CustomerSignupScreenState
                                     profilePhoto: _selectedImage,
                                     role: isWorker ? "worker" : "customer",
                                   );
-                                  print("SIGNUP RESPONSE: $response");
+                              
 
                                   setState(() {
                                     isLoading = false;

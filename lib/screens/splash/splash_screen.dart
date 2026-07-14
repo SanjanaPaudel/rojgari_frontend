@@ -546,28 +546,3 @@ class _BottomLeafDecoration extends StatelessWidget {
     );
   }
 }
-
-// =======================
-// TEMPORARY NEXT SCREEN
-// =======================
-
-class _TemporaryNextScreen extends StatelessWidget {
-  const _TemporaryNextScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFF6F3FF),
-      body: Center(
-        child: Text(
-          "Next screen will be Login / Home",
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Color(0xff171633),
-          ),
-        ),
-      ),
-    );
-  }
-}
