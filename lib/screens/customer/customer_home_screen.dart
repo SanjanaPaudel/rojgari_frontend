@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:rojgari_frontend_one/core/constants/api_urls.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
-import 'package:rojgari_frontend_one/screens/customer/edit_profile_screen.dart';
-
+import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
+import 'package:rojgari_frontend_one/services/api_service.dart';
 
 class CustomerHomeScreen extends StatelessWidget {
   const CustomerHomeScreen({super.key});
@@ -19,94 +21,6 @@ class CustomerHomeScreen extends StatelessWidget {
   // final dashboard = await customerDashboardService.getDashboard();
   // notificationCount: dashboard.notificationCount
   static const int _notificationCount = 2;
-
-  // BACKEND TODO:
-  // Ask backend friend for GET /customer/dashboard API.
-  // Expected response should include:
-  // userName, notificationCount, categories, recentJobs, verificationInfo, supportInfo.
-  // Replace _categories with response.categories later.
-  // Each backend category should map to:
-  // title -> _CategoryItem.title
-  // iconPath/imageUrl -> _CategoryItem.iconPath
-  // theme colors can stay local unless backend sends color values.
-  static const List<_CategoryItem> _categories = [
-    _CategoryItem(
-      'Plumber',
-      'assets/images/plumbing_icon.png',
-      Color(0xFFF4EEFF),
-      Color(0xFFD8C8FF),
-      iconPadding: 0,
-      iconBoxSize: 76,
-    ),
-    _CategoryItem(
-      'Electrician',
-      'assets/images/electrician_icon.png',
-      Color(0xFFFFF5E7),
-      Color(0xFFFFD7A6),
-      iconPadding: 0,
-      iconBoxSize: 76,
-    ),
-    _CategoryItem(
-      'Mechanic',
-      'assets/images/mechanic_icon.png',
-      Color(0xFFEEF7FF),
-      Color(0xFFCFE8FF),
-      iconPadding: 0,
-      iconBoxSize: 76,
-    ),
-    _CategoryItem(
-      'Gardener',
-      'assets/images/gardner_icon.png',
-      Color(0xFFF0FFF6),
-      Color(0xFFCFEFDC),
-      iconPadding: 0,
-      iconBoxSize: 76,
-    ),
-    _CategoryItem(
-      'Maid',
-      'assets/images/maid_icon.png',
-      Color(0xFFFFF0F6),
-      Color(0xFFFFD2E2),
-      iconPadding: 0,
-      iconBoxSize: 76,
-    ),
-    _CategoryItem(
-      'Carpenter',
-      'assets/images/carpainter_icon.png',
-      Color(0xFFFFF7F1),
-      Color(0xFFEBD8CA),
-      iconPadding: 0,
-      iconBoxSize: 76,
-    ),
-    _CategoryItem(
-      'Painter',
-      'assets/images/painter_icon.png',
-      Color(0xFFF8F1FF),
-      Color(0xFFDEC9FF),
-      iconPadding: 0,
-      iconBoxSize: 76,
-    ),
-    _CategoryItem(
-      'AC Repair',
-      'assets/images/ac_repair_icon.png',
-      Color(0xFFEEF7FF),
-      Color(0xFFCDE7FF),
-    ),
-    _CategoryItem(
-      'PC Repair',
-      'assets/images/computer_repair_icon.png',
-      Color(0xFFF0FFF7),
-      Color(0xFFCDEDDC),
-      iconPadding: 0,
-      iconBoxSize: 76,
-    ),
-    _CategoryItem(
-      'TV Repair',
-      'assets/images/tv_repair_icon.png',
-      Color(0xFFFFF5E9),
-      Color(0xFFFFD9B1),
-    ),
-  ];
 
   // BACKEND TODO:
   // Replace _recentJobs with response.recentJobs from GET /customer/dashboard.
@@ -182,9 +96,9 @@ class CustomerHomeScreen extends StatelessWidget {
                 child: _SectionTitle(title: 'Categories'),
               ),
               const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _CategoryCarousel(categories: _categories),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: _CategoryCarousel(),
               ),
               const SizedBox(height: 22),
               Padding(
@@ -251,7 +165,7 @@ class _TopBar extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute<void>(
-                    builder: (_) => const EditProfileScreen(),
+                    builder: (_) => const CustomerProfileScreen(),
                   ),
                 );
               },
@@ -386,9 +300,7 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _CategoryCarousel extends StatefulWidget {
-  const _CategoryCarousel({required this.categories});
-
-  final List<_CategoryItem> categories;
+  const _CategoryCarousel();
 
   @override
   State<_CategoryCarousel> createState() => _CategoryCarouselState();
@@ -397,13 +309,18 @@ class _CategoryCarousel extends StatefulWidget {
 class _CategoryCarouselState extends State<_CategoryCarousel> {
   static const int _itemsPerPage = 6;
   final ScrollController _scrollController = ScrollController();
+  final ApiService _apiService = ApiService();
+
+  Future<List<_CategoryItem>>? _categoriesFuture;
+  List<_CategoryItem> _categories = [];
   int _activePage = 0;
 
-  int get _pageCount => (widget.categories.length / _itemsPerPage).ceil();
+  int get _pageCount => (_categories.length / _itemsPerPage).ceil();
 
   @override
   void initState() {
     super.initState();
+    _categoriesFuture = _fetchCategories();
     _scrollController.addListener(_syncActiveDot);
   }
 
@@ -413,6 +330,34 @@ class _CategoryCarouselState extends State<_CategoryCarousel> {
       ..removeListener(_syncActiveDot)
       ..dispose();
     super.dispose();
+  }
+
+  Future<List<_CategoryItem>> _fetchCategories() async {
+    try {
+      final response = await _apiService.get(ApiUrls.categories);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final List<dynamic> categoriesList = data['categories'] ?? [];
+        final parsed = categoriesList
+            .map((json) => _CategoryItem.fromJson(json))
+            .toList();
+
+        // Sort by display_order if present
+        parsed.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+
+        // Update the local list so pagination calculations work dynamically
+        setState(() {
+          _categories = parsed;
+        });
+        return parsed;
+      } else {
+        throw Exception('Failed to load categories: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(
+        'Failed to load categories. Please check your connection.',
+      );
+    }
   }
 
   void _syncActiveDot() {
@@ -432,32 +377,108 @@ class _CategoryCarouselState extends State<_CategoryCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 300,
-          child: GridView.builder(
-            controller: _scrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const ClampingScrollPhysics(),
-            itemCount: widget.categories.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 14,
-              crossAxisSpacing: 14,
-              childAspectRatio: 1.2,
+    return FutureBuilder<List<_CategoryItem>>(
+      future: _categoriesFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 200,
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
             ),
-            itemBuilder: (context, index) {
-              final category = widget.categories[index];
-              return _CategoryCard(category: category);
-            },
-          ),
-        ),
-        if (_pageCount > 1) ...[
-          const SizedBox(height: 14),
-          _CategoryDots(count: _pageCount, activeIndex: _activePage),
-        ],
-      ],
+          );
+        } else if (snapshot.hasError) {
+          return SizedBox(
+            height: 200,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: AppColors.red,
+                    size: 36,
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      snapshot.error.toString().replaceAll('Exception: ', ''),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.grey,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _categoriesFuture = _fetchCategories();
+                      });
+                    },
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Retry'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox(
+            height: 100,
+            child: Center(
+              child: Text(
+                'No categories available.',
+                style: TextStyle(
+                  color: AppColors.grey,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          );
+        }
+
+        final categories = snapshot.data!;
+
+        return Column(
+          children: [
+            SizedBox(
+              height: 300,
+              child: GridView.builder(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                itemCount: categories.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: 1.2,
+                ),
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  return _CategoryCard(category: category);
+                },
+              ),
+            ),
+            if (_pageCount > 1) ...[
+              const SizedBox(height: 14),
+              _CategoryDots(count: _pageCount, activeIndex: _activePage),
+            ],
+          ],
+        );
+      },
     );
   }
 }
@@ -540,7 +561,7 @@ class _CategoryCard extends StatelessWidget {
                   color: Colors.white.withValues(alpha: .48),
                   borderRadius: BorderRadius.circular(22),
                 ),
-                child: Image.asset(category.iconPath, fit: BoxFit.contain),
+                child: Icon(category.icon, color: AppColors.primary, size: 32),
               ),
               const SizedBox(height: 10),
               Text(
@@ -939,21 +960,114 @@ class _CircleIconButton extends StatelessWidget {
 }
 
 class _CategoryItem {
+  final int id;
   final String title;
-  final String iconPath;
+  final String description;
+  final IconData icon;
   final Color backgroundColor;
   final Color borderColor;
   final double iconPadding;
   final double iconBoxSize;
+  final int displayOrder;
 
-  const _CategoryItem(
-    this.title,
-    this.iconPath,
-    this.backgroundColor,
-    this.borderColor, {
+  const _CategoryItem({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.backgroundColor,
+    required this.borderColor,
+    required this.displayOrder,
     this.iconPadding = 6,
     this.iconBoxSize = 72,
   });
+
+  factory _CategoryItem.fromJson(Map<String, dynamic> json) {
+    final name = json['name'] as String? ?? '';
+    final lowerName = name.toLowerCase().trim();
+
+    IconData iconData = Icons.handyman_outlined;
+    Color bgColor = const Color(0xFFF4EEFF);
+    Color borderCol = const Color(0xFFD8C8FF);
+    double padding = 6;
+    double boxSize = 72;
+
+    if (lowerName.contains('plumber')) {
+      iconData = Icons.plumbing;
+      bgColor = const Color(0xFFF4EEFF);
+      borderCol = const Color(0xFFD8C8FF);
+      padding = 0;
+      boxSize = 76;
+    } else if (lowerName.contains('electrician')) {
+      iconData = Icons.electric_bolt;
+      bgColor = const Color(0xFFFFF5E7);
+      borderCol = const Color(0xFFFFD7A6);
+      padding = 0;
+      boxSize = 76;
+    } else if (lowerName.contains('mechanic')) {
+      iconData = Icons.build_outlined;
+      bgColor = const Color(0xFFEEF7FF);
+      borderCol = const Color(0xFFCFE8FF);
+      padding = 0;
+      boxSize = 76;
+    } else if (lowerName.contains('gardener')) {
+      iconData = Icons.local_florist_outlined;
+      bgColor = const Color(0xFFF0FFF6);
+      borderCol = const Color(0xFFCFEFDC);
+      padding = 0;
+      boxSize = 76;
+    } else if (lowerName.contains('maid')) {
+      iconData = Icons.cleaning_services_outlined;
+      bgColor = const Color(0xFFFFF0F6);
+      borderCol = const Color(0xFFFFD2E2);
+      padding = 0;
+      boxSize = 76;
+    } else if (lowerName.contains('carpenter')) {
+      iconData = Icons.handyman_outlined;
+      bgColor = const Color(0xFFFFF7F1);
+      borderCol = const Color(0xFFEBD8CA);
+      padding = 0;
+      boxSize = 76;
+    } else if (lowerName.contains('painter')) {
+      iconData = Icons.format_paint_outlined;
+      bgColor = const Color(0xFFF8F1FF);
+      borderCol = const Color(0xFFDEC9FF);
+      padding = 0;
+      boxSize = 76;
+    } else if (lowerName.contains('ac repair') ||
+        lowerName.contains('ac_repair')) {
+      iconData = Icons.ac_unit_outlined;
+      bgColor = const Color(0xFFEEF7FF);
+      borderCol = const Color(0xFFCDE7FF);
+      padding = 6;
+      boxSize = 72;
+    } else if (lowerName.contains('computer') ||
+        lowerName.contains('pc repair')) {
+      iconData = Icons.computer_outlined;
+      bgColor = const Color(0xFFF0FFF7);
+      borderCol = const Color(0xFFCDEDDC);
+      padding = 0;
+      boxSize = 76;
+    } else if (lowerName.contains('tv repair')) {
+      iconData = Icons.tv_outlined;
+      bgColor = const Color(0xFFFFF5E9);
+      borderCol = const Color(0xFFFFD9B1);
+      padding = 6;
+      boxSize = 72;
+    }
+
+    return _CategoryItem(
+      id: json['id'] as int? ?? 0,
+      title: name,
+      description: json['description'] as String? ?? '',
+      icon: iconData,
+      backgroundColor: bgColor,
+      borderColor: borderCol,
+      displayOrder: json['display_order'] as int? ?? 0,
+      iconPadding: padding,
+      iconBoxSize: boxSize,
+    );
+  }
 }
 
 class _RecentJob {
