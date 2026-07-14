@@ -3,8 +3,10 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../core/constants/api_urls.dart';
 import '../../core/constants/colors.dart';
 import '../../models/technician_model.dart';
+import '../../models/worker_dashboard_response.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/customer/logout_confirmation_dialog.dart';
 import '../../widgets/customer/profile_menu_tile.dart';
@@ -15,11 +17,20 @@ import 'technician_home_screen.dart';
 import 'technician_skill_selection_screen.dart';
 
 class TechnicianProfileScreen extends StatefulWidget {
-  const TechnicianProfileScreen({super.key, this.initialSelectedSkills});
+  const TechnicianProfileScreen({
+    super.key,
+    this.initialSelectedSkills,
+    this.dashboardResponse,
+  });
 
-  // Pass the skills returned by the technician signup selection screen here.
-  // My Skills and Add Skill will then read and update this same selection.
+  // Skills returned by the technician signup skill selection screen, or from
+  // the dashboard API. My Skills and Add Skill will read and update this.
   final List<String>? initialSelectedSkills;
+
+  /// Dashboard API response used to seed the profile on first open.
+  /// When provided, real API data (name, phone, photo, skills, verified status)
+  /// is shown instead of placeholder text.
+  final WorkerDashboardResponse? dashboardResponse;
 
   @override
   State<TechnicianProfileScreen> createState() =>
@@ -35,40 +46,62 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
   // SharedPreferences or other insecure local storage. It resets on app/web
   // restart and is not a permanent source of truth.
   //
-  // BACKEND TODO: Replace this session cache with the authenticated technician
-  // profile GET response when the screen opens. Replace local updates with the
-  // TechnicianModel returned by profile/skill/document API calls. The backend
-  // must persist completion and verification across restarts and devices.
-  //
-  // BACKEND TODO: Replace this single temporary TechnicianModel with the
-  // authenticated technician profile response. Map profile image URL, about,
-  // selected skill IDs/names, citizenship URLs, document verification status,
-  // and service areas here. After edits/uploads, replace local copyWith calls
-  // with the TechnicianModel returned by successful backend responses.
-  static const TechnicianModel _initialTechnician = TechnicianModel(
-    fullName: 'Rajan Khadka',
-    phone: '+977 9841234567',
-    email: 'rajan.khadka@email.com',
-    about:
-        'Dedicated plumber with 3+ years of experience in handling residential and commercial plumbing work.',
-    selectedSkills: ['Plumbing', 'Electrician', 'Gardening'],
-    verificationStatus: TechnicianVerificationStatus.incomplete,
-    serviceAreas: ['Kathmandu'],
-  );
-  static TechnicianModel _sessionTechnician = _initialTechnician;
+  // When a dashboardResponse is passed, the session is seeded from the API
+  // on first open. Subsequent local edits (profile, skills, documents) update
+  // the session cache exactly as before.
+  static TechnicianModel? _sessionTechnician;
   late TechnicianModel _technician;
   bool _loggingOut = false;
+
+  /// Resolves a photo URL/path from the API into a usable string.
+  static String? _resolvePhotoUrl(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    if (raw.startsWith('http')) return raw;
+    final base = ApiUrls.baseUrl.replaceFirst('/api', '');
+    return '$base$raw';
+  }
 
   @override
   void initState() {
     super.initState();
+
+    // Seed session from dashboard API on first open (session is null).
+    if (_sessionTechnician == null) {
+      final d = widget.dashboardResponse;
+      if (d != null) {
+        _sessionTechnician = TechnicianModel(
+          fullName: d.worker.fullName,
+          phone: d.worker.phoneNumber,
+          email: '',
+          about: '',
+          profileImageUrl: _resolvePhotoUrl(d.worker.profilePhoto),
+          selectedSkills: List<String>.from(d.worker.skills),
+          verificationStatus:
+              d.worker.verified
+                  ? TechnicianVerificationStatus.verified
+                  : TechnicianVerificationStatus.incomplete,
+        );
+      } else {
+        // Fallback to an empty placeholder when no API data is available yet.
+        _sessionTechnician = TechnicianModel(
+          fullName: '',
+          phone: '',
+          email: '',
+          about: '',
+          selectedSkills: const [],
+        );
+      }
+    }
+
+    // Honor skills passed from signup flow over the session cache.
     final incomingSkills = widget.initialSelectedSkills;
     if (incomingSkills != null) {
-      _sessionTechnician = _sessionTechnician.copyWith(
+      _sessionTechnician = _sessionTechnician!.copyWith(
         selectedSkills: List<String>.from(incomingSkills),
       );
     }
-    _technician = _sessionTechnician;
+
+    _technician = _sessionTechnician!;
   }
 
   void _updateTechnician(TechnicianModel technician) {
@@ -244,7 +277,7 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
       // flow by clearing secure authentication storage through StorageService.
       // BACKEND TODO: Revoke the refresh token when logout API support exists.
       await StorageService.clearTokens();
-      _sessionTechnician = _initialTechnician;
+      _sessionTechnician = null;
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
