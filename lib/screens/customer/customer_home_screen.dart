@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/api_urls.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
+import 'package:rojgari_frontend_one/models/category_model.dart';
 import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
 import 'package:rojgari_frontend_one/services/api_service.dart';
+import 'package:rojgari_frontend_one/widgets/category_card.dart';
 
 class CustomerHomeScreen extends StatelessWidget {
   const CustomerHomeScreen({super.key});
@@ -311,8 +313,8 @@ class _CategoryCarouselState extends State<_CategoryCarousel> {
   final ScrollController _scrollController = ScrollController();
   final ApiService _apiService = ApiService();
 
-  Future<List<_CategoryItem>>? _categoriesFuture;
-  List<_CategoryItem> _categories = [];
+  Future<List<Category>>? _categoriesFuture;
+  List<Category> _categories = [];
   int _activePage = 0;
 
   int get _pageCount => (_categories.length / _itemsPerPage).ceil();
@@ -332,14 +334,14 @@ class _CategoryCarouselState extends State<_CategoryCarousel> {
     super.dispose();
   }
 
-  Future<List<_CategoryItem>> _fetchCategories() async {
+  Future<List<Category>> _fetchCategories() async {
     try {
       final response = await _apiService.get(ApiUrls.categories);
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         final List<dynamic> categoriesList = data['categories'] ?? [];
         final parsed = categoriesList
-            .map((json) => _CategoryItem.fromJson(json))
+            .map((json) => Category.fromJson(json))
             .toList();
 
         // Sort by display_order if present
@@ -377,7 +379,7 @@ class _CategoryCarouselState extends State<_CategoryCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<_CategoryItem>>(
+    return FutureBuilder<List<Category>>(
       future: _categoriesFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -468,7 +470,20 @@ class _CategoryCarouselState extends State<_CategoryCarousel> {
                 ),
                 itemBuilder: (context, index) {
                   final category = categories[index];
-                  return _CategoryCard(category: category);
+                  return CategoryCard(
+                    category: category,
+                    onTap: () {
+                      // TODO: Navigate to category technician list / booking screen when ready
+                      // Example:
+                      // Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute(
+                      //     builder: (_) => BookingScreen(category: category),
+                      //   ),
+                      // );
+                      debugPrint('Selected category: ${category.name} (ID: ${category.id})');
+                    },
+                  );
                 },
               ),
             ),
@@ -505,78 +520,6 @@ class _CategoryDots extends StatelessWidget {
                 ? AppColors.primary
                 : const Color(0xFFD8D4E4),
             shape: BoxShape.circle,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.category});
-
-  final _CategoryItem category;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Color.alphaBlend(
-        category.backgroundColor.withValues(alpha: .62),
-        Colors.white,
-      ),
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          // NAVIGATION TODO:
-          // Replace this placeholder with category technician list / booking page.
-          // Pass category.title or backend categoryId to the next screen.
-          // Example when BookingScreen is connected:
-          // Navigator.push(context, MaterialPageRoute(builder: (_) => BookingScreen(categoryName: category.title)));
-        },
-        child: Container(
-          width: 136,
-          padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: category.borderColor.withValues(alpha: .62),
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0D000000),
-                blurRadius: 10,
-                offset: Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: category.iconBoxSize,
-                height: category.iconBoxSize,
-                padding: EdgeInsets.all(category.iconPadding),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .48),
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Icon(category.icon, color: AppColors.primary, size: 32),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                category.title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.black,
-                  fontSize: 14,
-                  height: 1.15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
           ),
         ),
       ),
@@ -959,116 +902,7 @@ class _CircleIconButton extends StatelessWidget {
   }
 }
 
-class _CategoryItem {
-  final int id;
-  final String title;
-  final String description;
-  final IconData icon;
-  final Color backgroundColor;
-  final Color borderColor;
-  final double iconPadding;
-  final double iconBoxSize;
-  final int displayOrder;
 
-  const _CategoryItem({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.backgroundColor,
-    required this.borderColor,
-    required this.displayOrder,
-    this.iconPadding = 6,
-    this.iconBoxSize = 72,
-  });
-
-  factory _CategoryItem.fromJson(Map<String, dynamic> json) {
-    final name = json['name'] as String? ?? '';
-    final lowerName = name.toLowerCase().trim();
-
-    IconData iconData = Icons.handyman_outlined;
-    Color bgColor = const Color(0xFFF4EEFF);
-    Color borderCol = const Color(0xFFD8C8FF);
-    double padding = 6;
-    double boxSize = 72;
-
-    if (lowerName.contains('plumber')) {
-      iconData = Icons.plumbing;
-      bgColor = const Color(0xFFF4EEFF);
-      borderCol = const Color(0xFFD8C8FF);
-      padding = 0;
-      boxSize = 76;
-    } else if (lowerName.contains('electrician')) {
-      iconData = Icons.electric_bolt;
-      bgColor = const Color(0xFFFFF5E7);
-      borderCol = const Color(0xFFFFD7A6);
-      padding = 0;
-      boxSize = 76;
-    } else if (lowerName.contains('mechanic')) {
-      iconData = Icons.build_outlined;
-      bgColor = const Color(0xFFEEF7FF);
-      borderCol = const Color(0xFFCFE8FF);
-      padding = 0;
-      boxSize = 76;
-    } else if (lowerName.contains('gardener')) {
-      iconData = Icons.local_florist_outlined;
-      bgColor = const Color(0xFFF0FFF6);
-      borderCol = const Color(0xFFCFEFDC);
-      padding = 0;
-      boxSize = 76;
-    } else if (lowerName.contains('maid')) {
-      iconData = Icons.cleaning_services_outlined;
-      bgColor = const Color(0xFFFFF0F6);
-      borderCol = const Color(0xFFFFD2E2);
-      padding = 0;
-      boxSize = 76;
-    } else if (lowerName.contains('carpenter')) {
-      iconData = Icons.handyman_outlined;
-      bgColor = const Color(0xFFFFF7F1);
-      borderCol = const Color(0xFFEBD8CA);
-      padding = 0;
-      boxSize = 76;
-    } else if (lowerName.contains('painter')) {
-      iconData = Icons.format_paint_outlined;
-      bgColor = const Color(0xFFF8F1FF);
-      borderCol = const Color(0xFFDEC9FF);
-      padding = 0;
-      boxSize = 76;
-    } else if (lowerName.contains('ac repair') ||
-        lowerName.contains('ac_repair')) {
-      iconData = Icons.ac_unit_outlined;
-      bgColor = const Color(0xFFEEF7FF);
-      borderCol = const Color(0xFFCDE7FF);
-      padding = 6;
-      boxSize = 72;
-    } else if (lowerName.contains('computer') ||
-        lowerName.contains('pc repair')) {
-      iconData = Icons.computer_outlined;
-      bgColor = const Color(0xFFF0FFF7);
-      borderCol = const Color(0xFFCDEDDC);
-      padding = 0;
-      boxSize = 76;
-    } else if (lowerName.contains('tv repair')) {
-      iconData = Icons.tv_outlined;
-      bgColor = const Color(0xFFFFF5E9);
-      borderCol = const Color(0xFFFFD9B1);
-      padding = 6;
-      boxSize = 72;
-    }
-
-    return _CategoryItem(
-      id: json['id'] as int? ?? 0,
-      title: name,
-      description: json['description'] as String? ?? '',
-      icon: iconData,
-      backgroundColor: bgColor,
-      borderColor: borderCol,
-      displayOrder: json['display_order'] as int? ?? 0,
-      iconPadding: padding,
-      iconBoxSize: boxSize,
-    );
-  }
-}
 
 class _RecentJob {
   final String bookingId;
