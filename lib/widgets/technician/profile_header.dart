@@ -6,8 +6,7 @@ import '../../core/constants/colors.dart';
 class ProfileHeader extends StatelessWidget {
   final String name;
   final double rating;
-  final String profession;
-  final String experienceText;
+  final int yearsOfExperience;
   final bool isVerified;
   final String avatarImage;
   final Uint8List? avatarBytes;
@@ -18,8 +17,7 @@ class ProfileHeader extends StatelessWidget {
     super.key,
     required this.name,
     required this.rating,
-    required this.profession,
-    required this.experienceText,
+    required this.yearsOfExperience,
     required this.isVerified,
     required this.avatarImage,
     this.avatarBytes,
@@ -167,7 +165,9 @@ class ProfileHeader extends StatelessWidget {
                         const SizedBox(height: 5),
 
                         Text(
-                          "$profession • $experienceText",
+                          yearsOfExperience == 0
+                              ? 'Fresh Worker'
+                              : '$yearsOfExperience yrs experience',
 
                           overflow: TextOverflow.ellipsis,
 
