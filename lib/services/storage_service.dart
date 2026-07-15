@@ -17,6 +17,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class StorageService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
+  // BACKEND LOGIN TODO:
+  // After a successful real login, persist the returned access token with:
+  // await StorageService().saveAccessToken(accessToken);
+  // ApiServiceRequestRepository reads this same token for its Bearer header.
   // Save Access Token
   static Future<void> saveAccessToken(String token) async {
     await _storage.write(key: 'access_token', value: token);
