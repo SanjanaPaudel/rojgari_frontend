@@ -5,8 +5,6 @@ import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
 import 'package:rojgari_frontend_one/screens/auth/otp_screen.dart';
 import 'package:flutter/gestures.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import 'package:rojgari_frontend_one/services/auth_service.dart';
 
 class CustomerSignupScreen extends StatefulWidget {
@@ -28,9 +26,6 @@ class _CustomerSignupScreenState
 
   final AuthService _authService = AuthService();
 
-  File? _selectedImage;
-  final ImagePicker _picker = ImagePicker();
-
 
   @override
   void dispose() {
@@ -42,17 +37,6 @@ class _CustomerSignupScreenState
     super.dispose();
   }
 
-  Future<void> pickImage() async {
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery,
-    );
-
-    if (image != null) {
-      setState(() {
-        _selectedImage = File(image.path);
-      });
-    }
-  }
 
   String? phoneError;
   String? passwordError;
@@ -457,104 +441,6 @@ class _CustomerSignupScreenState
 
 
                               const SizedBox(height: 30),
-                              //====================================================
-                              // PROFILE PHOTO
-                              //====================================================
-
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: .03),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-
-                                    Container(
-                                      width: 50,
-                                      height: 50,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.lightPurple,
-                                        borderRadius: BorderRadius.circular(14),
-                                        image: _selectedImage != null
-                                            ? DecorationImage(
-                                          image: FileImage(_selectedImage!),
-                                          fit: BoxFit.cover,
-                                        )
-                                            : null,
-                                      ),
-                                      child: _selectedImage == null
-                                          ? const Icon(
-                                        Icons.image_outlined,
-                                        color: AppColors.primary,
-                                        size: 24,
-                                      )
-                                          : null,
-                                    ),
-
-                                    const SizedBox(width: 14),
-
-                                    const Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-
-                                          Text(
-                                            "Profile Photo",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15,
-                                            ),
-                                          ),
-
-                                          SizedBox(height: 0),
-
-                                          Text(
-                                            "Upload a profile picture (Optional)",
-                                            style: TextStyle(
-                                              color: AppColors.grey,
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    OutlinedButton(
-                                      onPressed: pickImage,
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.primary,
-                                        side: const BorderSide(
-                                          color: AppColors.primary,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 15,
-                                          vertical: 12,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        "Upload",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
 
                               const SizedBox(height: 10),
                               Row(
@@ -590,50 +476,64 @@ class _CustomerSignupScreenState
                                     isLoading = true;
                                   });
 
-                                  final response = await _authService.signup(
-                                    phone: phoneController.text.trim(),
-                                    password: passwordController.text,
-                                    fullName: fullNameController.text.trim(),
-                                    email: emailController.text.trim(),
-                                    confirmPassword: confirmPasswordController.text,
-                                    profilePhoto: _selectedImage,
-                                    role: isWorker ? "worker" : "customer",
-                                  );
-                              
-
-                                  setState(() {
-                                    isLoading = false;
-                                  });
-
-                                  //clear and store backend errors
-                                  setState(() { //Due to the setState , the customFiled is rebuild by flutter immediately if any error msg (from backend) with error msg or if no error msg clears the variable and rebuilds
-                                    phoneError = response["phone_number"]?.first; //"Look for a phone_number error in the backend response. If it exists, take the first error message from the list and store it in phoneError. If it doesn't exist, store null."
-                                    emailError = response["email"]?.first;
-                                    passwordError = response["password"]?.first;
-                                    confirmPasswordError = response["confirm_password"]?.first;
-                                    fullNameError = response["full_name"]?.first;
-                                  });
-
-
-                                  // Stop if backend returned validation error
-                                  if (phoneError != null ||
-                                      emailError != null ||
-                                      passwordError != null ||
-                                      confirmPasswordError != null ||
-                                      fullNameError != null) {
-                                    return; // Stops executing onPressed() i.e don't navigate to the OTP screen
-                                  }
-                                  // Signup successful
-                                  if (response["message"] == "OTP sent successfully.") {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => OTPScreen(
-                                          email: emailController.text.trim(),
-                                          phone: phoneController.text.trim(),
-                                        ),
-                                      ),
+                                  try {
+                                    final response = await _authService.signup(
+                                      phone: phoneController.text.trim(),
+                                      password: passwordController.text,
+                                      fullName: fullNameController.text.trim(),
+                                      email: emailController.text.trim(),
+                                      confirmPassword: confirmPasswordController.text,
+                                      role: isWorker ? "worker" : "customer",
                                     );
+
+                                    // Clear previous errors and store any new backend errors
+                                    // Due to setState, CustomTextField rebuilds immediately with the error msg
+                                    setState(() {
+                                      phoneError = response["phone_number"]?.first;
+                                      emailError = response["email"]?.first;
+                                      passwordError = response["password"]?.first;
+                                      confirmPasswordError = response["confirm_password"]?.first;
+                                      fullNameError = response["full_name"]?.first;
+                                    });
+
+                                    // Stop if backend returned validation errors
+                                    if (phoneError != null ||
+                                        emailError != null ||
+                                        passwordError != null ||
+                                        confirmPasswordError != null ||
+                                        fullNameError != null) {
+                                      return; // Don't navigate to OTP screen
+                                    }
+
+                                    // Signup successful
+                                    if (response["message"] == "OTP sent successfully.") {
+                                      if (!mounted) return;
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => OTPScreen(
+                                            email: emailController.text.trim(),
+                                            phone: phoneController.text.trim(),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    // Network error, file read failure, or any unexpected error
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text("Something went wrong. Please try again."),
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    // Always stop loading — whether success, failure, or exception
+                                    if (mounted) {
+                                      setState(() {
+                                        isLoading = false;
+                                      });
+                                    }
                                   }
                                 },
                               ),

@@ -141,12 +141,25 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                   profile: _profile,
                   isOnline: isOnline,
                   requests: requests,
-                  onStatusChanged: (newStatus) {
+                  onStatusChanged: (newStatus) async {
+                    // 1. Update UI immediately (optimistic update) for instant feel
                     setState(() => isOnline = newStatus);
-                    // BACKEND PLACE:
-                    // Later call workerService.updateOnlineStatus(isOnline).
-                    // When offline, backend should stop sending new job request
-                    // notifications to this worker.
+
+                    try {
+                      // 2. Inform backend: PATCH /worker/status/ {"is_online": newStatus}
+                      await _dashboardService.updateOnlineStatus(newStatus);
+                    } catch (e) {
+                      // 3. Rollback if the API call failed
+                      if (!mounted) return;
+                      setState(() => isOnline = !newStatus);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            e.toString().replaceFirst('Exception: ', ''),
+                          ),
+                        ),
+                      );
+                    }
                   },
                   onProfileUpdated: (updatedProfile) {
                     setState(() => _profile = updatedProfile);
