@@ -15,12 +15,14 @@ class SkillSelectionScreen extends StatefulWidget {
   State<SkillSelectionScreen> createState() => _SkillSelectionScreenState();
 }
 
+//Constructor
 class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
-  final SkillService _skillService = SkillService();
+
+  final SkillService _skillService = SkillService(); //Object of SkillService class
   final TextEditingController _searchController = TextEditingController();
   List<Skill> _allSkills = [];
   List<Skill> _filteredSkills = [];
-  final Set<int> _selectedSkillIds = {};
+  final Set<int> _selectedSkillIds = {}; //Set instead of List because Sets never allow duplicates.
   bool _isLoading = true;
   bool _isSubmitting = false;
   String? _loadError; // shown if the skill list fails to load
@@ -40,7 +42,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
 
   Future<void> _loadSkills() async {
     try {
-      final skills = await _skillService.getSkills(); // Now skills has the list of the different skill(id,name etc...)
+      final skills = await _skillService.getSkills(); // SkillService returs List of different skills(id,name etc...)
 
       setState(() {
         _allSkills = skills;

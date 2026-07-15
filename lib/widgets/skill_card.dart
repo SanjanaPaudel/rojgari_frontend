@@ -1,17 +1,65 @@
 import 'package:flutter/material.dart';
+import '../core/constants/colors.dart';
 import '../models/skill_model.dart';
+
+/// Controls which visual theme the card renders in.
+/// - [signup]     → the white-card style used on SkillSelectionScreen (auth flow).
+/// - [technician] → the animated card style used on TechnicianSkillSelectionScreen.
+enum SkillCardStyle { signup, technician }
 
 class SkillCard extends StatelessWidget {
   final Skill skill;
   final bool isSelected;
   final VoidCallback onTap;
 
+  /// Visual style variant. Defaults to [SkillCardStyle.signup] so all existing
+  /// call-sites that omit this parameter are completely unaffected.
+  final SkillCardStyle style;
+
+  /// Optional icon shown inside the technician-style card.
+  /// When null the fallback [Icons.handyman] is used.
+  final IconData? icon;
+
   const SkillCard({
     super.key,
     required this.skill,
     required this.isSelected,
     required this.onTap,
+    this.style = SkillCardStyle.signup,
+    this.icon,
   });
+
+  @override
+  Widget build(BuildContext context) {
+    return style == SkillCardStyle.technician
+        ? _TechnicianCard(
+            skill: skill,
+            isSelected: isSelected,
+            onTap: onTap,
+            icon: icon ?? Icons.handyman,
+          )
+        : _SignupCard(
+            skill: skill,
+            isSelected: isSelected,
+            onTap: onTap,
+          );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Signup-flow card (original look — untouched)
+// ---------------------------------------------------------------------------
+
+class _SignupCard extends StatelessWidget {
+  const _SignupCard({
+    required this.skill,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final Skill skill;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +166,103 @@ class SkillCard extends StatelessWidget {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Technician-profile card (exact visual match to TechnicianSkillSelectionScreen)
+// ---------------------------------------------------------------------------
+
+class _TechnicianCard extends StatelessWidget {
+  const _TechnicianCard({
+    required this.skill,
+    required this.isSelected,
+    required this.onTap,
+    required this.icon,
+  });
+
+  final Skill skill;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.lightPurple : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.primary
+                  : const Color(0xFFEEEAF9),
+              width: isSelected ? 1.5 : 1,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A231447),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.white : AppColors.lightPurple,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Text(
+                      skill.name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.black,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (isSelected)
+                const Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Icon(
+                    Icons.check_circle,
+                    color: AppColors.primary,
+                    size: 21,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

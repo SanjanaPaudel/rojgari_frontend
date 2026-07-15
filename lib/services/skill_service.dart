@@ -6,9 +6,9 @@ import 'package:http/http.dart' as http;
 
 
 class SkillService {
+
   final ApiService _apiService = ApiService();
-
-
+  
   Future<List<Skill>> getSkills() async {  //It returns the list of skill obj in comming future
     final response = await _apiService.get(ApiUrls.workerSkills);
 
@@ -22,7 +22,6 @@ class SkillService {
     throw Exception("Failed to load skills.");
   }
 
-  /// POST /worker/select-skills/
   Future<http.Response> selectSkills(List<int> skillIds) async {
     return await _apiService.post(
       ApiUrls.selectWorkerSkills,

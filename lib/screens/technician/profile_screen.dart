@@ -220,7 +220,6 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
       ),
     );
     if (!mounted || selected == null) return;
-    // BACKEND TODO: Persist selected technician skills using the confirmed API.
     _updateTechnician(_technician.copyWith(selectedSkills: selected));
   }
 
