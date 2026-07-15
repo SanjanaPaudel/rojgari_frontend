@@ -136,6 +136,31 @@ class ApiService {
     return response;
   }
 
+  Future<http.Response> put(
+    String url,
+    Map<String, dynamic> body,
+  ) async {
+    http.Response response = await http.put(
+      Uri.parse(url),
+      headers: await _getHeaders(),
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 401 && !_isPublicAuthEndpoint(url)) {
+      final refreshed = await _handleTokenRefresh();
+      if (!refreshed) {
+        await _logoutUser();
+      }
+
+      response = await http.put(
+        Uri.parse(url),
+        headers: await _getHeaders(),
+        body: jsonEncode(body),
+      );
+    }
+    return response;
+  }
+
   Future<http.StreamedResponse> multipartPost(
     String url,
     Map<String, String> fields,

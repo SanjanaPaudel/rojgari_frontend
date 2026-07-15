@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/colors.dart';
 import '../../models/technician_model.dart';
+import '../../services/worker_dashboard_service.dart';
 
 class TechnicianEditProfileScreen extends StatefulWidget {
   const TechnicianEditProfileScreen({super.key, required this.technician});
@@ -29,6 +30,7 @@ class _TechnicianEditProfileScreenState
   String? _localImagePath;
   Uint8List? _localImageBytes;
   String? _photoError;
+  bool _isSaving = false; // Tracks API call in progress to disable the button
 
   @override
   void initState() {
@@ -158,33 +160,60 @@ class _TechnicianEditProfileScreenState
     return valid ? null : 'Enter a valid email without special symbols.';
   }
 
-  void _save() {
+  Future<void> _save() async {
     final valid = _formKey.currentState?.validate() ?? false;
     if (!_hasPhoto) {
       setState(() => _photoError = 'Profile picture is required.');
     }
     if (!valid || !_hasPhoto) return;
 
-    // BACKEND TODO: Replace this local Navigator.pop result with:
-    // 1) multipart profile-photo upload, 2) technician profile PATCH, and
-    // 3) the TechnicianModel parsed from the successful backend response.
-    // Local paths/bytes are preview state and are not backend upload URLs.
-    Navigator.pop(
-      context,
-      widget.technician.copyWith(
+    setState(() => _isSaving = true);
+
+    try {
+      // Build the service_area string — join comma-separated areas as a single string
+      final serviceAreaText = _serviceArea.text
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .join(', ');
+
+      // PUT /api/auth/worker/profile/
+      await WorkerDashboardService().updateProfile(
         fullName: _name.text.trim(),
-        phone: '+977 ${_phone.text.trim()}',
         email: _email.text.trim(),
         about: _about.text.trim(),
-        localProfileImagePath: _localImagePath,
-        localProfileImageBytes: _localImageBytes,
-        serviceAreas: _serviceArea.text
-            .split(',')
-            .map((value) => value.trim())
-            .where((value) => value.isNotEmpty)
-            .toList(),
-      ),
-    );
+        serviceArea: serviceAreaText,
+      );
+
+      if (!mounted) return;
+
+      // Return the updated TechnicianModel to the calling screen
+      Navigator.pop(
+        context,
+        widget.technician.copyWith(
+          fullName: _name.text.trim(),
+          phone: '+977 ${_phone.text.trim()}',
+          email: _email.text.trim(),
+          about: _about.text.trim(),
+          localProfileImagePath: _localImagePath,
+          localProfileImageBytes: _localImageBytes,
+          serviceAreas: _serviceArea.text
+              .split(',')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList(),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   Widget _avatar() {
@@ -282,9 +311,18 @@ class _TechnicianEditProfileScreenState
                 _field(_serviceArea, 'Service areas (optional)', maxLines: 2),
                 const SizedBox(height: 8),
                 FilledButton.icon(
-                  onPressed: _save,
-                  icon: const Icon(Icons.save_outlined),
-                  label: const Text('Save Changes'),
+                  onPressed: _isSaving ? null : _save,
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.save_outlined),
+                  label: Text(_isSaving ? 'Saving…' : 'Save Changes'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     minimumSize: const Size.fromHeight(54),

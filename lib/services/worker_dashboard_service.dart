@@ -76,4 +76,50 @@ class WorkerDashboardService {
       throw Exception('An unexpected error occurred: $e');
     }
   }
+
+  /// Sends a PUT request to /api/auth/worker/profile/ to update the worker's
+  /// editable profile fields.
+  ///
+  /// Returns the backend [message] string on success
+  /// (e.g. "Profile updated successfully.").
+  ///
+  /// Throws an [Exception] on network failure or a non-200 response.
+  Future<String> updateProfile({
+    required String fullName,
+    required String email,
+    required String about,
+    required String serviceArea,
+  }) async {
+    try {
+      final response = await _api.put(
+        ApiUrls.workerProfile,
+        {
+          "full_name": fullName,
+          "email": email,
+          "about": about,
+          "service_area": serviceArea,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return body['message']?.toString() ?? 'Profile updated successfully.';
+      }
+
+      // Surface the backend error message when available.
+      String detail =
+          'Failed to update profile (HTTP ${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['detail'] != null) detail = body['detail'].toString();
+      } catch (_) {
+        // Body is not JSON — keep the generic message.
+      }
+      throw Exception(detail);
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
+    }
+  }
 }
