@@ -6,27 +6,30 @@ import '../../services/storage_service.dart';
 import 'package:rojgari_frontend_one/widgets/skill_card.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/screens/technician/technician_home_screen.dart';
+import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
 
 
 class SkillSelectionScreen extends StatefulWidget {
-  const SkillSelectionScreen({super.key});
+  const SkillSelectionScreen({super.key}); //Constructor
 
   @override
-  State<SkillSelectionScreen> createState() => _SkillSelectionScreenState();
+  State<SkillSelectionScreen> createState() => _SkillSelectionScreenState();   // Flutter needs to know which State belongs to which Widget, the line tell flutter that This State belongs only to _SkillSelectionScreenState() class.
 }
 
-//Constructor
 class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
+
+  //These variables hold the state of this screen.
+  //Whenever one of these values changes and you call setState(), Flutter rebuilds the UI.
 
   final SkillService _skillService = SkillService(); //Object of SkillService class
   final TextEditingController _searchController = TextEditingController();
-  List<Skill> _allSkills = [];
-  List<Skill> _filteredSkills = [];
-  final Set<int> _selectedSkillIds = {}; //Set instead of List because Sets never allow duplicates.
-  bool _isLoading = true;
-  bool _isSubmitting = false;
-  String? _loadError; // shown if the skill list fails to load
-  String? _submitError; // shown above the continue button if the backend any error like: "This field is required."
+  List<Skill> _allSkills = []; //It only accept Skill obj as a list . Stores all skills from API
+  List<Skill> _filteredSkills = []; //Used for filtering skills based on search query
+  final Set<int> _selectedSkillIds = {}; //Set instead of List because Sets never allow duplicates. Stores the id of selected skills
+  bool _isLoading = true; //Indicator for loading skills
+  bool _isSubmitting = false; //Indicator for Sending selected skills to backend
+  String? _loadError; // Error while fetching skills.
+  String? _submitError; // Error while submitting selected skills.
 
   @override
   void initState() {
@@ -35,14 +38,14 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
   }
 
   @override
-  void dispose() {
+  void dispose() {      //this controller allocates resources. When the screen is removed, disposing it prevents resource leaks.
     _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _loadSkills() async {
     try {
-      final skills = await _skillService.getSkills(); // SkillService returs List of different skills(id,name etc...)
+      final skills = await _skillService.getSkills(); // SkillService returs List of item Skill(id,name etc...). skills variable now contain List<Skill>
 
       setState(() {
         _allSkills = skills;
@@ -56,7 +59,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
       });
     }
   }
-  void _filterSkills(String query) {
+  void _filterSkills(String query) { //query is simply whatever the user types
     setState(() {
       if (query.trim().isEmpty) {
         _filteredSkills = _allSkills;
@@ -71,7 +74,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
   }
   Future<void> _submitSkills() async {
     setState(() {
-      _isSubmitting = true;
+      _isSubmitting = true; // Currently sending the id
       _submitError = null;
     });
 
@@ -86,7 +89,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
 
     if (response.statusCode == 200) {
       await StorageService.saveNextScreen("worker_dashboard");
-      if (!mounted) return;
+      if (!mounted) return; //This is a safety check that the screen is still active before navigating. Mounted = true means screen is active. 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -99,7 +102,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
 
     if (response.statusCode == 400) {
       setState(() {
-        _submitError = data["skills"]?[0];
+        _submitError = data["skills"]?[0]; //"If data["skills"] is not null, give me the first item. Otherwise, return null."
       });
 
       return;
@@ -129,7 +132,10 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
               children: [
                 InkWell(
                   onTap: () {
-                    Navigator.pop(context);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    );
                   },
                   borderRadius: BorderRadius.circular(14),
                   child: Container(

@@ -1,5 +1,5 @@
 
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../core/constants/api_urls.dart';
 import 'api_service.dart';
@@ -39,7 +39,8 @@ class AuthService {
     required String fullName,
     required String email,
     required String confirmPassword,
-    File? profilePhoto,
+    Uint8List? profilePhotoBytes, // Image bytes — works on Web and native
+    String? profilePhotoName,     // Original filename e.g. "photo.jpg"
     required String role,
   }) async {
 
@@ -53,7 +54,8 @@ class AuthService {
         "password": password,
         "confirm_password": confirmPassword,
       },
-      profilePhoto,
+      profilePhotoBytes,
+      profilePhotoName,
     );
 
     final response = await http.Response.fromStream(streamedResponse);

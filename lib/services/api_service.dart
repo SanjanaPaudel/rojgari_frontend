@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/services/navigation_service.dart';
 import 'package:rojgari_frontend_one/services/storage_service.dart';
@@ -111,13 +111,36 @@ class ApiService {
     return response;
   }
 
-  //=====================
-  // MULTIPART POST
-  //=====================
+  Future<http.Response> patch(
+    String url,
+    Map<String, dynamic> body,
+  ) async {
+    http.Response response = await http.patch(
+      Uri.parse(url),
+      headers: await _getHeaders(),
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 401 && !_isPublicAuthEndpoint(url)) {
+      final refreshed = await _handleTokenRefresh();
+      if (!refreshed) {
+        await _logoutUser();
+      }
+
+      response = await http.patch(
+        Uri.parse(url),
+        headers: await _getHeaders(),
+        body: jsonEncode(body),
+      );
+    }
+    return response;
+  }
+
   Future<http.StreamedResponse> multipartPost(
     String url,
     Map<String, String> fields,
-    File? image,
+    Uint8List? imageBytes,  // Raw image bytes — works on Web and native
+    String? imageName,      // Original filename used as multipart filename
   ) async {
     http.MultipartRequest request = http.MultipartRequest(
       "POST",
@@ -132,11 +155,13 @@ class ApiService {
 
     request.fields.addAll(fields);
 
-    if (image != null) {
+    // fromBytes() is synchronous and works on Flutter Web + Android/iOS
+    if (imageBytes != null) {
       request.files.add(
-        await http.MultipartFile.fromPath(
+        http.MultipartFile.fromBytes(
           "profile_photo",
-          image.path,
+          imageBytes,
+          filename: imageName ?? "profile_photo.jpg",
         ),
       );
     }
@@ -150,7 +175,7 @@ class ApiService {
         await _logoutUser();
       }
 
-      // MultipartRequest cannot be reused.
+      // MultipartRequest cannot be reused after send()
       request = http.MultipartRequest(
         "POST",
         Uri.parse(url),
@@ -164,11 +189,12 @@ class ApiService {
 
       request.fields.addAll(fields);
 
-      if (image != null) {
+      if (imageBytes != null) {
         request.files.add(
-          await http.MultipartFile.fromPath(
+          http.MultipartFile.fromBytes(
             "profile_photo",
-            image.path,
+            imageBytes,
+            filename: imageName ?? "profile_photo.jpg",
           ),
         );
       }
