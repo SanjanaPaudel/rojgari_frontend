@@ -376,7 +376,7 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
           children: [
             _buildHeader(),
             _buildSearchBar(),
-            _buildSelectedSkills(),
+            if (_selectedSkillIds.isNotEmpty) _buildSelectedSkills(),
 
             const SizedBox(height: 20),
             const Padding(
