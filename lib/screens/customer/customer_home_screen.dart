@@ -1,5 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
+import 'package:rojgari_frontend_one/models/service_request/service_category.dart';
+import 'package:rojgari_frontend_one/screens/customer/service_request/service_request_screen.dart';
+
+void openServiceRequestPage(BuildContext context, ServiceCategory category) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => ServiceRequestScreen(category: category)),
+  );
+}
+
+String _temporaryCategorySlug(String title) => title
+    .trim()
+    .toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+    .replaceAll(RegExp(r'^-|-$'), '');
 
 class CustomerHomeScreen extends StatelessWidget {
   const CustomerHomeScreen({super.key});
@@ -499,11 +514,16 @@ class _CategoryCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () {
-          // NAVIGATION TODO:
-          // Replace this placeholder with category technician list / booking page.
-          // Pass category.title or backend categoryId to the next screen.
-          // Example when BookingScreen is connected:
-          // Navigator.push(context, MaterialPageRoute(builder: (_) => BookingScreen(categoryName: category.title)));
+          // BACKEND TODO: Replace this temporary id and derived slug with the
+          // real category id and slug returned by the customer dashboard API.
+          openServiceRequestPage(
+            context,
+            ServiceCategory(
+              id: _temporaryCategorySlug(category.title),
+              name: category.title,
+              slug: _temporaryCategorySlug(category.title),
+            ),
+          );
         },
         child: Container(
           width: 136,
