@@ -6,22 +6,22 @@
 class Skill {
   final int id;
   final String name;
-  final String description;
-  final String icon;
+  final String? description; // nullable — backend may return null
+  final String? icon;        // nullable — backend returns null for most skills
 
   const Skill({
     required this.id,
     required this.name,
-    required this.description,
-    required this.icon,
+    this.description,
+    this.icon,
   });
 
   factory Skill.fromJson(Map<String, dynamic> json) { //It is a translation step in which the formJson() from factory assigns tha value of the map in json body into respective skill's variable. converts the map into skill obj
     return Skill(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      icon: json['icon'],
+      id: json['id'] as int,
+      name: json['name'] as String,
+      description: json['description'] as String?,  // null-safe cast
+      icon: json['icon'] as String?,                 // null-safe cast
     );
   }
 

@@ -13,6 +13,4 @@ class ApiUrls {
   static const String workerSkills = "$baseUrl/auth/worker/skills/";
   static const String selectWorkerSkills = "$baseUrl/auth/worker/select-skills/";
   static const String categories=  "$baseUrl/services/categories/";
-
-
 }

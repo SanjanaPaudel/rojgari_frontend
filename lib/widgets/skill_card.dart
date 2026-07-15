@@ -45,7 +45,7 @@ class SkillCard extends StatelessWidget {
             final double selectIconSize = (cardWidth * 0.12).clamp(16.0, 22.0);
             final double spacingSize = (cardWidth * 0.08).clamp(8.0, 14.0);
             final double titleFontSize = (cardWidth * 0.1).clamp(11.0, 15.0);
-            final double descFontSize = (cardWidth * 0.5).clamp(9.0, 11.5);
+            final double descFontSize = (cardWidth * 0.05).clamp(9.0, 11.5);
             final double paddingSize = (cardWidth * 0.1).clamp(10.0, 18.0);
 
             return Stack(
@@ -103,7 +103,7 @@ class SkillCard extends StatelessWidget {
                           Text(
                             skill.description!,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: descFontSize,
                               color: Colors.grey.shade600,
                             ),
                             textAlign: TextAlign.center,
