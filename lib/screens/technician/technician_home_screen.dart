@@ -4,6 +4,7 @@ import '../../core/constants/api_urls.dart';
 import '../../core/constants/colors.dart';
 import '../../models/technician_model.dart';
 import '../../models/worker_dashboard_response.dart';
+import '../../services/location/location_service.dart';
 import '../../services/worker_dashboard_service.dart';
 
 import '../../widgets/technician/dashboard_appbar.dart';
@@ -29,6 +30,7 @@ class TechnicianHomeScreen extends StatefulWidget {
 
 class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   final WorkerDashboardService _dashboardService = WorkerDashboardService();
+  final LocationService _locationService = const LocationService();
 
   WorkerDashboardResponse? _dashboard;
   bool _isLoading = true;
@@ -70,6 +72,9 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
           selectedSkills: widget.signupSelectedSkills ?? const [],
         );
     _loadDashboard();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkLocationOnStartup();
+    });
   }
 
   Future<void> _loadDashboard() async {
@@ -113,6 +118,139 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
     }
+  }
+
+  Future<void> _checkLocationOnStartup() async {
+    try {
+      final serviceEnabled = await _locationService.isLocationServiceEnabled();
+      final permission = await _locationService.checkPermission();
+
+      if (!serviceEnabled || permission != AppLocationPermission.granted) {
+        if (mounted) {
+          _showLocationPermissionDialog();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking location status on startup: $e');
+    }
+  }
+
+  void _showLocationPermissionDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return _LocationPermissionDialog(
+          onAllowWhileUsing: () async {
+            Navigator.pop(context);
+            await _handleRequestPermission();
+          },
+          onAllowThisTime: () async {
+            Navigator.pop(context);
+            await _handleRequestPermission();
+          },
+          onDeny: () {
+            Navigator.pop(context);
+            if (mounted && isOnline) {
+              setState(() => isOnline = false);
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Location permission is required to receive incoming job requests.',
+                ),
+                backgroundColor: AppColors.red,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _handleRequestPermission() async {
+    try {
+      final permission = await _locationService.requestPermission();
+
+      if (permission == AppLocationPermission.granted) {
+        final serviceEnabled = await _locationService.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          _showServiceDisabledSnackbar();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission granted successfully.'),
+              backgroundColor: AppColors.green,
+            ),
+          );
+        }
+      } else if (permission == AppLocationPermission.blocked) {
+        _showPermissionBlockedDialog();
+      } else {
+        if (mounted && isOnline) {
+          setState(() => isOnline = false);
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location permission was denied.'),
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error requesting location permission: $e');
+    }
+  }
+
+  void _showServiceDisabledSnackbar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Device location service is disabled. Please turn it on in system settings.',
+        ),
+        backgroundColor: AppColors.orange,
+        action: SnackBarAction(
+          label: 'Settings',
+          textColor: Colors.white,
+          onPressed: () => _locationService.openLocationSettings(),
+        ),
+      ),
+    );
+  }
+
+  void _showPermissionBlockedDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'Location Permission Blocked',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Location permission has been permanently denied. Please enable it in device app settings to receive job requests.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _locationService.openAppSettings();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Open Settings'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// Resolves a profile photo URL/path from the API into a usable URL string.
@@ -598,6 +736,127 @@ class _IncomingRequestsSection extends StatelessWidget {
 
           const SizedBox(height: 8),
         ],
+      ),
+    );
+  }
+}
+
+class _LocationPermissionDialog extends StatelessWidget {
+  const _LocationPermissionDialog({
+    required this.onAllowWhileUsing,
+    required this.onAllowThisTime,
+    required this.onDeny,
+  });
+
+  final VoidCallback onAllowWhileUsing;
+  final VoidCallback onAllowThisTime;
+  final VoidCallback onDeny;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 8,
+      backgroundColor: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header location icon
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.location_on_rounded,
+                  color: AppColors.primary,
+                  size: 40,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Title
+            const Text(
+              "Allow 'Rojgari' to access this device's location?",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Subtitle
+            const Text(
+              "This app requires location services to match you with job requests near you, display distances, and navigate to client sites.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.grey,
+                fontSize: 14,
+                height: 1.4,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            const SizedBox(height: 28),
+            // Button 1: Allow while using the app
+            ElevatedButton(
+              onPressed: onAllowWhileUsing,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                "Allow while using the app",
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Button 2: Allow this time
+            OutlinedButton(
+              onPressed: onAllowThisTime,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.border, width: 1.5),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                "Allow this time",
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Button 3: Deny
+            TextButton(
+              onPressed: onDeny,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.grey,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              child: const Text(
+                "Deny",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.red,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
