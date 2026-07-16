@@ -264,4 +264,97 @@ class WorkerDashboardService {
       throw Exception('An unexpected error occurred: $e');
     }
   }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // uploadIdentityDocuments
+  // ────────────────────────────────────────────────────────────────────────────
+  //
+  // Uploads citizenship and (optionally) experience documents to the backend
+  // via a single multipart/form-data POST request.
+  //
+  // HTTP METHOD : POST
+  // ENDPOINT    : /api/auth/worker/identity/
+  // CONTENT-TYPE: multipart/form-data
+  //
+  // FIELDS:
+  //   citizenship_front    → File (required)
+  //   citizenship_back     → File (required)
+  //   experience_document  → File (optional — only sent when provided)
+  //
+  // SUCCESS RESPONSE (HTTP 200 / 201):
+  // {
+  //   "message": "Documents uploaded successfully.",
+  //   "documents": {
+  //     "citizenship_front":   "...",
+  //     "citizenship_back":    "...",
+  //     "experience_document": "...",
+  //     "is_verified": false
+  //   }
+  // }
+  //
+  // Throws an [Exception] with a human-readable message on:
+  //   • Network failure
+  //   • Non-2xx HTTP status
+  // ────────────────────────────────────────────────────────────────────────────
+  Future<Map<String, dynamic>> uploadIdentityDocuments({
+    required Uint8List citizenshipFrontBytes,
+    required String citizenshipFrontName,
+    required Uint8List citizenshipBackBytes,
+    required String citizenshipBackName,
+    Uint8List? experienceDocumentBytes,
+    String? experienceDocumentName,
+  }) async {
+    try {
+      // Build the list of file parts. experience_document is only included
+      // when the user actually selected a certificate file.
+      final fileFields = <({String fieldName, Uint8List bytes, String filename})>[
+        (
+          fieldName: 'citizenship_front',
+          bytes: citizenshipFrontBytes,
+          filename: citizenshipFrontName,
+        ),
+        (
+          fieldName: 'citizenship_back',
+          bytes: citizenshipBackBytes,
+          filename: citizenshipBackName,
+        ),
+        if (experienceDocumentBytes != null)
+          (
+            fieldName: 'experience_document',
+            bytes: experienceDocumentBytes,
+            filename: experienceDocumentName ?? 'experience_document.jpg',
+          ),
+      ];
+
+      final streamed = await _api.multipartPostFiles(
+        ApiUrls.workerIdentity,
+        {}, // No additional text fields required by this endpoint
+        fileFields,
+      );
+
+      // Read the body before the connection closes.
+      final bodyString = await streamed.stream.bytesToString();
+
+      if (streamed.statusCode == 200 || streamed.statusCode == 201) {
+        final body = jsonDecode(bodyString) as Map<String, dynamic>;
+        return (body['documents'] as Map<String, dynamic>?) ?? {};
+      }
+
+      // Surface the backend's error message when available.
+      String detail =
+          'Failed to upload documents (HTTP ${streamed.statusCode})';
+      try {
+        final body = jsonDecode(bodyString) as Map<String, dynamic>;
+        if (body['detail'] != null) detail = body['detail'].toString();
+        if (body['message'] != null) detail = body['message'].toString();
+      } catch (_) {
+        // Body is not JSON — keep the generic message.
+      }
+      throw Exception(detail);
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
+    }
+  }
 }

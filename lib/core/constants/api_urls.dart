@@ -44,5 +44,13 @@ class ApiUrls {
   // Response: { "message": "...", "profile_photo": "<absolute URL>" }
   static const String workerProfilePhoto = "$baseUrl/auth/worker/profile/photo/";
 
+  // POST multipart/form-data
+  // Fields: citizenship_front (File, required), citizenship_back (File, required),
+  //         experience_document (File, optional)
+  // Response: { "message": "...", "documents": { "citizenship_front": "...",
+  //             "citizenship_back": "...", "experience_document": "...",
+  //             "is_verified": false } }
+  static const String workerIdentity = "$baseUrl/auth/worker/identity/";
+
   static const String categories = "$baseUrl/services/categories/";
 }

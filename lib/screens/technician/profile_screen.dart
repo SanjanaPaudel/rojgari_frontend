@@ -58,12 +58,18 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
   // ---------------------------------------------------------------------------
   // _loadProfile
   //
-  // Calls GET /api/auth/worker/profile/ and merges only the fields that the
-  // endpoint returns (full_name, phone_number, email, about_me, service_areas,
-  // profile_photo) into the existing model via copyWith.
+  // Calls GET /api/auth/worker/profile/ and merges the returned fields into
+  // the existing model via copyWith.  The endpoint now also returns:
+  //   • citizenship_front / citizenship_back URLs
+  //   • is_verified flag
+  // fromProfileJson() converts these into the correct TechnicianVerificationStatus:
+  //   verified  → admin approved
+  //   pending   → docs submitted, awaiting review
+  //   incomplete → no docs uploaded yet
   //
-  // Skills, verificationStatus, and all local document bytes are preserved
-  // from the current _technician — the backend does not return them here.
+  // All three values (verificationStatus, citizenshipFrontUrl, citizenshipBackUrl)
+  // are merged into the live model so the profile screen always reflects the
+  // real backend state after every refresh.
   // ---------------------------------------------------------------------------
   Future<void> _loadProfile() async {
     if (!mounted) return;
@@ -71,7 +77,8 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
     try {
       final fetched = await WorkerDashboardService().getProfile();
       if (!mounted) return;
-      // Merge: keep skills, verificationStatus, and all local bytes intact.
+      // Merge all backend-supplied fields, including verification status and
+      // citizenship document URLs that now come from the profile endpoint.
       final merged = _technician.copyWith(
         fullName: fetched.fullName,
         phone: fetched.phone,
@@ -79,6 +86,10 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
         about: fetched.about,
         profileImageUrl: fetched.profileImageUrl ?? _technician.profileImageUrl,
         serviceAreas: fetched.serviceAreas,
+        // These are the critical fields for pending-state persistence:
+        citizenshipFrontUrl: fetched.citizenshipFrontUrl,
+        citizenshipBackUrl: fetched.citizenshipBackUrl,
+        verificationStatus: fetched.verificationStatus,
       );
       _updateTechnician(merged);
     } catch (e) {
@@ -113,6 +124,12 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
     if (_sessionTechnician == null) {
       final d = widget.dashboardResponse;
       if (d != null) {
+        // Seed basic data from the dashboard response.
+        // verificationStatus is intentionally left at the default (incomplete)
+        // here — _loadProfile() runs immediately below and will overwrite it
+        // with the correct 3-way status (verified / pending / incomplete)
+        // derived from the citizenship_front/back URLs that the profile
+        // endpoint now returns.
         _sessionTechnician = TechnicianModel(
           fullName: d.worker.fullName,
           phone: d.worker.phoneNumber,
@@ -122,7 +139,7 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
           selectedSkills: List<String>.from(d.worker.skills),
           verificationStatus: d.worker.verified
               ? TechnicianVerificationStatus.verified
-              : TechnicianVerificationStatus.incomplete,
+              : TechnicianVerificationStatus.incomplete, // overwritten by _loadProfile below
         );
       } else {
         // Fallback to an empty placeholder when no API data is available yet.
@@ -146,6 +163,7 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
 
     _technician = _sessionTechnician!;
     // Always fetch the latest profile from the backend on open.
+    // This is what corrects verificationStatus to pending when docs are uploaded.
     _loadProfile();
   }
 
@@ -283,6 +301,9 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
               _technician.citizenshipBackUrl?.trim().isNotEmpty ?? false,
           existingExperienceCertificateUrl:
               _technician.experienceCertificateUrl,
+          existingCitizenshipFrontUrl: _technician.citizenshipFrontUrl,
+          existingCitizenshipBackUrl: _technician.citizenshipBackUrl,
+          verificationStatus: _technician.verificationStatus,
           citizenshipFrontBytes: _technician.localCitizenshipFrontBytes,
           citizenshipFrontName: _technician.localCitizenshipFrontName,
           citizenshipBackBytes: _technician.localCitizenshipBackBytes,
@@ -296,14 +317,18 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
     if (!mounted || result == null) return;
     _updateTechnician(
       _technician.copyWith(
-        hasLocalCitizenshipFront: result.hasCitizenshipFront,
-        hasLocalCitizenshipBack: result.hasCitizenshipBack,
-        localCitizenshipFrontBytes: result.citizenshipFrontBytes,
-        localCitizenshipFrontName: result.citizenshipFrontName,
-        localCitizenshipBackBytes: result.citizenshipBackBytes,
-        localCitizenshipBackName: result.citizenshipBackName,
-        localExperienceCertificateBytes: result.experienceCertificateBytes,
-        localExperienceCertificateName: result.experienceCertificateName,
+        hasLocalCitizenshipFront: result.citizenshipFrontUrl == null ? result.hasCitizenshipFront : false,
+        hasLocalCitizenshipBack: result.citizenshipBackUrl == null ? result.hasCitizenshipBack : false,
+        localCitizenshipFrontBytes: result.citizenshipFrontUrl == null ? result.citizenshipFrontBytes : null,
+        localCitizenshipFrontName: result.citizenshipFrontUrl == null ? result.citizenshipFrontName : null,
+        localCitizenshipBackBytes: result.citizenshipBackUrl == null ? result.citizenshipBackBytes : null,
+        localCitizenshipBackName: result.citizenshipBackUrl == null ? result.citizenshipBackName : null,
+        localExperienceCertificateBytes: result.experienceCertificateUrl == null ? result.experienceCertificateBytes : null,
+        localExperienceCertificateName: result.experienceCertificateUrl == null ? result.experienceCertificateName : null,
+        citizenshipFrontUrl: result.citizenshipFrontUrl ?? _technician.citizenshipFrontUrl,
+        citizenshipBackUrl: result.citizenshipBackUrl ?? _technician.citizenshipBackUrl,
+        experienceCertificateUrl: result.experienceCertificateUrl ?? _technician.experienceCertificateUrl,
+        verificationStatus: result.verificationStatus ?? _technician.verificationStatus,
       ),
     );
   }
@@ -380,9 +405,12 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
                         onEdit: _editProfile,
                         onViewPhoto: _viewProfilePhoto,
                       ),
-                      if (!_technician.canAcceptJobs) ...[
+                      if (_technician.verificationStatus != TechnicianVerificationStatus.verified) ...[
                         const SizedBox(height: 14),
-                        _CompletionWarning(onComplete: _completeProfile),
+                        _CompletionWarning(
+                          verificationStatus: _technician.verificationStatus,
+                          onComplete: _completeProfile,
+                        ),
                       ],
                       const SizedBox(height: 16),
                       _SectionCard(
@@ -751,11 +779,17 @@ class _TechnicianProfileHeader extends StatelessWidget {
 }
 
 class _CompletionWarning extends StatelessWidget {
-  const _CompletionWarning({required this.onComplete});
+  const _CompletionWarning({
+    required this.verificationStatus,
+    required this.onComplete,
+  });
+
+  final TechnicianVerificationStatus verificationStatus;
   final VoidCallback onComplete;
 
   @override
   Widget build(BuildContext context) {
+    final isPending = verificationStatus == TechnicianVerificationStatus.pending;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -767,14 +801,19 @@ class _CompletionWarning extends StatelessWidget {
         children: [
           const Icon(Icons.warning_amber_rounded, color: Color(0xFFD77A00)),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Complete your profile and citizenship documents before accepting jobs.',
-              style: TextStyle(fontSize: 12, height: 1.35),
+              isPending
+                  ? 'Your documents have been submitted and are pending review.'
+                  : 'Complete your profile and citizenship documents before accepting jobs.',
+              style: const TextStyle(fontSize: 12, height: 1.35),
             ),
           ),
           const SizedBox(width: 8),
-          TextButton(onPressed: onComplete, child: const Text('Complete Now')),
+          TextButton(
+            onPressed: isPending ? null : onComplete,
+            child: Text(isPending ? 'Pending' : 'Complete Now'),
+          ),
         ],
       ),
     );
