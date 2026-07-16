@@ -81,12 +81,19 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 
     try {
       final dashboard = await _dashboardService.fetchDashboard();
+      final profile = await _dashboardService.getProfile();
       if (!mounted) return;
       setState(() {
         _dashboard = dashboard;
         _isLoading = false;
         isOnline = dashboard.worker.isOnline;
-        _profile = _buildProfileFromDashboard(dashboard);
+        // Merge the complete profile data with dashboard skills/verification
+        _profile = profile.copyWith(
+          selectedSkills: List<String>.from(dashboard.worker.skills),
+          verificationStatus: dashboard.worker.verified
+              ? TechnicianVerificationStatus.verified
+              : TechnicianVerificationStatus.incomplete,
+        );
       });
     } catch (e) {
       if (!mounted) return;
@@ -108,10 +115,9 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   }
 
   TechnicianModel _buildProfileFromDashboard(WorkerDashboardResponse d) {
-    final verification =
-        d.worker.verified
-            ? TechnicianVerificationStatus.verified
-            : TechnicianVerificationStatus.incomplete;
+    final verification = d.worker.verified
+        ? TechnicianVerificationStatus.verified
+        : TechnicianVerificationStatus.incomplete;
 
     return TechnicianModel(
       fullName: d.worker.fullName,
@@ -128,58 +134,53 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child:
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null
-                ? _ErrorBody(
-                  message: _errorMessage!,
-                  onRetry: _loadDashboard,
-                )
-                : _DashboardBody(
-                  dashboard: _dashboard!,
-                  profile: _profile,
-                  isOnline: isOnline,
-                  requests: requests,
-                  onStatusChanged: (newStatus) async {
-                    // 1. Update UI immediately (optimistic update) for instant feel
-                    setState(() => isOnline = newStatus);
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+            ? _ErrorBody(message: _errorMessage!, onRetry: _loadDashboard)
+            : _DashboardBody(
+                dashboard: _dashboard!,
+                profile: _profile,
+                isOnline: isOnline,
+                requests: requests,
+                onStatusChanged: (newStatus) async {
+                  // 1. Update UI immediately (optimistic update) for instant feel
+                  setState(() => isOnline = newStatus);
 
-                    try {
-                      // 2. Inform backend: PATCH /worker/status/ {"is_online": newStatus}
-                      await _dashboardService.updateOnlineStatus(newStatus);
-                    } catch (e) {
-                      // 3. Rollback if the API call failed
-                      if (!mounted) return;
-                      setState(() => isOnline = !newStatus);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            e.toString().replaceFirst('Exception: ', ''),
-                          ),
+                  try {
+                    // 2. Inform backend: PATCH /worker/status/ {"is_online": newStatus}
+                    await _dashboardService.updateOnlineStatus(newStatus);
+                  } catch (e) {
+                    // 3. Rollback if the API call failed
+                    if (!mounted) return;
+                    setState(() => isOnline = !newStatus);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceFirst('Exception: ', ''),
                         ),
-                      );
-                    }
-                  },
-                  onProfileUpdated: (updatedProfile) {
-                    setState(() => _profile = updatedProfile);
-                  },
-                  onMenuTap: () async {
-                    final updatedProfile = await Navigator.push<TechnicianModel>(
-                      context,
-                      MaterialPageRoute<TechnicianModel>(
-                        builder:
-                            (_) => TechnicianProfileScreen(
-                              initialSelectedSkills: _profile.selectedSkills,
-                              dashboardResponse: _dashboard,
-                            ),
                       ),
                     );
-                    if (!mounted || updatedProfile == null) return;
-                    setState(() => _profile = updatedProfile);
-                  },
-                  resolvePhotoUrl: _resolvePhotoUrl,
-                ),
+                  }
+                },
+                onProfileUpdated: (updatedProfile) {
+                  setState(() => _profile = updatedProfile);
+                },
+                onMenuTap: () async {
+                  final updatedProfile = await Navigator.push<TechnicianModel>(
+                    context,
+                    MaterialPageRoute<TechnicianModel>(
+                      builder: (_) => TechnicianProfileScreen(
+                        initialSelectedSkills: _profile.selectedSkills,
+                        dashboardResponse: _dashboard,
+                      ),
+                    ),
+                  );
+                  if (!mounted || updatedProfile == null) return;
+                  setState(() => _profile = updatedProfile);
+                },
+                resolvePhotoUrl: _resolvePhotoUrl,
+              ),
       ),
     );
   }
@@ -215,8 +216,7 @@ class _DashboardBody extends StatelessWidget {
     final w = dashboard.worker;
     final stats = w.stats;
     final avatarUrl = resolvePhotoUrl(w.profilePhoto);
-    final avatarImage =
-        avatarUrl ?? 'assets/images/technician_avatar.png';
+    final avatarImage = avatarUrl ?? 'assets/images/technician_avatar.png';
 
     return SingleChildScrollView(
       child: Column(
@@ -277,7 +277,11 @@ class _DashboardBody extends StatelessWidget {
                   bgColor: const Color(0xffF4EEFF),
                 ),
 
-                Container(width: 1, height: 100, color: const Color(0xffEEEEEE)),
+                Container(
+                  width: 1,
+                  height: 100,
+                  color: const Color(0xffEEEEEE),
+                ),
 
                 StatCard(
                   number: stats.skills.toString(),
@@ -288,7 +292,11 @@ class _DashboardBody extends StatelessWidget {
                   bgColor: const Color(0xffEDF4FF),
                 ),
 
-                Container(width: 1, height: 100, color: const Color(0xffEEEEEE)),
+                Container(
+                  width: 1,
+                  height: 100,
+                  color: const Color(0xffEEEEEE),
+                ),
 
                 StatCard(
                   number: stats.reviews.toString(),
@@ -299,7 +307,11 @@ class _DashboardBody extends StatelessWidget {
                   bgColor: const Color(0xffFFF1E6),
                 ),
 
-                Container(width: 1, height: 100, color: const Color(0xffEEEEEE)),
+                Container(
+                  width: 1,
+                  height: 100,
+                  color: const Color(0xffEEEEEE),
+                ),
 
                 StatCard(
                   number: stats.rating.toStringAsFixed(1),

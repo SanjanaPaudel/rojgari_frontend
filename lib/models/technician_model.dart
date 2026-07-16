@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import '../core/constants/api_urls.dart';
+
 enum TechnicianVerificationStatus { verified, pending, rejected, incomplete }
 
 class TechnicianModel {
@@ -146,6 +148,55 @@ class TechnicianModel {
       localExperienceCertificateName:
           localExperienceCertificateName ?? this.localExperienceCertificateName,
       serviceAreas: serviceAreas ?? this.serviceAreas,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // fromJson — parses a flat GET /api/auth/worker/profile/ response.
+  //
+  // Backend shape (flat object, NOT nested under "worker"):
+  // {
+  //   "full_name":    "Sanjana Paudel",
+  //   "phone_number": "9807078737",
+  //   "email":        "sanjana@gmail.com",
+  //   "about_me":     "I am ready to serve you",
+  //   "service_areas":"kathmandu",
+  //   "profile_photo":"/media/profile_photos/..."   ← relative path or null
+  // }
+  //
+  // ⚠ Skills and verification status are NOT included in this response.
+  //   Callers must preserve them from the existing model via copyWith().
+  // ---------------------------------------------------------------------------
+  factory TechnicianModel.fromProfileJson(Map<String, dynamic> json) {
+    final rawPhoto = json['profile_photo'] as String?;
+
+    String? resolvedPhotoUrl;
+    if (rawPhoto != null && rawPhoto.trim().isNotEmpty) {
+      if (rawPhoto.startsWith('http')) {
+        resolvedPhotoUrl = rawPhoto;
+      } else {
+        // Relative Django media path — prefix with server root (strip "/api").
+        final serverRoot = ApiUrls.baseUrl.replaceFirst('/api', '');
+        resolvedPhotoUrl = '$serverRoot$rawPhoto';
+      }
+    }
+
+    final rawServiceAreas = json['service_areas'] as String? ?? '';
+    final serviceAreaList = rawServiceAreas
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    return TechnicianModel(
+      fullName: json['full_name'] as String? ?? '',
+      phone: json['phone_number'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      about: json['about_me'] as String? ?? '',
+      profileImageUrl: resolvedPhotoUrl,
+      serviceAreas: serviceAreaList,
+      // Skills and verification come from other sources — leave at defaults.
+      // The caller (profile_screen._loadProfile) merges these via copyWith.
     );
   }
 }

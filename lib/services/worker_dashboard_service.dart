@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../core/constants/api_urls.dart';
+import '../models/technician_model.dart';
 import '../models/worker_dashboard_response.dart';
 import 'api_service.dart';
 
@@ -54,7 +55,9 @@ class WorkerDashboardService {
     try {
       final response = await _api.patch(
         ApiUrls.workerStatus,
-        {"is_online": isOnline}, // Sends {"is_online": true} or {"is_online": false}
+        {
+          "is_online": isOnline,
+        }, // Sends {"is_online": true} or {"is_online": false}
       );
 
       if (response.statusCode == 200) {
@@ -92,15 +95,12 @@ class WorkerDashboardService {
     required String serviceArea,
   }) async {
     try {
-      final response = await _api.put(
-        ApiUrls.workerProfile,
-        {
-          "full_name": fullName,
-          "email": email,
-          "about": about,
-          "service_area": serviceArea,
-        },
-      );
+      final response = await _api.put(ApiUrls.workerProfile, {
+        "full_name": fullName,
+        "email": email,
+        "about_me": about,
+        "service_areas": serviceArea,
+      });
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -108,14 +108,58 @@ class WorkerDashboardService {
       }
 
       // Surface the backend error message when available.
-      String detail =
-          'Failed to update profile (HTTP ${response.statusCode})';
+      String detail = 'Failed to update profile (HTTP ${response.statusCode})';
       try {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         if (body['detail'] != null) detail = body['detail'].toString();
       } catch (_) {
         // Body is not JSON — keep the generic message.
       }
+      throw Exception(detail);
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // getProfile
+  // ────────────────────────────────────────────────────────────────────────────
+  //
+  // Fetches the latest worker profile fields.
+  //
+  // HTTP METHOD: GET
+  // ENDPOINT   : /api/auth/worker/profile/
+  //
+  // Flat response shape:
+  // {
+  //   "full_name":    "...",
+  //   "phone_number": "...",
+  //   "email":        "...",
+  //   "about_me":     "...",
+  //   "service_areas":"...",
+  //   "profile_photo": "/media/..." or null
+  // }
+  //
+  // ⚠ Skills and verification status are NOT returned by this endpoint.
+  //   The returned TechnicianModel will have empty selectedSkills and the
+  //   default verificationStatus. Callers must merge with existing state.
+  // ────────────────────────────────────────────────────────────────────────────
+  Future<TechnicianModel> getProfile() async {
+    try {
+      final response = await _api.get(ApiUrls.workerProfile);
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return TechnicianModel.fromProfileJson(body);
+      }
+
+      String detail = 'Failed to load profile (HTTP ${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['detail'] != null) detail = body['detail'].toString();
+      } catch (_) {}
       throw Exception(detail);
     } on Exception {
       rethrow;
