@@ -7,7 +7,7 @@ import '../../widgets/customer/customer_profile_header.dart';
 import '../../widgets/customer/logout_confirmation_dialog.dart';
 import '../../widgets/customer/profile_menu_tile.dart';
 import '../../widgets/customer/profile_photo_viewer.dart';
-import '../auth/logIn_screen.dart';
+import '../auth/login_screen.dart';
 import 'customer_home_screen.dart';
 import 'edit_profile_screen.dart';
 

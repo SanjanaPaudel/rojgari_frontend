@@ -11,7 +11,7 @@ import '../../services/storage_service.dart';
 import '../../services/worker_dashboard_service.dart';
 import '../../widgets/customer/logout_confirmation_dialog.dart';
 import '../../widgets/customer/profile_menu_tile.dart';
-import '../auth/logIn_screen.dart';
+import '../auth/login_screen.dart';
 import 'edit_profile_screen.dart';
 import 'identity_documents_screen.dart';
 import 'technician_home_screen.dart';
