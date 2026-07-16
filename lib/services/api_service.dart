@@ -261,6 +261,87 @@ class ApiService {
     return response;
   }
 
+  // Sends a multipart/form-data POST request with multiple named file fields.
+  //
+  // WHY a separate method instead of extending multipartPost:
+  //   The identity-document upload requires three distinct field names
+  //   (citizenship_front, citizenship_back, experience_document) in a single
+  //   request.  multipartPost is designed for exactly one file field and is
+  //   kept unchanged so the profile-photo upload is not affected.
+  //
+  // Parameters:
+  //   [fields]     – Additional plain-text form fields (can be empty map).
+  //   [fileFields] – List of named file entries, each carrying:
+  //                    fieldName – multipart field name the server reads from
+  //                                request.FILES (e.g. "citizenship_front")
+  //                    bytes     – raw file bytes (from XFile.readAsBytes())
+  //                    filename  – original filename for Content-Disposition
+  //
+  // The MIME type of each file is inferred from the filename extension.
+  // Authorization header is added automatically via _getValidAccessToken().
+  // On a 401 the token is refreshed and the full request is rebuilt + resent
+  // (MultipartRequest cannot be reused after send()).
+  Future<http.StreamedResponse> multipartPostFiles(
+    String url,
+    Map<String, String> fields,
+    List<({String fieldName, Uint8List bytes, String filename})> fileFields,
+  ) async {
+    http.MediaType _mimeType(String name) {
+      final ext = name.split('.').last.toLowerCase();
+      return switch (ext) {
+        'png'  => http.MediaType('image', 'png'),
+        'webp' => http.MediaType('image', 'webp'),
+        'gif'  => http.MediaType('image', 'gif'),
+        _      => http.MediaType('image', 'jpeg'),
+      };
+    }
+
+    // Builds a fresh MultipartRequest with all file parts attached.
+    // Must be called again on 401-retry because a sent request cannot be reused.
+    List<http.MultipartFile> buildFileParts() => [
+      for (final f in fileFields)
+        http.MultipartFile.fromBytes(
+          f.fieldName,
+          f.bytes,
+          filename: f.filename,
+          contentType: _mimeType(f.filename),
+        ),
+    ];
+
+    http.MultipartRequest request = http.MultipartRequest(
+      "POST",
+      Uri.parse(url),
+    );
+
+    final token = await _getValidAccessToken();
+    if (token != null) {
+      request.headers["Authorization"] = "Bearer $token";
+    }
+
+    request.fields.addAll(fields);
+    request.files.addAll(buildFileParts());
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 401 && !_isPublicAuthEndpoint(url)) {
+      final refreshed = await _handleTokenRefresh();
+      if (!refreshed) await _logoutUser();
+
+      // Rebuild the request — MultipartRequest cannot be reused after send().
+      request = http.MultipartRequest("POST", Uri.parse(url));
+      final newToken = await _getValidAccessToken();
+      if (newToken != null) {
+        request.headers["Authorization"] = "Bearer $newToken";
+      }
+      request.fields.addAll(fields);
+      request.files.addAll(buildFileParts());
+
+      response = await request.send();
+    }
+
+    return response;
+  }
+
   bool _isPublicAuthEndpoint(String url) {
     return url == ApiUrls.login ||
         url == ApiUrls.signup ||

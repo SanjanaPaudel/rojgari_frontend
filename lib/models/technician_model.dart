@@ -168,18 +168,16 @@ class TechnicianModel {
   //   Callers must preserve them from the existing model via copyWith().
   // ---------------------------------------------------------------------------
   factory TechnicianModel.fromProfileJson(Map<String, dynamic> json) {
-    final rawPhoto = json['profile_photo'] as String?;
-
-    String? resolvedPhotoUrl;
-    if (rawPhoto != null && rawPhoto.trim().isNotEmpty) {
-      if (rawPhoto.startsWith('http')) {
-        resolvedPhotoUrl = rawPhoto;
-      } else {
-        // Relative Django media path — prefix with server root (strip "/api").
-        final serverRoot = ApiUrls.baseUrl.replaceFirst('/api', '');
-        resolvedPhotoUrl = '$serverRoot$rawPhoto';
-      }
+    // Helper – resolves relative Django media paths to absolute URLs.
+    String? resolveUrl(String? raw) {
+      if (raw == null || raw.trim().isEmpty) return null;
+      if (raw.startsWith('http')) return raw;
+      // Relative path like "/media/..." → prefix with server root.
+      final serverRoot = ApiUrls.baseUrl.replaceFirst('/api', '');
+      return '$serverRoot$raw';
     }
+
+    final resolvedPhotoUrl = resolveUrl(json['profile_photo'] as String?);
 
     final rawServiceAreas = json['service_areas'] as String? ?? '';
     final serviceAreaList = rawServiceAreas
@@ -188,6 +186,25 @@ class TechnicianModel {
         .where((s) => s.isNotEmpty)
         .toList();
 
+    // Citizenship document URLs — only present after the worker has uploaded
+    // them via POST /api/auth/worker/identity/.
+    final frontUrl = resolveUrl(json['citizenship_front'] as String?);
+    final backUrl = resolveUrl(json['citizenship_back'] as String?);
+    final isVerified = (json['is_verified'] as bool?) ?? false;
+
+    // Derive the three-way verification status:
+    //   • is_verified == true               → admin has approved the docs
+    //   • docs uploaded, not yet approved   → pending review
+    //   • no docs uploaded at all           → incomplete (still needs to submit)
+    final TechnicianVerificationStatus verStatus;
+    if (isVerified) {
+      verStatus = TechnicianVerificationStatus.verified;
+    } else if (frontUrl != null && backUrl != null) {
+      verStatus = TechnicianVerificationStatus.pending;
+    } else {
+      verStatus = TechnicianVerificationStatus.incomplete;
+    }
+
     return TechnicianModel(
       fullName: json['full_name'] as String? ?? '',
       phone: json['phone_number'] as String? ?? '',
@@ -195,7 +212,10 @@ class TechnicianModel {
       about: json['about_me'] as String? ?? '',
       profileImageUrl: resolvedPhotoUrl,
       serviceAreas: serviceAreaList,
-      // Skills and verification come from other sources — leave at defaults.
+      citizenshipFrontUrl: frontUrl,
+      citizenshipBackUrl: backUrl,
+      verificationStatus: verStatus,
+      // Skills come from the dashboard response — left at default here.
       // The caller (profile_screen._loadProfile) merges these via copyWith.
     );
   }

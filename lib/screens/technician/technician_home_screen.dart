@@ -87,12 +87,23 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
         _dashboard = dashboard;
         _isLoading = false;
         isOnline = dashboard.worker.isOnline;
-        // Merge the complete profile data with dashboard skills/verification
+        // Merge the complete profile data with dashboard skills/verification.
+        //
+        // verificationStatus resolution:
+        //   • dashboard.worker.verified == true  → admin-verified; always use verified
+        //   • dashboard.worker.verified == false → use the status fromProfileJson
+        //     computed from citizenship_front / citizenship_back URL presence:
+        //       - both URLs present  → pending (docs submitted, awaiting admin)
+        //       - URLs absent        → incomplete (worker hasn't uploaded docs yet)
+        //
+        // This is the ONLY correct way to persist "pending" across refreshes,
+        // because the dashboard "verified" field is a binary true/false and
+        // cannot distinguish the three states on its own.
         _profile = profile.copyWith(
           selectedSkills: List<String>.from(dashboard.worker.skills),
           verificationStatus: dashboard.worker.verified
               ? TechnicianVerificationStatus.verified
-              : TechnicianVerificationStatus.incomplete,
+              : profile.verificationStatus, // pending or incomplete from getProfile()
         );
       });
     } catch (e) {
