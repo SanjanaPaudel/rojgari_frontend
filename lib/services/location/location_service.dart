@@ -36,6 +36,16 @@ class LocationService {
   Future<bool> openLocationSettings() => Geolocator.openLocationSettings();
   Future<bool> openAppSettings() => Geolocator.openAppSettings();
 
+  /// Returns a stream of GPS positions that emits only when the device has
+  /// moved at least [distanceFilterMetres] metres. Defaults to 1 m.
+  Stream<Position> getLocationStream({int distanceFilterMetres = 1}) =>
+      Geolocator.getPositionStream(
+        locationSettings: LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: distanceFilterMetres,
+        ),
+      );
+
   Future<CurrentDeviceLocation> getCurrentLocation() async {
     try {
       final position = await Geolocator.getCurrentPosition(
