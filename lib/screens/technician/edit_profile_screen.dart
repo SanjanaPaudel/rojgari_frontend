@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/colors.dart';
 import '../../models/technician_model.dart';
+import '../../services/api_service.dart';
 import '../../services/worker_dashboard_service.dart';
 
 class TechnicianEditProfileScreen extends StatefulWidget {
@@ -31,6 +32,20 @@ class _TechnicianEditProfileScreenState
   Uint8List? _localImageBytes;
   String? _photoError;
   bool _isSaving = false; // Tracks API call in progress to disable the button
+
+  // Set to true only when the user picks a NEW photo in this session.
+  // Used in _save() to decide whether to call the upload endpoint.
+  bool _isNewPhotoSelected = false;
+
+  // Original filename of the newly picked photo (e.g. "IMG_1234.jpg").
+  // Sent as the multipart filename header so the backend can derive an
+  // appropriate stored filename.
+  String? _newPhotoName;
+
+  // Maximum allowed size for a profile photo: 2 MB.
+  // Profile photos are displayed at thumbnail size; 2 MB is more than enough
+  // for a clear image while keeping upload times short on mobile networks.
+  static const int _kMaxProfilePhotoBytes = 2 * 1024 * 1024; // 2 097 152 bytes
 
   @override
   void initState() {
@@ -109,9 +124,28 @@ class _TechnicianEditProfileScreenState
       if (!mounted || image == null) return;
       final bytes = await image.readAsBytes();
       if (!mounted) return;
+
+      // ── Size-limit guard: reject images larger than 2 MB ──────────────────
+      // Checked here (after reading bytes) so we have the exact in-memory
+      // size regardless of compression applied by the picker.
+      if (bytes.lengthInBytes > _kMaxProfilePhotoBytes) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Image is too large. Maximum size for a profile photo is 2 MB. '
+              'Please choose a smaller image or take a new photo.',
+            ),
+          ),
+        );
+        return;
+      }
+      // ──────────────────────────────────────────────────────────────────────
+
       setState(() {
         _localImagePath = image.path;
         _localImageBytes = bytes;
+        _isNewPhotoSelected = true;  // flag: this session produced a new photo
+        _newPhotoName = image.name;  // original filename for the multipart header
         _photoError = null;
       });
     } on PlatformException catch (error) {
@@ -170,6 +204,63 @@ class _TechnicianEditProfileScreenState
     setState(() => _isSaving = true);
 
     try {
+      // ════════════════════════════════════════════════════════════════════════
+      // STEP 1 — Upload profile photo (only when the user picked a new one)
+      // ════════════════════════════════════════════════════════════════════════
+      //
+      // WHY conditional: if the user didn't change their photo we must NOT
+      // re-upload it, which would waste bandwidth and could overwrite the
+      // server copy with a redundant duplicate.
+      //
+      // HOW it works:
+      //   • The http package builds a multipart/form-data request.
+      //   • The image is attached under the field name "profile_photo".
+      //   • The Authorization header (Bearer token) is added automatically
+      //     by ApiService before the request is sent.
+      //
+      // REQUEST:
+      //   POST /api/auth/worker/profile-photo/
+      //   Content-Type: multipart/form-data; boundary=<auto>
+      //   Authorization: Bearer <access_token>
+      //
+      //   --<boundary>
+      //   Content-Disposition: form-data; name="profile_photo"; filename="<imageName>"
+      //   Content-Type: image/jpeg          ← inferred by the backend
+      //
+      //   <raw image bytes>
+      //   --<boundary>--
+      //
+      // SUCCESS RESPONSE (HTTP 200):
+      //   {
+      //     "message"      : "Profile photo uploaded successfully.",
+      //     "profile_photo": "http://127.0.0.1:8000/media/profile_photos/worker.jpg"
+      //   }
+      //
+      // The returned URL becomes the single source of truth stored in the
+      // model.  Local bytes/path are cleared so the app renders the server
+      // URL going forward (avoids showing stale local data after the upload).
+      // ════════════════════════════════════════════════════════════════════════
+      String? uploadedPhotoUrl;
+      if (_isNewPhotoSelected && _localImageBytes != null) {
+        uploadedPhotoUrl = await WorkerDashboardService().uploadProfilePhoto(
+          imageBytes: _localImageBytes!,
+          imageName: _newPhotoName ?? 'profile_photo.jpg',
+        );
+      }
+
+      // ════════════════════════════════════════════════════════════════════════
+      // STEP 2 — Update text-based profile fields
+      // ════════════════════════════════════════════════════════════════════════
+      //
+      // REQUEST:
+      //   PUT /api/auth/worker/profile/
+      //   Content-Type: application/json
+      //   Authorization: Bearer <access_token>
+      //
+      //   Body: { "full_name": "...", "email": "...",
+      //           "about": "...",     "service_area": "..." }
+      // ════════════════════════════════════════════════════════════════════════
+
       // Build the service_area string — join comma-separated areas as a single string
       final serviceAreaText = _serviceArea.text
           .split(',')
@@ -187,7 +278,15 @@ class _TechnicianEditProfileScreenState
 
       if (!mounted) return;
 
-      // Return the updated TechnicianModel to the calling screen
+      // Return the updated TechnicianModel to the calling screen.
+      //
+      // If a photo was uploaded this session:
+      //   - profileImageUrl  ← server URL from the upload response
+      //   - localImagePath   ← cleared (null) so the app always uses the URL
+      //   - localImageBytes  ← cleared (null) to free memory
+      //
+      // If the photo was NOT changed this session, preserve whatever the
+      // model already had (existing URL or previously cached local bytes).
       Navigator.pop(
         context,
         widget.technician.copyWith(
@@ -195,8 +294,10 @@ class _TechnicianEditProfileScreenState
           phone: '+977 ${_phone.text.trim()}',
           email: _email.text.trim(),
           about: _about.text.trim(),
-          localProfileImagePath: _localImagePath,
-          localProfileImageBytes: _localImageBytes,
+          profileImageUrl:
+              uploadedPhotoUrl ?? widget.technician.profileImageUrl,
+          localProfileImagePath: uploadedPhotoUrl != null ? null : _localImagePath,
+          localProfileImageBytes: uploadedPhotoUrl != null ? null : _localImageBytes,
           serviceAreas: _serviceArea.text
               .split(',')
               .map((s) => s.trim())
@@ -206,6 +307,14 @@ class _TechnicianEditProfileScreenState
       );
     } catch (e) {
       if (!mounted) return;
+
+      // ApiService._logoutUser() throws this specific message AFTER it has
+      // already called NavigationService.navigatorKey to push the LoginScreen.
+      // Showing a SnackBar here would be pointless (the screen is being
+      // replaced) and would look like a bug to the user.
+      // We simply return and let the navigation complete cleanly.
+      if (e.toString().contains(ApiService.sessionExpired)) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),

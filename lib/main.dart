@@ -30,6 +30,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
 
+      // The global navigator key used by ApiService._logoutUser() to push the
+      // LoginScreen when the session expires anywhere in the app — including
+      // inside background service calls that have no BuildContext of their own.
+      navigatorKey: NavigationService.navigatorKey,
+
       // home: OTPScreen(
       //   email: "email",
       // ),
