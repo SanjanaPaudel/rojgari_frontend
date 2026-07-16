@@ -66,5 +66,15 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+    <string>Rojgari needs photo library access so you can attach issue photos and videos.</string>
+
+    <key>NSCameraUsageDescription</key>
+    <string>Rojgari needs camera access so you can capture your service problem.</string>
+
+	<key>NSMicrophoneUsageDescription</key>
+    <string>Rojgari needs microphone access when recording a problem video.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Rojgari needs your location to select the address where the service professional should come.</string>
 </dict>
 </plist>
