@@ -81,8 +81,42 @@ class WorkerDashboardService {
     }
   }
 
+  /// Sends a PATCH request to /api/auth/worker/location/ to update the
+  /// worker's current GPS coordinates while online.
+  ///
+  /// Payload:  { "latitude": 27.7172, "longitude": 85.3240 }
+  ///
+  /// Throws an [Exception] on network failure or a non-200/204 response.
+  Future<void> updateWorkerLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await _api.patch(
+        ApiUrls.workerLocation,
+        {
+          'latitude': latitude,
+          'longitude': longitude,
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) return;
+
+      String detail =
+          'Failed to update location (HTTP ${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['detail'] != null) detail = body['detail'].toString();
+      } catch (_) {}
+      throw Exception(detail);
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
+    }
+  }
+
   /// Sends a PUT request to /api/auth/worker/profile/ to update the worker's
-  /// editable profile fields.
   ///
   /// Returns the backend [message] string on success
   /// (e.g. "Profile updated successfully.").

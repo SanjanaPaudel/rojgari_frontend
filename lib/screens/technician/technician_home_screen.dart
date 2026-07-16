@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../core/constants/api_urls.dart';
 import '../../core/constants/colors.dart';
@@ -39,6 +42,22 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   late bool isOnline;
   late TechnicianModel _profile;
 
+  // ── Location streaming state ──────────────────────────────────────────────
+  StreamSubscription<Position>? _locationStreamSub;
+
+  /// True while an async permission-check + backend toggle round-trip is
+  /// in progress — prevents double-taps and shows a loading indicator.
+  bool _isTogglingStatus = false;
+
+  /// Consecutive location-upload failures while online.
+  /// After [_maxLocationFailures] failures we auto-toggle offline.
+  int _locationFailureCount = 0;
+  static const int _maxLocationFailures = 5;
+
+  /// The last known GPS position — used to compute distance travelled
+  /// between consecutive stream events for debug logging.
+  Position? _previousPosition;
+
   // Requests list remains local until a dedicated requests API is available.
   final List<Map<String, String>> requests = [
     {
@@ -77,6 +96,12 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _stopLocationStream();
+    super.dispose();
+  }
+
   Future<void> _loadDashboard() async {
     if (!mounted) return;
     setState(() {
@@ -111,6 +136,21 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
               : profile.verificationStatus, // pending or incomplete from getProfile()
         );
       });
+
+      // If the worker was online when they last closed the app, restart the
+      // location stream automatically after verifying permission is still granted.
+      if (dashboard.worker.isOnline) {
+        final permission = await _locationService.checkPermission();
+        final serviceEnabled = await _locationService.isLocationServiceEnabled();
+        if (permission == AppLocationPermission.granted && serviceEnabled) {
+          _startLocationStream();
+        } else {
+          // Permission revoked or service disabled since last session — force offline.
+          _forceToggleOffline(
+            reason: 'Location access was lost. You have been set to Offline.',
+          );
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -135,7 +175,11 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     }
   }
 
-  void _showLocationPermissionDialog() {
+  /// Shows the custom location permission dialog.
+  /// Returns [true] if permission was ultimately granted, [false] otherwise.
+  Future<bool> _showLocationPermissionDialog() async {
+    final completer = Completer<bool>();
+    if (!mounted) return false;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -143,62 +187,67 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
         return _LocationPermissionDialog(
           onAllowWhileUsing: () async {
             Navigator.pop(context);
-            await _handleRequestPermission();
+            final granted = await _handleRequestPermission();
+            completer.complete(granted);
           },
           onAllowThisTime: () async {
             Navigator.pop(context);
-            await _handleRequestPermission();
+            final granted = await _handleRequestPermission();
+            completer.complete(granted);
           },
           onDeny: () {
             Navigator.pop(context);
-            if (mounted && isOnline) {
-              setState(() => isOnline = false);
-            }
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Location permission is required to receive incoming job requests.',
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Location permission is required to go online and receive job requests.',
+                  ),
+                  backgroundColor: AppColors.red,
                 ),
-                backgroundColor: AppColors.red,
-              ),
-            );
+              );
+            }
+            completer.complete(false);
           },
         );
       },
     );
+    return completer.future;
   }
 
-  Future<void> _handleRequestPermission() async {
+  /// Triggers the OS permission request and returns whether access was granted.
+  Future<bool> _handleRequestPermission() async {
     try {
+      setState(() => _isTogglingStatus = true);
       final permission = await _locationService.requestPermission();
+      if (!mounted) return false;
 
       if (permission == AppLocationPermission.granted) {
         final serviceEnabled = await _locationService.isLocationServiceEnabled();
         if (!serviceEnabled) {
           _showServiceDisabledSnackbar();
-        } else {
+          return false;
+        }
+        return true;
+      } else if (permission == AppLocationPermission.blocked) {
+        _showPermissionBlockedDialog();
+        return false;
+      } else {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Location permission granted successfully.'),
-              backgroundColor: AppColors.green,
+              content: Text('Location permission was denied.'),
+              backgroundColor: AppColors.red,
             ),
           );
         }
-      } else if (permission == AppLocationPermission.blocked) {
-        _showPermissionBlockedDialog();
-      } else {
-        if (mounted && isOnline) {
-          setState(() => isOnline = false);
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Location permission was denied.'),
-            backgroundColor: AppColors.red,
-          ),
-        );
+        return false;
       }
     } catch (e) {
       debugPrint('Error requesting location permission: $e');
+      return false;
+    } finally {
+      if (mounted) setState(() => _isTogglingStatus = false);
     }
   }
 
@@ -253,6 +302,184 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     );
   }
 
+  // ── Toggle handlers ────────────────────────────────────────────────────────
+
+  /// Called when the worker taps the toggle towards **Online**.
+  Future<void> _handleToggleOnline() async {
+    if (_isTogglingStatus) return;
+
+    // 1. Check if location service is enabled and permission already granted.
+    final serviceEnabled = await _locationService.isLocationServiceEnabled();
+    final permission = await _locationService.checkPermission();
+
+    bool locationReady =
+        serviceEnabled && permission == AppLocationPermission.granted;
+
+    // 2. If not ready, show the permission dialog and await result.
+    if (!locationReady) {
+      setState(() => _isTogglingStatus = true);
+      locationReady = await _showLocationPermissionDialog();
+      if (mounted) setState(() => _isTogglingStatus = false);
+    }
+
+    if (!locationReady || !mounted) return;
+
+    // 3. Optimistic UI update.
+    setState(() {
+      isOnline = true;
+      _isTogglingStatus = true;
+    });
+
+    try {
+      // 4. Inform backend of the new status.
+      await _dashboardService.updateOnlineStatus(true);
+      // 5. Start streaming location to the backend.
+      _startLocationStream();
+    } catch (e) {
+      // 6. Rollback on failure.
+      if (!mounted) return;
+      setState(() => isOnline = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isTogglingStatus = false);
+    }
+  }
+
+  /// Called when the worker taps the toggle towards **Offline**.
+  Future<void> _handleToggleOffline() async {
+    if (_isTogglingStatus) return;
+
+    // 1. Stop streaming immediately.
+    _stopLocationStream();
+
+    // 2. Optimistic UI update.
+    setState(() {
+      isOnline = false;
+      _isTogglingStatus = true;
+    });
+
+    try {
+      await _dashboardService.updateOnlineStatus(false);
+    } catch (e) {
+      // Rollback: if the API failed the worker might still be online on the
+      // backend, but we keep them offline locally and show the error.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isTogglingStatus = false);
+    }
+  }
+
+  /// Forces the worker offline — used when location access is revoked while
+  /// the worker is online, or on session restore when permission was lost.
+  Future<void> _forceToggleOffline({required String reason}) async {
+    _stopLocationStream();
+    if (!mounted) return;
+    setState(() => isOnline = false);
+    try {
+      await _dashboardService.updateOnlineStatus(false);
+    } catch (_) {
+      // Best-effort — log silently; UI is already showing offline.
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(reason),
+        backgroundColor: AppColors.orange,
+      ),
+    );
+  }
+
+  // ── Location stream lifecycle ───────────────────────────────────────────────
+
+  void _startLocationStream() {
+    _locationStreamSub?.cancel();
+    _locationFailureCount = 0;
+
+    _locationStreamSub =
+        _locationService.getLocationStream().listen(
+          (Position position) async {
+            // ── Debug: print distance since last known position ────────────
+            if (_previousPosition != null) {
+              final distanceMetres = Geolocator.distanceBetween(
+                _previousPosition!.latitude,
+                _previousPosition!.longitude,
+                position.latitude,
+                position.longitude,
+              );
+              debugPrint(
+                '[Location] Moved ${distanceMetres.toStringAsFixed(2)} m '
+                '→ (${position.latitude.toStringAsFixed(6)}, '
+                '${position.longitude.toStringAsFixed(6)})',
+              );
+            } else {
+              debugPrint(
+                '[Location] First fix: '
+                '(${position.latitude.toStringAsFixed(6)}, '
+                '${position.longitude.toStringAsFixed(6)})',
+              );
+            }
+            _previousPosition = position;
+            // ──────────────────────────────────────────────────────────────
+
+            // Reset failure counter on each successful GPS event.
+            _locationFailureCount = 0;
+            debugPrint(
+              '[Location] → Sending PATCH to backend: '
+              '(${position.latitude.toStringAsFixed(6)}, '
+              '${position.longitude.toStringAsFixed(6)})',
+            );
+            try {
+              await _dashboardService.updateWorkerLocation(
+                latitude: position.latitude,
+                longitude: position.longitude,
+              );
+              debugPrint('[Location] ✓ PATCH sent successfully.');
+            } catch (e) {
+              // Count consecutive failures; auto-offline after _maxLocationFailures.
+              _locationFailureCount++;
+              debugPrint(
+                '[Location] ✗ Upload failed (#$_locationFailureCount): $e',
+              );
+              if (_locationFailureCount >= _maxLocationFailures && mounted) {
+                _forceToggleOffline(
+                  reason:
+                      'Could not send your location to the server. You have been set to Offline.',
+                );
+              }
+            }
+          },
+          onError: (Object error) {
+            // Stream-level error (e.g. location service disabled mid-session).
+            debugPrint('[Location] Stream error: $error');
+            if (mounted) {
+              _forceToggleOffline(
+                reason:
+                    'Location service was turned off. You have been set to Offline.',
+              );
+            }
+          },
+          cancelOnError: true,
+        );
+  }
+
+  void _stopLocationStream() {
+    _locationStreamSub?.cancel();
+    _locationStreamSub = null;
+    _locationFailureCount = 0;
+    _previousPosition = null;
+  }
+
   /// Resolves a profile photo URL/path from the API into a usable URL string.
   /// Returns null when the backend sends null (no photo uploaded yet).
   String? _resolvePhotoUrl(String? raw) {
@@ -292,26 +519,15 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                 profile: _profile,
                 isOnline: isOnline,
                 requests: requests,
-                onStatusChanged: (newStatus) async {
-                  // 1. Update UI immediately (optimistic update) for instant feel
-                  setState(() => isOnline = newStatus);
-
-                  try {
-                    // 2. Inform backend: PATCH /worker/status/ {"is_online": newStatus}
-                    await _dashboardService.updateOnlineStatus(newStatus);
-                  } catch (e) {
-                    // 3. Rollback if the API call failed
-                    if (!mounted) return;
-                    setState(() => isOnline = !newStatus);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          e.toString().replaceFirst('Exception: ', ''),
-                        ),
-                      ),
-                    );
+                onStatusChanged: (newStatus) {
+                  if (_isTogglingStatus) return; // debounce double-taps
+                  if (newStatus) {
+                    _handleToggleOnline();
+                  } else {
+                    _handleToggleOffline();
                   }
                 },
+                isTogglingStatus: _isTogglingStatus,
                 onProfileUpdated: (updatedProfile) {
                   setState(() => _profile = updatedProfile);
                 },
@@ -349,6 +565,7 @@ class _DashboardBody extends StatelessWidget {
     required this.onProfileUpdated,
     required this.onMenuTap,
     required this.resolvePhotoUrl,
+    required this.isTogglingStatus,
   });
 
   final WorkerDashboardResponse dashboard;
@@ -359,6 +576,7 @@ class _DashboardBody extends StatelessWidget {
   final ValueChanged<TechnicianModel> onProfileUpdated;
   final VoidCallback onMenuTap;
   final String? Function(String?) resolvePhotoUrl;
+  final bool isTogglingStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -404,6 +622,7 @@ class _DashboardBody extends StatelessWidget {
               avatarBytes: profile.localProfileImageBytes,
               isOnline: isOnline,
               onStatusChanged: onStatusChanged,
+              isTogglingStatus: isTogglingStatus,
             ),
           ),
 

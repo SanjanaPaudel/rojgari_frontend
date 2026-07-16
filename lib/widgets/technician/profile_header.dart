@@ -12,6 +12,9 @@ class ProfileHeader extends StatelessWidget {
   final Uint8List? avatarBytes;
   final bool isOnline;
   final ValueChanged<bool>? onStatusChanged;
+  /// When true, replaces the status dropdown with a loading indicator while
+  /// a permission check or backend toggle round-trip is in progress.
+  final bool isTogglingStatus;
 
   const ProfileHeader({
     super.key,
@@ -23,6 +26,7 @@ class ProfileHeader extends StatelessWidget {
     this.avatarBytes,
     required this.isOnline,
     this.onStatusChanged,
+    this.isTogglingStatus = false,
   });
 
   @override
@@ -214,104 +218,123 @@ class ProfileHeader extends StatelessWidget {
 
                             const Spacer(),
 
-                            PopupMenuButton<bool>(
-                              tooltip: "Change availability",
-                              onSelected: onStatusChanged,
-                              position: PopupMenuPosition.under,
-                              color: Colors.white,
-                              surfaceTintColor: Colors.white,
-                              elevation: 6,
-                              constraints: const BoxConstraints(
-                                minWidth: 116,
-                                maxWidth: 116,
-                              ),
-                              menuPadding: const EdgeInsets.symmetric(
-                                vertical: 5,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                side: const BorderSide(
-                                  color: Color(0xffE9E5EF),
-                                ),
-                              ),
-                              itemBuilder: (context) => [
-                                PopupMenuItem<bool>(
-                                  value: true,
-                                  height: 34,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                  ),
-                                  child: _StatusOption(
-                                    label: "Online",
-                                    color: const Color(0xff22A447),
-                                    isSelected: isOnline,
-                                  ),
-                                ),
-                                PopupMenuItem<bool>(
-                                  value: false,
-                                  height: 34,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                  ),
-                                  child: _StatusOption(
-                                    label: "Offline",
-                                    color: const Color(0xff8A8F98),
-                                    isSelected: !isOnline,
-                                  ),
-                                ),
-                              ],
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isOnline
-                                      ? const Color(0xffEAF8EF)
-                                      : const Color(0xffF1F2F4),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isOnline
-                                        ? const Color(0xffBDE8CA)
-                                        : const Color(0xffD8DADE),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 7,
-                                      height: 7,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: isOnline
-                                            ? const Color(0xff22A447)
-                                            : const Color(0xff8A8F98),
-                                      ),
+                            // ── Online/Offline status toggle ──────────────
+                            if (isTogglingStatus)
+                              // Show a spinner only during permission-check /
+                              // initial backend toggle; NOT during location uploads.
+                              const SizedBox(
+                                width: 64,
+                                height: 26,
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.primary,
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      isOnline ? "Online" : "Offline",
-                                      style: TextStyle(
-                                        fontSize: 11,
+                                  ),
+                                ),
+                              )
+                            else
+                              PopupMenuButton<bool>(
+                                tooltip: "Change availability",
+                                onSelected: onStatusChanged,
+                                position: PopupMenuPosition.under,
+                                color: Colors.white,
+                                surfaceTintColor: Colors.white,
+                                elevation: 6,
+                                constraints: const BoxConstraints(
+                                  minWidth: 116,
+                                  maxWidth: 116,
+                                ),
+                                menuPadding: const EdgeInsets.symmetric(
+                                  vertical: 5,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  side: const BorderSide(
+                                    color: Color(0xffE9E5EF),
+                                  ),
+                                ),
+                                itemBuilder: (context) => [
+                                  PopupMenuItem<bool>(
+                                    value: true,
+                                    height: 34,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                    ),
+                                    child: _StatusOption(
+                                      label: "Online",
+                                      color: const Color(0xff22A447),
+                                      isSelected: isOnline,
+                                    ),
+                                  ),
+                                  PopupMenuItem<bool>(
+                                    value: false,
+                                    height: 34,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                    ),
+                                    child: _StatusOption(
+                                      label: "Offline",
+                                      color: const Color(0xff8A8F98),
+                                      isSelected: !isOnline,
+                                    ),
+                                  ),
+                                ],
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isOnline
+                                        ? const Color(0xffEAF8EF)
+                                        : const Color(0xffF1F2F4),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isOnline
+                                          ? const Color(0xffBDE8CA)
+                                          : const Color(0xffD8DADE),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 7,
+                                        height: 7,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isOnline
+                                              ? const Color(0xff22A447)
+                                              : const Color(0xff8A8F98),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        isOnline ? "Online" : "Offline",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: isOnline
+                                              ? const Color(0xff18833A)
+                                              : const Color(0xff6F747C),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Icon(
+                                        Icons.keyboard_arrow_down,
+                                        size: 15,
                                         color: isOnline
                                             ? const Color(0xff18833A)
                                             : const Color(0xff6F747C),
-                                        fontWeight: FontWeight.w600,
                                       ),
-                                    ),
-                                    const SizedBox(width: 2),
-                                    Icon(
-                                      Icons.keyboard_arrow_down,
-                                      size: 15,
-                                      color: isOnline
-                                          ? const Color(0xff18833A)
-                                          : const Color(0xff6F747C),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ],
