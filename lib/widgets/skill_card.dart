@@ -10,6 +10,7 @@ enum SkillCardStyle { signup, technician }
 class SkillCard extends StatelessWidget {
   final Skill skill;
   final bool isSelected;
+  final bool isDisabled;
   final VoidCallback onTap;
 
   /// Visual style variant. Defaults to [SkillCardStyle.signup] so all existing
@@ -24,6 +25,7 @@ class SkillCard extends StatelessWidget {
     super.key,
     required this.skill,
     required this.isSelected,
+    this.isDisabled = false,
     required this.onTap,
     this.style = SkillCardStyle.signup,
     this.icon,
@@ -35,12 +37,14 @@ class SkillCard extends StatelessWidget {
         ? _TechnicianCard(
             skill: skill,
             isSelected: isSelected,
+            isDisabled: isDisabled,
             onTap: onTap,
             icon: icon ?? Icons.handyman,
           )
         : _SignupCard(
             skill: skill,
             isSelected: isSelected,
+            isDisabled: isDisabled,
             onTap: onTap,
           );
   }
@@ -54,11 +58,13 @@ class _SignupCard extends StatelessWidget {
   const _SignupCard({
     required this.skill,
     required this.isSelected,
+    required this.isDisabled,
     required this.onTap,
   });
 
   final Skill skill;
   final bool isSelected;
+  final bool isDisabled;
   final VoidCallback onTap;
 
   @override
@@ -67,12 +73,14 @@ class _SignupCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isSelected
+              ? Colors.white
+              : (isDisabled ? const Color(0xFFEBEBF0) : Colors.white),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isSelected
                 ? const Color(0xFF6A5AE0)
-                : Colors.grey.shade300,
+                : (isDisabled ? Colors.grey.shade400 : Colors.grey.shade300),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: [
@@ -83,7 +91,9 @@ class _SignupCard extends StatelessWidget {
             ),
           ],
         ),
-        child: LayoutBuilder(
+        child: Opacity(
+          opacity: isDisabled ? 0.55 : 1.0,
+          child: LayoutBuilder(
           builder: (context, constraints) {
             final double cardWidth = constraints.maxWidth;
 
@@ -168,6 +178,7 @@ class _SignupCard extends StatelessWidget {
           },
         ),
       ),
+      ),
     );
   }
 }
@@ -180,12 +191,14 @@ class _TechnicianCard extends StatelessWidget {
   const _TechnicianCard({
     required this.skill,
     required this.isSelected,
+    required this.isDisabled,
     required this.onTap,
     required this.icon,
   });
 
   final Skill skill;
   final bool isSelected;
+  final bool isDisabled;
   final VoidCallback onTap;
   final IconData icon;
 
@@ -201,12 +214,14 @@ class _TechnicianCard extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.lightPurple : Colors.white,
+            color: isSelected
+                ? AppColors.lightPurple
+                : (isDisabled ? const Color(0xFFF3F2F6) : Colors.white),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: isSelected
                   ? AppColors.primary
-                  : const Color(0xFFEEEAF9),
+                  : (isDisabled ? Colors.grey.shade400 : const Color(0xFFEEEAF9)),
               width: isSelected ? 1.5 : 1,
             ),
             boxShadow: const [
@@ -217,51 +232,54 @@ class _TechnicianCard extends StatelessWidget {
               ),
             ],
           ),
-          child: Stack(
-            children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: isSelected ? Colors.white : AppColors.lightPurple,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 9),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Text(
-                      skill.name,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.black,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+          child: Opacity(
+            opacity: isDisabled ? 0.55 : 1.0,
+            child: Stack(
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.white : AppColors.lightPurple,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: AppColors.primary,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              if (isSelected)
-                const Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Icon(
-                    Icons.check_circle,
-                    color: AppColors.primary,
-                    size: 21,
-                  ),
+                    const SizedBox(height: 9),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        skill.name,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.black,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-            ],
+                if (isSelected)
+                  const Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Icon(
+                      Icons.check_circle,
+                      color: AppColors.primary,
+                      size: 21,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

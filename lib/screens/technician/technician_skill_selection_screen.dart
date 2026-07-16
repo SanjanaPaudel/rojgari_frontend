@@ -114,6 +114,15 @@ class _TechnicianSkillSelectionScreenState
       if (_selectedSkillIds.contains(skillId)) {
         _selectedSkillIds.remove(skillId);
       } else {
+        if (_selectedSkillIds.length >= 3) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You can select a maximum of 3 skills.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
         _selectedSkillIds.add(skillId);
       }
     });
@@ -299,9 +308,12 @@ class _TechnicianSkillSelectionScreenState
           itemCount: _allSkills.length,
           itemBuilder: (context, index) {
             final skill = _allSkills[index];
+            final isSelected = _selectedSkillIds.contains(skill.id);
+            final isDisabled = _selectedSkillIds.length >= 3 && !isSelected;
             return SkillCard(
               skill: skill,
-              isSelected: _selectedSkillIds.contains(skill.id),
+              isSelected: isSelected,
+              isDisabled: isDisabled,
               onTap: () => _toggle(skill.id),
               style: SkillCardStyle.technician,
               icon: _resolveIcon(skill.icon),

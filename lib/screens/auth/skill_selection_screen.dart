@@ -344,15 +344,27 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
         ),
         itemBuilder: (context, index) {
           final skill = _filteredSkills[index];
+          final isSelected = _selectedSkillIds.contains(skill.id);
+          final isDisabled = _selectedSkillIds.length >= 3 && !isSelected;
 
           return SkillCard(
             skill: skill,
-            isSelected: _selectedSkillIds.contains(skill.id),
+            isSelected: isSelected,
+            isDisabled: isDisabled,
             onTap: () {
               setState(() {
                 if (_selectedSkillIds.contains(skill.id)) {
                   _selectedSkillIds.remove(skill.id);
                 } else {
+                  if (_selectedSkillIds.length >= 3) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('You can select a maximum of 3 skills.'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                    return;
+                  }
                   _selectedSkillIds.add(skill.id);
                 }
               });
