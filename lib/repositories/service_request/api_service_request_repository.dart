@@ -39,7 +39,7 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
   }) : _client = client ?? http.Client(),
        _endpoint = endpoint ?? Uri.parse(ApiUrls.serviceRequests),
        _accessTokenProvider =
-           accessTokenProvider ?? StorageService().getAccessToken;
+           accessTokenProvider ?? StorageService.getAccessToken;
 
   final http.Client _client;
   final Uri _endpoint;
