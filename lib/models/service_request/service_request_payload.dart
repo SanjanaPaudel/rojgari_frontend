@@ -52,7 +52,7 @@ class ServiceRequestPayload {
     this.media = const [],
   });
 
-  final String categoryId;
+  final int categoryId;
   final String categorySlug;
   final String categoryName;
   final String description;
@@ -75,14 +75,18 @@ class ServiceRequestPayload {
 
 class ServiceRequestResult {
   const ServiceRequestResult({
-    required this.requestId,
+    required this.id,
+    required this.category,
+    required this.description,
+    required this.addressText,
     required this.status,
-    required this.createdAt,
     required this.message,
   });
 
-  final String requestId;
+  final int id;
+  final String category;
+  final String description;
+  final String? addressText;
   final String status;
-  final DateTime createdAt;
   final String message;
 }

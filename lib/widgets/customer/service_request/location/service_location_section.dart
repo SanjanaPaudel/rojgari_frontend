@@ -30,14 +30,12 @@ class ServiceLocationSection extends StatefulWidget {
     required this.onLocationSelected,
     this.initialLocation,
     this.locationService = const LocationService(),
-    this.onAddressResolvingChanged,
     super.key,
   });
 
   final ValueChanged<SelectedServiceLocation> onLocationSelected;
   final SelectedServiceLocation? initialLocation;
   final LocationService locationService;
-  final ValueChanged<bool>? onAddressResolvingChanged;
 
   @override
   State<ServiceLocationSection> createState() => _ServiceLocationSectionState();
@@ -61,8 +59,6 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
   bool _isMapExpanded = false;
   bool _returningFromSettings = false;
   bool _ignoreNextMoveEnd = false;
-  bool _isResolvingAddress = false;
-  int _addressLookupGeneration = 0;
   int _searchGeneration = 0;
   Timer? _searchDebounce;
 
@@ -173,8 +169,9 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
     }
   }
 
-  Future<void> _loadCurrentLocation() async {
-    if (mounted) {
+  Future<void> _loadCurrentLocation({bool recenterMap = false}) async {
+    final keepMapVisible = recenterMap && _state == _LocationViewState.ready;
+    if (mounted && !keepMapVisible) {
       setState(() => _state = _LocationViewState.loading);
     }
     try {
@@ -196,7 +193,13 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
         _isMapMoving = false;
       });
       widget.onLocationSelected(next);
-      unawaited(_resolveAddress(next));
+      if (recenterMap) {
+        _ignoreNextMoveEnd = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _mapController.move(target, 17);
+        });
+      }
     } on LocationServiceException catch (error) {
       if (mounted) _setError(error.message);
     } catch (error) {
@@ -232,7 +235,6 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
       _isMapMoving = false;
     });
     widget.onLocationSelected(next);
-    unawaited(_resolveAddress(next));
   }
 
   void _onSearchQueryChanged(String value) {
@@ -328,43 +330,8 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
       _isMapMoving = false;
     });
     widget.onLocationSelected(next);
-    _setAddressResolving(false);
     _ignoreNextMoveEnd = true;
     _mapController.move(target, 17);
-  }
-
-  Future<void> _resolveAddress(SelectedServiceLocation location) async {
-    final generation = ++_addressLookupGeneration;
-    _setAddressResolving(true);
-    try {
-      final result = await _searchService.reverse(
-        latitude: location.latitude,
-        longitude: location.longitude,
-      );
-      if (!mounted || generation != _addressLookupGeneration) return;
-      final displayName = result?.displayName;
-      final resolved = displayName == null
-          ? location
-          : location.copyWith(landmark: displayName);
-      setState(() {
-        _selected = resolved;
-        _displayAddress = displayName;
-      });
-      widget.onLocationSelected(resolved);
-    } catch (_) {
-      if (!mounted || generation != _addressLookupGeneration) return;
-      setState(() => _displayAddress = null);
-    } finally {
-      if (mounted && generation == _addressLookupGeneration) {
-        _setAddressResolving(false);
-      }
-    }
-  }
-
-  void _setAddressResolving(bool value) {
-    if (_isResolvingAddress == value) return;
-    _isResolvingAddress = value;
-    widget.onAddressResolvingChanged?.call(value);
   }
 
   void _showMessage(String message) {
@@ -524,7 +491,7 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
                   child: _MapControlButton(
                     tooltip: 'Use current location',
                     icon: Icons.my_location_rounded,
-                    onPressed: _loadCurrentLocation,
+                    onPressed: () => _loadCurrentLocation(recenterMap: true),
                   ),
                 ),
                 Positioned(
@@ -581,13 +548,13 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
           SelectedAddressCard(
             location: selected,
             displayAddress: _displayAddress,
-            isResolving: _isResolvingAddress,
+            isResolving: false,
           ),
           const SizedBox(height: 6),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
-              onPressed: _loadCurrentLocation,
+              onPressed: () => _loadCurrentLocation(recenterMap: true),
               icon: const Icon(Icons.my_location_rounded, size: 18),
               label: const Text('Use current location'),
             ),

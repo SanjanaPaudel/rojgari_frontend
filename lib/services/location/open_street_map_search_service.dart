@@ -39,19 +39,17 @@ class OpenStreetMapSearchService {
   //
   // CURRENT FRONTEND BEHAVIOUR:
   // - Uses Photon (OpenStreetMap data) for debounced search suggestions.
-  // - Uses Nominatim only for a reverse lookup after the map stops moving.
   // - Sends raw latitude/longitude as the authoritative request location.
   // - Caches results, debounces typing in the UI, and rate-limits requests.
   // - Biases results toward Nepal and sorts Nepal matches before other places.
   //
   // PRODUCTION BACKEND DEVELOPER:
-  // - Prefer proxying autocomplete and reverse lookup through cached backend
-  //   endpoints or a production geocoding provider.
+  // - Prefer proxying autocomplete through a cached backend endpoint or a
+  //   production geocoding provider.
   // - Public Nominatim must not be used for client-side autocomplete.
-  // - Set PHOTON_BASE_URL and NOMINATIM_BASE_URL with --dart-define to switch
-  //   providers without modifying the Request or Location UI.
-  // - Keep final reverse geocoding, service-area validation, and trusted
-  //   address storage on the backend.
+  // - Set PHOTON_BASE_URL with --dart-define to switch providers without
+  //   modifying the Request or Location UI.
+  // - Django performs final reverse geocoding from submitted coordinates.
   // - Never treat the display label/landmark as a replacement for coordinates.
   // ========================================================================
   Future<List<LocationSearchResult>> search(String query) async {
@@ -97,56 +95,6 @@ class OpenStreetMapSearchService {
     final results = indexedResults.take(8).toList(growable: false);
     _cache[cacheKey] = results;
     return results;
-  }
-
-  Future<LocationSearchResult?> reverse({
-    required double latitude,
-    required double longitude,
-  }) async {
-    final cacheKey =
-        'reverse:${latitude.toStringAsFixed(5)},${longitude.toStringAsFixed(5)}';
-    final cached = _cache[cacheKey];
-    if (cached is LocationSearchResult) return cached;
-
-    await _respectRateLimit();
-    final uri = Uri.parse('${MapConfig.nominatimBaseUrl}/reverse').replace(
-      queryParameters: {
-        'lat': latitude.toString(),
-        'lon': longitude.toString(),
-        'format': 'jsonv2',
-        'addressdetails': '1',
-        'zoom': '18',
-      },
-    );
-    final response = await _client.get(
-      uri,
-      headers: MapConfig.nominatimHeaders,
-    );
-    if (response.statusCode < 200 || response.statusCode >= 300) return null;
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map<String, dynamic>) return null;
-    final result = _parseNominatimResult(decoded);
-    if (result != null) _cache[cacheKey] = result;
-    return result;
-  }
-
-  LocationSearchResult? _parseNominatimResult(Map<String, dynamic> json) {
-    final latitude = double.tryParse(json['lat']?.toString() ?? '');
-    final longitude = double.tryParse(json['lon']?.toString() ?? '');
-    final displayName = json['display_name']?.toString().trim();
-    if (latitude == null ||
-        longitude == null ||
-        displayName == null ||
-        displayName.isEmpty) {
-      return null;
-    }
-    return LocationSearchResult(
-      latitude: latitude,
-      longitude: longitude,
-      displayName: displayName,
-      countryCode: (json['address'] as Map<String, dynamic>?)?['country_code']
-          ?.toString(),
-    );
   }
 
   LocationSearchResult? _parsePhotonResult(Map<String, dynamic> feature) {

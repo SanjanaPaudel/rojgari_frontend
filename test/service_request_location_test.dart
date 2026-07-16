@@ -37,7 +37,7 @@ void main() {
       longitude: 85.339876,
     );
     const payload = ServiceRequestPayload(
-      categoryId: '1',
+      categoryId: 1,
       categorySlug: 'plumber',
       categoryName: 'Plumber',
       description: 'Kitchen sink is leaking.',
@@ -47,8 +47,8 @@ void main() {
     final result = await const MockServiceRequestRepository()
         .createServiceRequest(payload);
 
-    expect(result.status, 'searching');
-    expect(result.requestId, startsWith('mock_'));
+    expect(result.status, 'active');
+    expect(result.id, greaterThan(0));
   });
 
   test('place suggestions prioritize Nepal before other countries', () async {
@@ -123,7 +123,7 @@ void main() {
       accessTokenProvider: () async => 'test-token',
     );
     final payload = ServiceRequestPayload(
-      categoryId: 'mechanic',
+      categoryId: 7,
       categorySlug: 'mechanic',
       categoryName: 'Mechanic',
       description: 'My bike is not starting.',
@@ -146,14 +146,15 @@ void main() {
     final result = await repository.createServiceRequest(payload);
     final request = client.request!;
 
-    expect(result.requestId, 'req_123');
+    expect(result.id, 123);
     expect(request.headers['Authorization'], 'Bearer test-token');
-    expect(request.fields['category_id'], 'mechanic');
-    expect(request.fields['schedule_type'], 'later_today');
-    expect(request.fields['scheduled_time'], '20:11:00');
-    expect(request.fields['timezone'], 'Asia/Kathmandu');
+    expect(request.fields['category'], '7');
     expect(request.fields['latitude'], '27.671234');
-    expect(request.fields['landmark'], 'Near NCIT College');
+    expect(request.fields, isNot(contains('category_id')));
+    expect(request.fields, isNot(contains('schedule_type')));
+    expect(request.fields, isNot(contains('scheduled_time')));
+    expect(request.fields, isNot(contains('timezone')));
+    expect(request.fields, isNot(contains('landmark')));
     expect(request.fields, isNot(contains('preferredDate')));
     expect(request.fields, isNot(contains('preferredTime')));
     expect(request.fields, isNot(contains('scheduleForLater')));
@@ -170,7 +171,7 @@ void main() {
       accessTokenProvider: () async => 'test-token',
     );
     const payload = ServiceRequestPayload(
-      categoryId: 'mechanic',
+      categoryId: 7,
       categorySlug: 'mechanic',
       categoryName: 'Mechanic',
       description: 'My bike is not starting.',
@@ -184,8 +185,9 @@ void main() {
     await repository.createServiceRequest(payload);
     final request = client.request!;
 
-    expect(request.fields['schedule_type'], 'now');
-    expect(request.fields['timezone'], 'Asia/Kathmandu');
+    expect(request.fields['category'], '7');
+    expect(request.fields, isNot(contains('schedule_type')));
+    expect(request.fields, isNot(contains('timezone')));
     expect(request.fields, isNot(contains('scheduled_time')));
     expect(request.files, isEmpty);
   });
@@ -217,7 +219,7 @@ void main() {
       accessTokenProvider: () async => 'test-token',
     );
     const payload = ServiceRequestPayload(
-      categoryId: 'mechanic',
+      categoryId: 7,
       categorySlug: 'mechanic',
       categoryName: 'Mechanic',
       description: 'My bike is not starting.',
@@ -233,7 +235,7 @@ void main() {
         isA<ServiceRequestException>().having(
           (error) => error.message,
           'message',
-          'Please correct the submitted information.',
+          'This field may not be blank.',
         ),
       ),
     );
@@ -334,12 +336,11 @@ class _RecordingMultipartClient extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     this.request = request as http.MultipartRequest;
     final body = jsonEncode({
-      'success': true,
-      'data': {
-        'request_id': 'req_123',
-        'status': 'searching',
-        'created_at': '2026-07-15T08:30:00Z',
-      },
+      'id': 123,
+      'category': 'Mechanic',
+      'description': 'My bike is not starting.',
+      'address_text': null,
+      'status': 'active',
     });
     return http.StreamedResponse(
       Stream.value(utf8.encode(body)),
@@ -353,14 +354,7 @@ class _ValidationErrorClient extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final body = jsonEncode({
-      'success': false,
-      'code': 'VALIDATION_ERROR',
-      'message': 'Please correct the submitted information.',
-      'errors': {
-        'scheduled_time': [
-          'Scheduled time must be later than the current time.',
-        ],
-      },
+      'description': ['This field may not be blank.'],
     });
     return http.StreamedResponse(
       Stream.value(utf8.encode(body)),

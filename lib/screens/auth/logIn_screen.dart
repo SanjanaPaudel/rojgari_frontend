@@ -3,8 +3,10 @@ import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/widgets/custom_textfield.dart';
 import 'package:rojgari_frontend_one/screens/auth/signup_screen.dart';
+import 'package:rojgari_frontend_one/models/auth_session.dart';
+import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
+import 'package:rojgari_frontend_one/screens/technician/technician_home_screen.dart';
 import 'package:rojgari_frontend_one/services/auth_service.dart';
-
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +17,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
 
   final phoneController = TextEditingController();
   final passwordController = TextEditingController();
@@ -56,40 +59,54 @@ class _LoginScreenState extends State<LoginScreen> {
       showLoginError = false;
     });
 
-    await Future.delayed(const Duration(seconds: 2));
-
-    //====================
-    // Temporary test
-    //====================
-    if (phoneController.text != "9812345678" ||
-        passwordController.text != "password123") {
+    try {
+      final session = await _authService.login(
+        phoneNumber: phoneController.text,
+        password: passwordController.text,
+      );
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        showLoginError = false;
+      });
+      _navigateAfterLogin(session);
+    } on AuthException catch (error) {
+      if (!mounted) return;
       setState(() {
         isLoading = false;
         showLoginError = true;
-        loginError = "Incorrect phone number or password.";
+        loginError = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        showLoginError = true;
+        loginError = 'Unable to sign in. Please try again.';
+      });
+    }
+  }
+
+  void _navigateAfterLogin(AuthSession session) {
+    final nextScreen = session.nextScreen.trim().toLowerCase();
+    final role = session.user.role.trim().toLowerCase();
+    final Widget destination;
+    if (nextScreen == 'customer_dashboard' || role == 'customer') {
+      destination = const CustomerHomeScreen();
+    } else if (nextScreen == 'technician_dashboard' || role == 'technician') {
+      destination = const TechnicianHomeScreen();
+    } else {
+      setState(() {
+        showLoginError = true;
+        loginError = 'This account role is not supported by the app.';
       });
       return;
     }
-    // later replace with API response:
-    // if (response.statusCode == 401) {
-    //   setState(() {
-    //     showLoginError = true;
-    //     loginError = "Incorrect phone number or password.";
-    //   });
-    // }
-
-    setState(() {
-      isLoading = false;
-      showLoginError = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Login Successful"),
-      ),
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => destination),
     );
   }
-  //================================
 
   @override
   void dispose() {
@@ -140,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    const SizedBox(height:60),
+                    const SizedBox(height: 60),
 
                     //--------------------------------
                     // LOGO
@@ -183,7 +200,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     //========================
                     // CONNECTING SKILL
                     //========================
-
                     const SizedBox(height: 0),
                     const Text(
                       "Connecting skilled hands\nwith every home.",
@@ -191,14 +207,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(
                         color: AppColors.black,
                         fontSize: 17,
-                        fontWeight: FontWeight.w700
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
 
                     //=========================
                     //FORM BOX
                     //=========================
-
                     const SizedBox(height: 0),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 0),
@@ -284,7 +299,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ),
 
-
                                   //==========================
                                   //PHONE NUMBER
                                   //==========================
@@ -297,7 +311,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     validator: validatePhone,
                                     showLabel: true,
                                   ),
-
 
                                   //==============================
                                   //PASSWORD
@@ -324,7 +337,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ],
 
-
                                   //=================================
                                   //FORGET PASSWORD
                                   //=================================
@@ -347,7 +359,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                         style: TextStyle(
                                           color: AppColors.primary,
                                           fontSize: 15,
-
                                         ),
                                       ),
                                     ),
@@ -366,17 +377,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                   //==================================
                                   //SIGN UP
                                   //==================================
-                                  const SizedBox(height:8),
+                                  const SizedBox(height: 8),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       const Text(
-                                          "Don't have an account?",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 16,
-                                            color: AppColors.black,
-                                          )
+                                        "Don't have an account?",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                          color: AppColors.black,
+                                        ),
                                       ),
                                       const SizedBox(width: 4),
                                       TextButton(
@@ -391,9 +402,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                           );
                                         },
                                         style: TextButton.styleFrom(
-                                          padding: const EdgeInsets.only(bottom: 0),
+                                          padding: const EdgeInsets.only(
+                                            bottom: 0,
+                                          ),
                                           minimumSize: Size.zero,
-                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
                                         ),
                                         child: const Text(
                                           "Sign Up",
@@ -402,8 +416,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                             fontSize: 16,
                                             color: AppColors.primary,
                                           ),
-                                        )
-
+                                        ),
                                       ),
                                     ],
                                   ),

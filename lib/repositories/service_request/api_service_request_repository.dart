@@ -5,30 +5,19 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/api_urls.dart';
 import '../../models/service_request/service_request_payload.dart';
+import '../../models/service_request/service_request_validation.dart';
 import '../../services/storage_service.dart';
 import 'service_request_repository.dart';
 
 class ServiceRequestMultipartFields {
   const ServiceRequestMultipartFields._();
 
-  static const String categoryId = 'category_id';
+  static const String category = 'category';
   static const String description = 'description';
-  static const String scheduleType = 'schedule_type';
-  static const String scheduledTime = 'scheduled_time';
-  static const String timezone = 'timezone';
   static const String latitude = 'latitude';
   static const String longitude = 'longitude';
-  static const String accuracyMeters = 'accuracy_meters';
-  static const String landmark = 'landmark';
-  static const String locationSource = 'location_source';
   static const String photos = 'photos';
   static const String video = 'video';
-}
-
-class ServiceRequestApiConfig {
-  const ServiceRequestApiConfig._();
-
-  static const String timezone = 'Asia/Kathmandu';
 }
 
 class ApiServiceRequestRepository implements ServiceRequestRepository {
@@ -37,7 +26,7 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
     Uri? endpoint,
     Future<String?> Function()? accessTokenProvider,
   }) : _client = client ?? http.Client(),
-       _endpoint = endpoint ?? Uri.parse(ApiUrls.serviceRequests),
+       _endpoint = endpoint ?? Uri.parse(ApiUrls.createBooking),
        _accessTokenProvider =
            accessTokenProvider ?? StorageService().getAccessToken;
 
@@ -45,139 +34,153 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
   final Uri _endpoint;
   final Future<String?> Function() _accessTokenProvider;
 
-  // ========================================================================
-  // BACKEND HANDOFF: REAL MULTIPART SERVICE REQUEST API
-  // ========================================================================
+  // ============================================================================
+  // REAL BACKEND INTEGRATION: CREATE SERVICE BOOKING
+  // ============================================================================
   //
-  // PURPOSE
-  // This repository method is the only place where the completed Flutter
-  // Request Page connects to the real service-request backend. Do not move
-  // HTTP code into the Request Page or redesign the completed UI.
+  // ENDPOINT:
   //
-  // ------------------------------------------------------------------------
-  // CURRENT FRONTEND STATUS
-  // ------------------------------------------------------------------------
-  // The application currently uses MockServiceRequestRepository. The frontend
-  // already collects the category, description, up to three photos, one
-  // optional video, raw OpenStreetMap coordinates, optional GPS accuracy,
-  // optional landmark, and either service now or later today. Selected media
-  // is attached as real bytes. The backend remains responsible for trusted
-  // reverse geocoding even if the location UI has an optional display hint.
+  // POST /api/services/bookings/
   //
-  // ------------------------------------------------------------------------
-  // FINAL API ENDPOINT
-  // ------------------------------------------------------------------------
-  // Method: POST
-  // Suggested endpoint: /api/customer/service-requests/
-  // Keep the base URL in API_BASE_URL. Never hardcode localhost or a computer
-  // LAN IP here. Confirm or replace only ApiUrls.serviceRequests.
+  // AUTHENTICATION:
   //
-  // ------------------------------------------------------------------------
-  // AUTHENTICATION
-  // ------------------------------------------------------------------------
-  // Read the access token from the existing StorageService and add:
   // Authorization: Bearer <access_token>
-  // Accept: application/json
   //
-  // The real login implementation must save the backend token with:
-  // await StorageService().saveAccessToken(accessToken);
-  // Do not create another secure-storage or authentication system.
+  // The access token is returned by POST /api/auth/login/ under the exact key
+  // "access" and must be read from the existing StorageService.
   //
-  // ------------------------------------------------------------------------
-  // MULTIPART TEXT FIELDS
-  // ------------------------------------------------------------------------
-  // category_id
+  // Do not send customer_id. Django obtains the customer from the JWT user.
+  //
+  // ---------------------------------------------------------------------------
+  // CATEGORY
+  // ---------------------------------------------------------------------------
+  //
+  // Send:
+  //
+  // category
+  //
+  // It must be the real integer ID returned by:
+  //
+  // GET /api/services/categories/
+  //
+  // Categories response:
+  //
+  // {
+  //   "categories": [
+  //     {
+  //       "id": 1,
+  //       "name": "Plumber",
+  //       "description": "...",
+  //       "icon": "...",
+  //       "display_order": 0
+  //     }
+  //   ]
+  // }
+  //
+  // Never send a category name, slug or guessed numeric mapping.
+  //
+  // ---------------------------------------------------------------------------
+  // EXACT MULTIPART TEXT FIELDS
+  // ---------------------------------------------------------------------------
+  //
+  // category
   // description
+  // latitude
+  // longitude
+  //
+  // ---------------------------------------------------------------------------
+  // EXACT MULTIPART FILE FIELDS
+  // ---------------------------------------------------------------------------
+  //
+  // photos
+  // - zero to three
+  // - every image uses the repeated field name "photos"
+  //
+  // video
+  // - zero or one optional file
+  //
+  // Actual bytes are uploaded.
+  // Local file paths must never be sent as text fields.
+  //
+  // ---------------------------------------------------------------------------
+  // DO NOT SEND
+  // ---------------------------------------------------------------------------
+  //
+  // category_id
   // schedule_type
   // scheduled_time
   // timezone
-  // latitude
-  // longitude
+  // preferredDate
+  // preferredTime
+  // scheduleForLater
   // accuracy_meters
   // landmark
   // location_source
+  // formatted_address
+  // address_text
   //
-  // schedule_type supports exactly: now, later_today.
-  // For "now", scheduled_time is omitted.
-  // For "later_today", scheduled_time is HH:mm:ss and must be later today.
-  // No date field is sent. The backend interprets the time using the supplied
-  // timezone, currently Asia/Kathmandu.
+  // The current backend sprint does not accept schedule or landmark values.
+  // Their approved UI remains unchanged, but they are not part of this request.
   //
-  // Do not send preferredDate, preferredTime, scheduleForLater, or
-  // formatted_address.
+  // ---------------------------------------------------------------------------
+  // LOCATION
+  // ---------------------------------------------------------------------------
   //
-  // ------------------------------------------------------------------------
-  // MULTIPART MEDIA FIELDS
-  // ------------------------------------------------------------------------
-  // Multiple image files: photos
-  // Optional single video: video
+  // Flutter sends only latitude and longitude.
   //
-  // Add each selected photo using repeated field name "photos". Do not use
-  // photos[], photos[0], or photos[1]. Local paths only locate files; never
-  // send a local path as text or JSON.
+  // Django performs reverse geocoding and returns address_text.
   //
-  // ------------------------------------------------------------------------
-  // LOCATION RESPONSIBILITY
-  // ------------------------------------------------------------------------
-  // Flutter sends latitude, longitude, optional accuracy_meters, optional
-  // landmark, and location_source. The backend must validate coordinates,
-  // perform reverse geocoding, produce formatted_address, store both raw and
-  // resolved locations, check the service area, and use coordinates for
-  // matching and distance calculations.
+  // address_text can be null. A null value is not an API failure.
   //
-  // ------------------------------------------------------------------------
-  // EXPECTED SUCCESS RESPONSE (HTTP 201)
-  // ------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // SUCCESS
+  // ---------------------------------------------------------------------------
+  //
+  // HTTP 201:
+  //
   // {
-  //   "success": true,
-  //   "message": "Service request created successfully.",
-  //   "data": {
-  //     "request_id": "req_123",
-  //     "status": "searching",
-  //     "category_id": "mechanic",
-  //     "schedule_type": "later_today",
-  //     "scheduled_time": "20:30:00",
-  //     "created_at": "2026-07-15T15:45:00+05:45",
-  //     "service_location": {
-  //       "latitude": 27.671234,
-  //       "longitude": 85.339876,
-  //       "formatted_address": "Balkumari Road, Lalitpur",
-  //       "landmark": "Near NCIT College"
-  //     }
-  //   }
+  //   "id": 12,
+  //   "category": "Plumber",
+  //   "description": "Kitchen pipe is leaking under the sink",
+  //   "address_text": "Lazimpat, Kathmandu, Bagmati Province, Nepal",
+  //   "status": "active"
   // }
-  // Parse this into ServiceRequestResult. Adjust only repository parsing for
-  // a documented backend variation.
   //
-  // ------------------------------------------------------------------------
-  // EXPECTED ERROR RESPONSE
-  // ------------------------------------------------------------------------
-  // {
-  //   "success": false,
-  //   "code": "VALIDATION_ERROR",
-  //   "message": "Please correct the submitted information.",
-  //   "errors": {
-  //     "scheduled_time": [
-  //       "Scheduled time must be later than the current time."
-  //     ]
-  //   }
-  // }
-  // Convert errors into readable ServiceRequestException values. Never expose
-  // raw server exceptions or HTML in the UI.
+  // No worker is assigned by this endpoint.
+  // No matching or polling endpoint exists in this sprint.
+  // No schedule result is returned.
   //
-  // ------------------------------------------------------------------------
-  // BACKEND DEVELOPER CHECKLIST
-  // ------------------------------------------------------------------------
-  // 1. Confirm the endpoint in api_urls.dart.
-  // 2. Implement or confirm the backend POST endpoint.
-  // 3. Confirm repeated photo field "photos" and optional video field "video".
-  // 4. Confirm accepted media types and maximum file sizes.
-  // 5. Confirm success and standard error response structures.
-  // 6. Confirm login returns an access token and save it via StorageService.
-  // 7. Switch the provider from mock to API only after end-to-end testing.
+  // ---------------------------------------------------------------------------
+  // ERRORS
+  // ---------------------------------------------------------------------------
   //
-  // Do not change the Request Page UI during backend integration.
-  // ========================================================================
+  // HTTP 400:
+  // Django field validation errors; values can be strings or string lists.
+  //
+  // HTTP 401:
+  // Missing, invalid or expired JWT.
+  //
+  // HTTP 403:
+  // Authenticated account is not a customer.
+  //
+  // Convert these responses into readable repository exceptions.
+  // Never expose raw HTML, stack traces or unparsed maps.
+  //
+  // ---------------------------------------------------------------------------
+  // FUTURE BACKEND SUPPORT
+  // ---------------------------------------------------------------------------
+  //
+  // If the backend later adds scheduling:
+  // - document the accepted scheduling field(s)
+  // - update only this repository/payload layer
+  // - do not redesign the Request Page
+  //
+  // If the backend later adds landmark:
+  // - add the exact documented field here
+  // - do not place landmark inside description or address_text
+  //
+  // Do not move HTTP code into the Request Page.
+  // ============================================================================
   @override
   Future<ServiceRequestResult> createServiceRequest(
     ServiceRequestPayload payload,
@@ -189,13 +192,6 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
         message: 'Your session has expired. Please sign in again.',
       );
     }
-
-    final request = http.MultipartRequest('POST', _endpoint)
-      ..headers.addAll({
-        'Authorization': 'Bearer $accessToken',
-        'Accept': 'application/json',
-      })
-      ..fields.addAll(_buildTextFields(payload));
 
     final photos = _uniqueLocalMedia(payload, type: 'image');
     final videos = _uniqueLocalMedia(payload, type: 'video');
@@ -210,6 +206,19 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
       );
     }
 
+    final location = payload.serviceLocation;
+    final request = http.MultipartRequest('POST', _endpoint)
+      ..headers.addAll({
+        'Authorization': 'Bearer $accessToken',
+        'Accept': 'application/json',
+      })
+      ..fields.addAll({
+        ServiceRequestMultipartFields.category: payload.categoryId.toString(),
+        ServiceRequestMultipartFields.description: payload.description.trim(),
+        ServiceRequestMultipartFields.latitude: location.latitude.toString(),
+        ServiceRequestMultipartFields.longitude: location.longitude.toString(),
+      });
+
     for (final photo in photos) {
       request.files.add(
         await _multipartFile(
@@ -220,6 +229,9 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
       );
     }
     if (videos.isNotEmpty) {
+      // BACKEND TODO: The current API does not document or validate video
+      // duration or file-size limits. Flutter retains the existing 30-second
+      // validation until the backend publishes its definitive constraints.
       request.files.add(
         await _multipartFile(
           field: ServiceRequestMultipartFields.video,
@@ -233,20 +245,11 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
       final streamedResponse = await _client.send(request);
       final response = await http.Response.fromStream(streamedResponse);
       final decoded = _decodeObject(response.body);
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        if (decoded['success'] == false) {
-          throw ServiceRequestException(
-            statusCode: response.statusCode,
-            message:
-                _readMessage(decoded) ??
-                'Please correct the submitted information.',
-          );
-        }
-        return _parseResult(decoded);
-      }
+      if (response.statusCode == 201) return _parseResult(decoded);
+
       throw ServiceRequestException(
         statusCode: response.statusCode,
-        message: _readMessage(decoded) ?? _statusMessage(response.statusCode),
+        message: _errorMessage(response.statusCode, decoded),
         responseBody: response.body.isEmpty ? null : response.body,
       );
     } on ServiceRequestException {
@@ -258,33 +261,28 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
     }
   }
 
-  Map<String, String> _buildTextFields(ServiceRequestPayload payload) {
-    final location = payload.serviceLocation;
-    final fields = <String, String>{
-      ServiceRequestMultipartFields.categoryId: payload.categoryId,
-      ServiceRequestMultipartFields.description: payload.description,
-      ServiceRequestMultipartFields.scheduleType: payload.scheduleType.apiValue,
-      ServiceRequestMultipartFields.timezone: ServiceRequestApiConfig.timezone,
-      ServiceRequestMultipartFields.latitude: location.latitude.toString(),
-      ServiceRequestMultipartFields.longitude: location.longitude.toString(),
-      ServiceRequestMultipartFields.locationSource: location.source,
-    };
-    final scheduledTime = payload.scheduledTime?.trim();
-    if (payload.scheduleType == ServiceRequestScheduleType.laterToday &&
-        scheduledTime != null &&
-        scheduledTime.isNotEmpty) {
-      fields[ServiceRequestMultipartFields.scheduledTime] = scheduledTime;
+  void _validatePayload(ServiceRequestPayload payload) {
+    if (payload.categoryId <= 0) {
+      throw const ServiceRequestException(
+        message: 'Select an available service category and try again.',
+      );
     }
-    final accuracy = location.accuracyMeters;
-    if (accuracy != null) {
-      fields[ServiceRequestMultipartFields.accuracyMeters] = accuracy
-          .toString();
+    final descriptionError = ServiceRequestValidation.description(
+      payload.description,
+    );
+    if (descriptionError != null) {
+      throw ServiceRequestException(message: descriptionError);
     }
-    final landmark = location.landmark?.trim();
-    if (landmark != null && landmark.isNotEmpty) {
-      fields[ServiceRequestMultipartFields.landmark] = landmark;
+    final locationError = ServiceRequestValidation.location(
+      payload.serviceLocation,
+    );
+    if (locationError != null) {
+      throw ServiceRequestException(message: locationError);
     }
-    return fields;
+    // BACKEND TODO: Scheduling remains local UI state only. The current
+    // booking endpoint always creates status "active" and accepts no schedule.
+    // BACKEND TODO: Landmark remains local UI state only. Add it here only
+    // after Django documents an optional landmark request field.
   }
 
   List<XFile> _uniqueLocalMedia(
@@ -325,61 +323,23 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
     }
   }
 
-  void _validatePayload(ServiceRequestPayload payload) {
-    if (payload.categoryId.trim().isEmpty) {
-      throw const ServiceRequestException(
-        message: 'A valid service category is required.',
-      );
-    }
-    if (payload.description.trim().isEmpty) {
-      throw const ServiceRequestException(
-        message: 'Please describe the service problem.',
-      );
-    }
-    if (!payload.serviceLocation.hasValidCoordinates) {
-      throw const ServiceRequestException(
-        message: 'Please select a valid service location.',
-      );
-    }
-    if (payload.scheduleType == ServiceRequestScheduleType.laterToday &&
-        !_isValidTime(payload.scheduledTime)) {
-      throw const ServiceRequestException(
-        message: 'Please select a valid future time for later today.',
-      );
-    }
-    if (payload.scheduleType == ServiceRequestScheduleType.now &&
-        payload.scheduledTime != null) {
-      throw const ServiceRequestException(
-        message: 'An immediate request must not contain a scheduled time.',
-      );
-    }
-  }
-
   ServiceRequestResult _parseResult(Map<String, dynamic> response) {
-    final nested = response['data'];
-    final data = nested is Map<String, dynamic> ? nested : response;
-    final requestId =
-        data['request_id']?.toString() ??
-        data['requestId']?.toString() ??
-        data['id']?.toString() ??
-        '';
-    if (requestId.isEmpty) {
+    final idValue = response['id'];
+    final id = idValue is int
+        ? idValue
+        : int.tryParse(idValue?.toString() ?? '');
+    if (id == null) {
       throw const ServiceRequestException(
-        message: 'The server response did not include a request ID.',
+        message: 'The server response did not include a booking ID.',
       );
     }
     return ServiceRequestResult(
-      requestId: requestId,
-      status: data['status']?.toString() ?? 'searching',
-      createdAt:
-          DateTime.tryParse(
-            data['created_at']?.toString() ??
-                data['createdAt']?.toString() ??
-                '',
-          )?.toUtc() ??
-          DateTime.now().toUtc(),
-      message:
-          _readMessage(response) ?? 'Service request created successfully.',
+      id: id,
+      category: response['category']?.toString() ?? '',
+      description: response['description']?.toString() ?? '',
+      addressText: response['address_text']?.toString(),
+      status: response['status']?.toString() ?? 'active',
+      message: 'Booking created successfully.',
     );
   }
 
@@ -387,37 +347,53 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
     if (body.trim().isEmpty) return <String, dynamic>{};
     try {
       final decoded = jsonDecode(body);
-      return decoded is Map<String, dynamic>
-          ? decoded
-          : <String, dynamic>{'data': decoded};
+      return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
     } on FormatException {
-      // Never expose an HTML error page or arbitrary server output to the UI.
       return <String, dynamic>{};
     }
   }
 
-  String? _readMessage(Map<String, dynamic> response) {
-    final direct = response['message']?.toString().trim();
-    if (direct != null && direct.isNotEmpty) return direct;
-    final nested = response['data'];
-    if (nested is Map<String, dynamic>) {
-      final message = nested['message']?.toString().trim();
-      if (message != null && message.isNotEmpty) return message;
+  String _errorMessage(int statusCode, Map<String, dynamic> response) {
+    if (statusCode == 400) {
+      return _firstReadableValidationMessage(response) ??
+          'Please correct the submitted information.';
+    }
+    if (statusCode == 401) {
+      return 'Your login session is missing, invalid, or expired. Please sign in again.';
+    }
+    if (statusCode == 403) {
+      return 'Only customer accounts can create a service booking.';
+    }
+    return _readDirectMessage(response) ??
+        'Unable to create the service booking. Please try again.';
+  }
+
+  String? _firstReadableValidationMessage(Map<String, dynamic> response) {
+    final direct = _readDirectMessage(response);
+    if (direct != null) return direct;
+    for (final entry in response.entries) {
+      if (entry.key == 'detail' || entry.key == 'message') continue;
+      final value = entry.value;
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+      if (value is List) {
+        for (final item in value) {
+          final text = item?.toString().trim();
+          if (text != null && text.isNotEmpty) return text;
+        }
+      }
     }
     return null;
   }
 
-  bool _isValidTime(String? value) =>
-      value != null &&
-      RegExp(r'^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$').hasMatch(value);
-
-  String _statusMessage(int statusCode) => switch (statusCode) {
-    400 => 'Please correct the submitted information.',
-    401 => 'Your session has expired. Please sign in again.',
-    403 => 'Your account cannot create this request.',
-    404 => 'The selected service category was not found.',
-    413 => 'One or more selected files are too large.',
-    415 => 'One or more selected files use an unsupported format.',
-    _ => 'Unable to create the service request. Please try again.',
-  };
+  String? _readDirectMessage(Map<String, dynamic> response) {
+    for (final key in const ['detail', 'message']) {
+      final value = response[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+      if (value is List && value.isNotEmpty) {
+        final first = value.first?.toString().trim();
+        if (first != null && first.isNotEmpty) return first;
+      }
+    }
+    return null;
+  }
 }

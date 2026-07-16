@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/colors.dart';
+import '../../../models/service_request/service_request_validation.dart';
 
 class ProblemDescriptionField extends StatelessWidget {
   const ProblemDescriptionField({
@@ -44,9 +45,7 @@ class ProblemDescriptionField extends StatelessWidget {
         counterText: '${controller.text.length}/300',
       ),
       onChanged: (_) => (context as Element).markNeedsBuild(),
-      validator: (value) => value == null || value.trim().isEmpty
-          ? 'Please describe the problem.'
-          : null,
+      validator: ServiceRequestValidation.description,
     );
   }
 }

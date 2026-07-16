@@ -6,6 +6,7 @@ import '../../../models/service_request/service_category.dart';
 import '../../../models/service_request/service_category_presentation.dart';
 import '../../../models/service_request/selected_service_location.dart';
 import '../../../models/service_request/service_request_payload.dart';
+import '../../../models/service_request/service_request_validation.dart';
 import '../../../repositories/service_request/service_request_repository.dart';
 import '../../../repositories/service_request/service_request_repository_provider.dart';
 import '../../../services/service_request/request_media_picker.dart';
@@ -200,12 +201,14 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (_isSubmitting || !(_formKey.currentState?.validate() ?? false)) return;
-    if (_selectedServiceLocation == null ||
-        !_selectedServiceLocation!.hasValidCoordinates) {
-      _showMessage('Please select a service location.');
+    final locationError = ServiceRequestValidation.location(
+      _selectedServiceLocation,
+    );
+    if (locationError != null) {
+      _showMessage(locationError);
       return;
     }
-    if (widget.category.id.trim().isEmpty ||
+    if (widget.category.id <= 0 ||
         widget.category.name.trim().isEmpty ||
         widget.category.slug.trim().isEmpty) {
       _showMessage('A valid service category is required.');
@@ -258,6 +261,9 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
             RequestMediaPayload(type: 'video', localFile: _video),
         ],
       );
+      // BACKEND TODO: The approved schedule and landmark UI remain local-only
+      // until Django adds documented fields for them. This repository call
+      // intentionally submits neither value.
       final result = await _repository.createServiceRequest(payload);
       if (mounted) {
         _showMessage(
@@ -266,18 +272,11 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
         );
       }
 
-      // BACKEND SUCCESS NAVIGATION:
-      // Navigate only after the API returns a successful response.
-      // Replace ServiceMatchingScreen with the real next page.
-      //
-      // Navigator.pushReplacement(
-      //   context,
-      //   MaterialPageRoute(
-      //     builder: (_) => ServiceMatchingScreen(
-      //       serviceRequestId: responseRequestId,
-      //     ),
-      //   ),
-      // );
+      // BACKEND SUCCESS NAVIGATION TODO:
+      // POST /api/services/bookings/ only creates an active booking. It does
+      // not assign a worker and provides no matching/polling flow. Add a real
+      // booking confirmation/history navigation here only when that screen and
+      // its documented backend flow exist.
     } on ServiceRequestException catch (error) {
       if (mounted) _showMessage(error.message);
     } catch (_) {

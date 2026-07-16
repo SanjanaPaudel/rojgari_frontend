@@ -7,11 +7,6 @@ class MapConfig {
   // This matches android/app/build.gradle.kts applicationId.
   static const String userAgentPackageName = 'com.example.rojgari_frontend_one';
 
-  static const String nominatimBaseUrl = String.fromEnvironment(
-    'NOMINATIM_BASE_URL',
-    defaultValue: 'https://nominatim.openstreetmap.org',
-  );
-
   static const String photonBaseUrl = String.fromEnvironment(
     'PHOTON_BASE_URL',
     defaultValue: 'https://photon.komoot.io',
@@ -19,12 +14,6 @@ class MapConfig {
 
   static const double nepalSearchLatitude = 28.3949;
   static const double nepalSearchLongitude = 84.1240;
-
-  static const Map<String, String> nominatimHeaders = {
-    'User-Agent': 'Rojgari/1.0 (com.example.rojgari_frontend_one)',
-    'Accept': 'application/json',
-    'Accept-Language': 'en',
-  };
 
   static const Map<String, String> photonHeaders = {
     'User-Agent': 'Rojgari/1.0 (com.example.rojgari_frontend_one)',

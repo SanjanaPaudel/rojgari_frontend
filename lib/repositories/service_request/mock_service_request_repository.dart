@@ -10,9 +10,11 @@ class MockServiceRequestRepository implements ServiceRequestRepository {
   ) async {
     await Future<void>.delayed(const Duration(milliseconds: 700));
     return ServiceRequestResult(
-      requestId: 'mock_${DateTime.now().millisecondsSinceEpoch}',
-      status: 'searching',
-      createdAt: DateTime.now().toUtc(),
+      id: DateTime.now().millisecondsSinceEpoch,
+      category: payload.categoryName,
+      description: payload.description,
+      addressText: null,
+      status: 'active',
       message: 'Frontend request created successfully.',
     );
   }

@@ -18,7 +18,6 @@ class ServiceLocationPickerScreen extends StatefulWidget {
 class _ServiceLocationPickerScreenState
     extends State<ServiceLocationPickerScreen> {
   SelectedServiceLocation? _selectedLocation;
-  bool _isResolvingAddress = false;
 
   void _confirm() {
     final selected = _selectedLocation;
@@ -83,10 +82,6 @@ class _ServiceLocationPickerScreenState
                     if (!mounted) return;
                     setState(() => _selectedLocation = location);
                   },
-                  onAddressResolvingChanged: (isResolving) {
-                    if (!mounted) return;
-                    setState(() => _isResolvingAddress = isResolving);
-                  },
                 ),
               ),
             ),
@@ -110,9 +105,7 @@ class _ServiceLocationPickerScreenState
                   width: double.infinity,
                   height: 56,
                   child: TextButton.icon(
-                    onPressed: _selectedLocation == null || _isResolvingAddress
-                        ? null
-                        : _confirm,
+                    onPressed: _selectedLocation == null ? null : _confirm,
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white,
                       disabledForegroundColor: Colors.white54,

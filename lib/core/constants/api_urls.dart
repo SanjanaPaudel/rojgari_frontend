@@ -1,28 +1,19 @@
-// class ApiUrls {
-//   // Android Emulator
-//   static const String baseUrl = "http://10.0.2.2:8000/api/auth";
-//
-//   // Physical phone example:
-//   // static const String baseUrl = "http://192.168.1.8:8000/api/auth";
-//
-//   static const String login = "$baseUrl/login/";
-//   static const String refresh = "$baseUrl/refresh/";
-//   static const String logout = "$baseUrl/logout/";
-// }
-
 class ApiUrls {
-  // Defaults to the Android Emulator host. For a physical phone, pass the
-  // development computer's LAN address, for example:
-  // flutter run --dart-define=API_BASE_URL=http://192.168.1.8:8000/api
+  // Defaults to the Android Emulator host. API_BASE_URL must contain only the
+  // server origin (no trailing /api). Examples:
+  // Physical phone: --dart-define=API_BASE_URL=http://192.168.1.8:8000
+  // Windows:        --dart-define=API_BASE_URL=http://127.0.0.1:8000
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000/api',
+    defaultValue: 'http://10.0.2.2:8000',
   );
 
   // Authentication
-  static const String signup = "$baseUrl/auth/signup/";
+  static const String signup = "$baseUrl/api/auth/signup/";
+  static const String login = "$baseUrl/api/auth/login/";
+  static const String refresh = "$baseUrl/api/auth/refresh/";
 
-  // BACKEND TODO: Confirm this route with the Django developer.
-  // Suggested route: POST /api/customer/service-requests/
-  static const String serviceRequests = "$baseUrl/customer/service-requests/";
+  // Services
+  static const String serviceCategories = "$baseUrl/api/services/categories/";
+  static const String createBooking = "$baseUrl/api/services/bookings/";
 }
