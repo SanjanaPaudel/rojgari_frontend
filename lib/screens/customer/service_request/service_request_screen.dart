@@ -264,20 +264,13 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
           result.message,
           type: ServiceRequestNotificationType.success,
         );
+        // Wait a short delay for the user to see the success message, then pop back to home
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (mounted) {
+            Navigator.pop(context);
+          }
+        });
       }
-
-      // BACKEND SUCCESS NAVIGATION:
-      // Navigate only after the API returns a successful response.
-      // Replace ServiceMatchingScreen with the real next page.
-      //
-      // Navigator.pushReplacement(
-      //   context,
-      //   MaterialPageRoute(
-      //     builder: (_) => ServiceMatchingScreen(
-      //       serviceRequestId: responseRequestId,
-      //     ),
-      //   ),
-      // );
     } on ServiceRequestException catch (error) {
       if (mounted) _showMessage(error.message);
     } catch (_) {

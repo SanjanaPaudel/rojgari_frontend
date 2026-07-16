@@ -499,7 +499,7 @@ class _CategoryCarouselState extends State<_CategoryCarousel> {
                       openServiceRequestPage(
                         context,
                         ServiceCategory(
-                          id: _temporaryCategorySlug(category.name),
+                          id: category.id.toString(),
                           name: category.name,
                           slug: _temporaryCategorySlug(category.name),
                         ),

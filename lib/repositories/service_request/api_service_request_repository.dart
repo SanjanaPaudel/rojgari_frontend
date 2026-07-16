@@ -5,6 +5,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/api_urls.dart';
 import '../../models/service_request/service_request_payload.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import 'service_request_repository.dart';
 
@@ -183,6 +186,13 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
     ServiceRequestPayload payload,
   ) async {
     _validatePayload(payload);
+    
+    // Proactively check and refresh session before making request, skipping under unit tests to prevent secure storage channel crashes
+    final isUnderTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+    if (!isUnderTest) {
+      await ApiService().checkAndRefreshSession();
+    }
+    
     final accessToken = (await _accessTokenProvider())?.trim();
     if (accessToken == null || accessToken.isEmpty) {
       throw const ServiceRequestException(
@@ -234,14 +244,6 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
       final response = await http.Response.fromStream(streamedResponse);
       final decoded = _decodeObject(response.body);
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        if (decoded['success'] == false) {
-          throw ServiceRequestException(
-            statusCode: response.statusCode,
-            message:
-                _readMessage(decoded) ??
-                'Please correct the submitted information.',
-          );
-        }
         return _parseResult(decoded);
       }
       throw ServiceRequestException(
@@ -260,31 +262,12 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
 
   Map<String, String> _buildTextFields(ServiceRequestPayload payload) {
     final location = payload.serviceLocation;
-    final fields = <String, String>{
-      ServiceRequestMultipartFields.categoryId: payload.categoryId,
-      ServiceRequestMultipartFields.description: payload.description,
-      ServiceRequestMultipartFields.scheduleType: payload.scheduleType.apiValue,
-      ServiceRequestMultipartFields.timezone: ServiceRequestApiConfig.timezone,
-      ServiceRequestMultipartFields.latitude: location.latitude.toString(),
-      ServiceRequestMultipartFields.longitude: location.longitude.toString(),
-      ServiceRequestMultipartFields.locationSource: location.source,
+    return <String, String>{
+      'category': payload.categoryId,
+      'description': payload.description,
+      'latitude': location.latitude.toStringAsFixed(6),
+      'longitude': location.longitude.toStringAsFixed(6),
     };
-    final scheduledTime = payload.scheduledTime?.trim();
-    if (payload.scheduleType == ServiceRequestScheduleType.laterToday &&
-        scheduledTime != null &&
-        scheduledTime.isNotEmpty) {
-      fields[ServiceRequestMultipartFields.scheduledTime] = scheduledTime;
-    }
-    final accuracy = location.accuracyMeters;
-    if (accuracy != null) {
-      fields[ServiceRequestMultipartFields.accuracyMeters] = accuracy
-          .toString();
-    }
-    final landmark = location.landmark?.trim();
-    if (landmark != null && landmark.isNotEmpty) {
-      fields[ServiceRequestMultipartFields.landmark] = landmark;
-    }
-    return fields;
   }
 
   List<XFile> _uniqueLocalMedia(
@@ -331,26 +314,20 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
         message: 'A valid service category is required.',
       );
     }
-    if (payload.description.trim().isEmpty) {
+    final desc = payload.description.trim();
+    if (desc.isEmpty) {
       throw const ServiceRequestException(
         message: 'Please describe the service problem.',
+      );
+    }
+    if (desc.length > 300) {
+      throw const ServiceRequestException(
+        message: 'Description cannot exceed 300 characters.',
       );
     }
     if (!payload.serviceLocation.hasValidCoordinates) {
       throw const ServiceRequestException(
         message: 'Please select a valid service location.',
-      );
-    }
-    if (payload.scheduleType == ServiceRequestScheduleType.laterToday &&
-        !_isValidTime(payload.scheduledTime)) {
-      throw const ServiceRequestException(
-        message: 'Please select a valid future time for later today.',
-      );
-    }
-    if (payload.scheduleType == ServiceRequestScheduleType.now &&
-        payload.scheduledTime != null) {
-      throw const ServiceRequestException(
-        message: 'An immediate request must not contain a scheduled time.',
       );
     }
   }
@@ -370,7 +347,7 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
     }
     return ServiceRequestResult(
       requestId: requestId,
-      status: data['status']?.toString() ?? 'searching',
+      status: data['status']?.toString() ?? 'active',
       createdAt:
           DateTime.tryParse(
             data['created_at']?.toString() ??
@@ -397,8 +374,32 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
   }
 
   String? _readMessage(Map<String, dynamic> response) {
-    final direct = response['message']?.toString().trim();
-    if (direct != null && direct.isNotEmpty) return direct;
+    if (response.containsKey('detail')) {
+      return response['detail']?.toString().trim();
+    }
+    if (response.containsKey('message')) {
+      return response['message']?.toString().trim();
+    }
+    // Collect all field validation errors
+    final errorParts = <String>[];
+    response.forEach((key, value) {
+      if (key == 'success' || key == 'code') return;
+      if (value is List) {
+        final errorText = value.map((e) => e.toString().trim()).join(', ');
+        errorParts.add('$key: $errorText');
+      } else if (value is String) {
+        errorParts.add('$key: ${value.trim()}');
+      } else if (value is Map) {
+        final subMsg = _readMessage(Map<String, dynamic>.from(value));
+        if (subMsg != null && subMsg.isNotEmpty) {
+          errorParts.add('$key: $subMsg');
+        }
+      }
+    });
+    if (errorParts.isNotEmpty) {
+      return errorParts.join('\n');
+    }
+
     final nested = response['data'];
     if (nested is Map<String, dynamic>) {
       final message = nested['message']?.toString().trim();
