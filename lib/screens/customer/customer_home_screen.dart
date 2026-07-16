@@ -6,6 +6,21 @@ import 'package:rojgari_frontend_one/models/category_model.dart';
 import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
 import 'package:rojgari_frontend_one/services/api_service.dart';
 import 'package:rojgari_frontend_one/widgets/category_card.dart';
+import 'package:rojgari_frontend_one/screens/customer/service_request/service_request_screen.dart';
+import '../../models/service_request/service_category.dart';
+
+void openServiceRequestPage(BuildContext context, ServiceCategory category) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => ServiceRequestScreen(category: category)),
+  );
+}
+
+String _temporaryCategorySlug(String title) => title
+    .trim()
+    .toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+    .replaceAll(RegExp(r'^-|-$'), '');
 
 class CustomerHomeScreen extends StatelessWidget {
   const CustomerHomeScreen({super.key});
@@ -481,7 +496,17 @@ class _CategoryCarouselState extends State<_CategoryCarousel> {
                       //     builder: (_) => BookingScreen(category: category),
                       //   ),
                       // );
-                      debugPrint('Selected category: ${category.name} (ID: ${category.id})');
+                      openServiceRequestPage(
+                        context,
+                        ServiceCategory(
+                          id: _temporaryCategorySlug(category.name),
+                          name: category.name,
+                          slug: _temporaryCategorySlug(category.name),
+                        ),
+                      );
+                      debugPrint(
+                        'Selected category: ${category.name} (ID: ${category.id})',
+                      );
                     },
                   );
                 },
@@ -901,8 +926,6 @@ class _CircleIconButton extends StatelessWidget {
     );
   }
 }
-
-
 
 class _RecentJob {
   final String bookingId;

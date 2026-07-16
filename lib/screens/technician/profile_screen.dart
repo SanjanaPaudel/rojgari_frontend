@@ -8,6 +8,7 @@ import '../../core/constants/colors.dart';
 import '../../models/technician_model.dart';
 import '../../models/worker_dashboard_response.dart';
 import '../../services/storage_service.dart';
+import '../../services/worker_dashboard_service.dart';
 import '../../widgets/customer/logout_confirmation_dialog.dart';
 import '../../widgets/customer/profile_menu_tile.dart';
 import '../auth/logIn_screen.dart';
@@ -52,6 +53,49 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
   static TechnicianModel? _sessionTechnician;
   late TechnicianModel _technician;
   bool _loggingOut = false;
+  bool _isLoadingProfile = false;
+
+  // ---------------------------------------------------------------------------
+  // _loadProfile
+  //
+  // Calls GET /api/auth/worker/profile/ and merges only the fields that the
+  // endpoint returns (full_name, phone_number, email, about_me, service_areas,
+  // profile_photo) into the existing model via copyWith.
+  //
+  // Skills, verificationStatus, and all local document bytes are preserved
+  // from the current _technician — the backend does not return them here.
+  // ---------------------------------------------------------------------------
+  Future<void> _loadProfile() async {
+    if (!mounted) return;
+    setState(() => _isLoadingProfile = true);
+    try {
+      final fetched = await WorkerDashboardService().getProfile();
+      if (!mounted) return;
+      // Merge: keep skills, verificationStatus, and all local bytes intact.
+      final merged = _technician.copyWith(
+        fullName: fetched.fullName,
+        phone: fetched.phone,
+        email: fetched.email,
+        about: fetched.about,
+        profileImageUrl: fetched.profileImageUrl ?? _technician.profileImageUrl,
+        serviceAreas: fetched.serviceAreas,
+      );
+      _updateTechnician(merged);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not refresh profile: '
+            '${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+          action: SnackBarAction(label: 'Retry', onPressed: _loadProfile),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoadingProfile = false);
+    }
+  }
 
   /// Resolves a photo URL/path from the API into a usable string.
   static String? _resolvePhotoUrl(String? raw) {
@@ -76,10 +120,9 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
           about: '',
           profileImageUrl: _resolvePhotoUrl(d.worker.profilePhoto),
           selectedSkills: List<String>.from(d.worker.skills),
-          verificationStatus:
-              d.worker.verified
-                  ? TechnicianVerificationStatus.verified
-                  : TechnicianVerificationStatus.incomplete,
+          verificationStatus: d.worker.verified
+              ? TechnicianVerificationStatus.verified
+              : TechnicianVerificationStatus.incomplete,
         );
       } else {
         // Fallback to an empty placeholder when no API data is available yet.
@@ -102,6 +145,8 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
     }
 
     _technician = _sessionTechnician!;
+    // Always fetch the latest profile from the backend on open.
+    _loadProfile();
   }
 
   void _updateTechnician(TechnicianModel technician) {
@@ -131,8 +176,12 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
         builder: (_) => TechnicianEditProfileScreen(technician: _technician),
       ),
     );
-    if (!mounted || updated == null) return;
-    _updateTechnician(updated);
+    if (!mounted) return;
+    if (updated != null) {
+      _updateTechnician(updated);
+    }
+    // Refresh to get the canonical profile photo URL and other backend details
+    await _loadProfile();
   }
 
   void _viewProfilePhoto() {
@@ -316,6 +365,14 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _ProfileAppBar(onBack: _backToDashboard),
+                      if (_isLoadingProfile)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 4),
+                          child: LinearProgressIndicator(
+                            color: AppColors.primary,
+                            backgroundColor: Color(0xFFF5F0FF),
+                          ),
+                        ),
                       const SizedBox(height: 8),
                       _TechnicianProfileHeader(
                         technician: _technician,
@@ -334,7 +391,28 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
                           children: [
                             const Text('About Me', style: _Styles.sectionTitle),
                             const SizedBox(height: 7),
-                            Text(_technician.about, style: _Styles.body),
+                            Text(
+                              _technician.about.isEmpty
+                                  ? 'No about information specified'
+                                  : _technician.about,
+                              style: _Styles.body,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _SectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Service Area', style: _Styles.sectionTitle),
+                            const SizedBox(height: 7),
+                            Text(
+                              _technician.serviceAreas.isEmpty
+                                  ? 'No service areas specified'
+                                  : _technician.serviceAreas.join(', '),
+                              style: _Styles.body,
+                            ),
                           ],
                         ),
                       ),
