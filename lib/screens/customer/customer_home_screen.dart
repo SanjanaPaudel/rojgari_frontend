@@ -2,19 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/models/service_request/service_category.dart';
 import 'package:rojgari_frontend_one/screens/customer/service_request/service_request_screen.dart';
+import 'package:rojgari_frontend_one/services/service_category_service.dart';
+import 'package:rojgari_frontend_one/widgets/customer/service_request/service_request_notification.dart';
 
+// CUSTOMER DASHBOARD INTEGRATION POINT:
+// Preserve the latest dashboard UI, pass the real backend category integer ID
+// into ServiceRequestScreen, and never use a temporary slug as the booking ID.
 void openServiceRequestPage(BuildContext context, ServiceCategory category) {
   Navigator.push(
     context,
     MaterialPageRoute(builder: (_) => ServiceRequestScreen(category: category)),
   );
 }
-
-String _temporaryCategorySlug(String title) => title
-    .trim()
-    .toLowerCase()
-    .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-    .replaceAll(RegExp(r'^-|-$'), '');
 
 class CustomerHomeScreen extends StatelessWidget {
   const CustomerHomeScreen({super.key});
@@ -197,7 +196,7 @@ class CustomerHomeScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _CategoryCarousel(categories: _categories),
+                child: _BackendCategoryCarousel(presentations: _categories),
               ),
               const SizedBox(height: 22),
               Padding(
@@ -404,6 +403,67 @@ class _CategoryCarousel extends StatefulWidget {
   State<_CategoryCarousel> createState() => _CategoryCarouselState();
 }
 
+class _BackendCategoryCarousel extends StatefulWidget {
+  const _BackendCategoryCarousel({required this.presentations});
+
+  final List<_CategoryItem> presentations;
+
+  @override
+  State<_BackendCategoryCarousel> createState() =>
+      _BackendCategoryCarouselState();
+}
+
+class _BackendCategoryCarouselState extends State<_BackendCategoryCarousel> {
+  late final ServiceCategoryService _categoryService;
+  late List<_CategoryItem> _categories;
+
+  @override
+  void initState() {
+    super.initState();
+    _categoryService = ServiceCategoryService();
+    _categories = widget.presentations;
+    _loadBackendCategories();
+  }
+
+  @override
+  void dispose() {
+    _categoryService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadBackendCategories() async {
+    try {
+      final backendCategories = await _categoryService.fetchCategories();
+      if (!mounted) return;
+      final byPresentationKey = <String, ServiceCategory>{};
+      for (final category in backendCategories) {
+        byPresentationKey[ServiceCategory.slugFromName(category.name)] =
+            category;
+        byPresentationKey[ServiceCategory.slugFromName(category.slug)] =
+            category;
+      }
+      setState(() {
+        _categories = widget.presentations
+            .map(
+              (presentation) => presentation.copyWith(
+                backendCategory:
+                    byPresentationKey[ServiceCategory.slugFromName(
+                      presentation.title,
+                    )],
+              ),
+            )
+            .toList(growable: false);
+      });
+    } on ServiceCategoryException catch (error) {
+      debugPrint('Category loading failed: ${error.message}');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      _CategoryCarousel(categories: _categories);
+}
+
 class _CategoryCarouselState extends State<_CategoryCarousel> {
   static const int _itemsPerPage = 6;
   final ScrollController _scrollController = ScrollController();
@@ -514,14 +574,22 @@ class _CategoryCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () {
-          // BACKEND TODO: Replace this temporary id and derived slug with the
-          // real category id and slug returned by the customer dashboard API.
+          final backendCategory = category.backendCategory;
+          if (backendCategory == null) {
+            ServiceRequestNotifier.show(
+              context,
+              message:
+                  '${category.title} is not currently available for booking.',
+            );
+            return;
+          }
+          // Keep the latest dashboard presentation, but pass the real integer
+          // backend ID. Never pass the local title-derived slug as an API ID.
           openServiceRequestPage(
             context,
-            ServiceCategory(
-              id: _temporaryCategorySlug(category.title),
+            backendCategory.copyWith(
               name: category.title,
-              slug: _temporaryCategorySlug(category.title),
+              slug: ServiceCategory.slugFromName(category.title),
             ),
           );
         },
@@ -955,6 +1023,7 @@ class _CategoryItem {
   final Color borderColor;
   final double iconPadding;
   final double iconBoxSize;
+  final ServiceCategory? backendCategory;
 
   const _CategoryItem(
     this.title,
@@ -963,7 +1032,18 @@ class _CategoryItem {
     this.borderColor, {
     this.iconPadding = 6,
     this.iconBoxSize = 72,
+    this.backendCategory,
   });
+
+  _CategoryItem copyWith({ServiceCategory? backendCategory}) => _CategoryItem(
+    title,
+    iconPath,
+    backgroundColor,
+    borderColor,
+    iconPadding: iconPadding,
+    iconBoxSize: iconBoxSize,
+    backendCategory: backendCategory,
+  );
 }
 
 class _RecentJob {
