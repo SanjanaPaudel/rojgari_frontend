@@ -174,6 +174,9 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
   }
 
   Future<void> _loadCurrentLocation() async {
+
+  
+  
     if (mounted) {
       setState(() => _state = _LocationViewState.loading);
     }

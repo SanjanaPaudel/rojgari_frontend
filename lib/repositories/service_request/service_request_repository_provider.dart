@@ -1,4 +1,4 @@
-// import 'api_service_request_repository.dart';
+import 'api_service_request_repository.dart';
 import 'mock_service_request_repository.dart';
 import 'service_request_repository.dart';
 
@@ -6,7 +6,7 @@ import 'service_request_repository.dart';
 // BACKEND DEVELOPER: SWITCH MOCK SUBMISSION TO THE REAL API
 // ============================================================================
 //
-// CURRENTLY ACTIVE: MockServiceRequestRepository
+// CURRENTLY ACTIVE: ApiServiceRequestRepository
 //
 // This allows the completed frontend Request Page to work before the backend
 // endpoint is ready. Do not remove the mock until all of these are confirmed:
@@ -27,7 +27,7 @@ import 'service_request_repository.dart';
 // schedule card, or validation. Only switch the repository implementation.
 // ============================================================================
 final ServiceRequestRepository serviceRequestRepository =
-    const MockServiceRequestRepository();
+    ApiServiceRequestRepository();
 
 // BACKEND DEVELOPER:
 // After the endpoint contract and real login/token flow are confirmed,
