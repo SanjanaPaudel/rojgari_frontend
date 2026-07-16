@@ -129,7 +129,7 @@ class _TechnicianSkillSelectionScreenState
   }
 
   // -------------------------------------------------------------------------
-  // Save — POST selected IDs to backend, then pop with skill names
+  // Save — PUT selected IDs to backend via update-skills, then pop with skill names
   // -------------------------------------------------------------------------
 
   Future<void> _save() async {
@@ -139,8 +139,9 @@ class _TechnicianSkillSelectionScreenState
     });
 
     try {
-      final response =
-          await _skillService.selectSkills(_selectedSkillIds.toList());
+      final response = await _skillService.updateSkills(
+        _selectedSkillIds.toList(),
+      );
 
       if (!mounted) return;
 
@@ -218,10 +219,7 @@ class _TechnicianSkillSelectionScreenState
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                 child: Text(
                   _saveError!,
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: Colors.red, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -276,10 +274,7 @@ class _TechnicianSkillSelectionScreenState
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-            TextButton(
-              onPressed: _loadSkills,
-              child: const Text('Retry'),
-            ),
+            TextButton(onPressed: _loadSkills, child: const Text('Retry')),
           ],
         ),
       );

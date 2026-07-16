@@ -37,6 +37,8 @@ class ApiUrls {
   static const String workerSkills = "$baseUrl/auth/worker/skills/";
   static const String selectWorkerSkills = "$baseUrl/auth/worker/select-skills/";
   static const String workerStatus = "$baseUrl/auth/worker/status/";
+  static const String updateWorkerSkills = "$baseUrl/auth/worker/update-skills/";
+
 
   // POST multipart/form-data — field: "profile_photo" → <image file>
   // Response: { "message": "...", "profile_photo": "<absolute URL>" }
