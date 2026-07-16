@@ -56,7 +56,10 @@ class IdentityDocumentsScreen extends StatefulWidget {
 }
 
 class _IdentityDocumentsScreenState extends State<IdentityDocumentsScreen> {
-  static const _maxBytes = 10 * 1024 * 1024;
+  // Maximum allowed size for citizenship and certificate photos: 5 MB.
+  // Large enough for high-resolution document scans, small enough to keep
+  // uploads fast on mobile networks.
+  static const _maxBytes = 5 * 1024 * 1024;
   final _picker = ImagePicker();
   _SelectedDocument? _front;
   _SelectedDocument? _back;
@@ -127,7 +130,7 @@ class _IdentityDocumentsScreenState extends State<IdentityDocumentsScreen> {
         return;
       }
       if (bytes.length > _maxBytes) {
-        _showMessage('The image must be smaller than 10 MB.');
+        _showMessage('The image must be smaller than 5 MB.');
         return;
       }
       final document = _SelectedDocument(name: file.name, bytes: bytes);

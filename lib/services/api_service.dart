@@ -161,32 +161,69 @@ class ApiService {
     return response;
   }
 
+  // Sends a multipart/form-data POST request.
+  //
+  // WHY this method does NOT call _getHeaders():
+  //   _getHeaders() adds "Content-Type: application/json", which would
+  //   override the boundary that http.MultipartRequest sets automatically.
+  //   Only the Authorization header is added manually here.
+  //
+  // The http package sets:
+  //   Content-Type: multipart/form-data; boundary=<auto>
+  // on the outer request automatically when you call request.send().
+  //
+  // Parameters:
+  //   [fieldName]  – The multipart field name the server expects
+  //                  (e.g. "profile_photo").  Passed in by the caller so
+  //                  this method stays generic and reusable.
+  //   [fields]     – Additional plain-text form fields (can be empty map).
+  //   [imageBytes] – Raw image bytes read from XFile.readAsBytes().
+  //   [imageName]  – Original filename (e.g. "IMG_1234.jpg") used as the
+  //                  Content-Disposition filename parameter in the part
+  //                  header.  Also used to infer the MIME type.
   Future<http.StreamedResponse> multipartPost(
     String url,
     Map<String, String> fields,
-    Uint8List? imageBytes,  // Raw image bytes — works on Web and native
-    String? imageName,      // Original filename used as multipart filename
-  ) async {
+    Uint8List? imageBytes,
+    String? imageName, {
+    String fieldName = 'photo', // field name the server reads from request.FILES
+  }) async {
+    // Infer MIME type from the file extension so the part header is correct.
+    // Pillow validates image bytes directly, but a correct Content-Type header
+    // is good practice and avoids surprises with strict server configurations.
+    http.MediaType _mimeType(String? name) {
+      final ext = (name ?? '').split('.').last.toLowerCase();
+      return switch (ext) {
+        'png'  => http.MediaType('image', 'png'),
+        'webp' => http.MediaType('image', 'webp'),
+        'gif'  => http.MediaType('image', 'gif'),
+        _      => http.MediaType('image', 'jpeg'), // default — covers jpg/jpeg
+      };
+    }
+
     http.MultipartRequest request = http.MultipartRequest(
       "POST",
       Uri.parse(url),
     );
 
     final token = await _getValidAccessToken();
-
     if (token != null) {
       request.headers["Authorization"] = "Bearer $token";
     }
 
     request.fields.addAll(fields);
 
-    // fromBytes() is synchronous and works on Flutter Web + Android/iOS
     if (imageBytes != null) {
+      // fromBytes() is synchronous and works on Flutter Web + Android/iOS.
+      // We pass contentType so the multipart part header reads:
+      //   Content-Type: image/jpeg  (or png/webp/gif)
+      // instead of the default application/octet-stream.
       request.files.add(
         http.MultipartFile.fromBytes(
-          "profile_photo",
+          fieldName,
           imageBytes,
-          filename: imageName ?? "profile_photo.jpg",
+          filename: imageName ?? '$fieldName.jpg',
+          contentType: _mimeType(imageName),
         ),
       );
     }
@@ -195,19 +232,12 @@ class ApiService {
 
     if (response.statusCode == 401 && !_isPublicAuthEndpoint(url)) {
       final refreshed = await _handleTokenRefresh();
+      if (!refreshed) await _logoutUser();
 
-      if (!refreshed) {
-        await _logoutUser();
-      }
-
-      // MultipartRequest cannot be reused after send()
-      request = http.MultipartRequest(
-        "POST",
-        Uri.parse(url),
-      );
+      // MultipartRequest cannot be reused after send() — rebuild it.
+      request = http.MultipartRequest("POST", Uri.parse(url));
 
       final newToken = await _getValidAccessToken();
-
       if (newToken != null) {
         request.headers["Authorization"] = "Bearer $newToken";
       }
@@ -217,9 +247,10 @@ class ApiService {
       if (imageBytes != null) {
         request.files.add(
           http.MultipartFile.fromBytes(
-            "profile_photo",
+            fieldName,
             imageBytes,
-            filename: imageName ?? "profile_photo.jpg",
+            filename: imageName ?? '$fieldName.jpg',
+            contentType: _mimeType(imageName),
           ),
         );
       }
