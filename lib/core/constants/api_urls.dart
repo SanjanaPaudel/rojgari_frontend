@@ -1,7 +1,29 @@
+
+
+// class ApiUrls {
+//   // Android Emulator
+//   static const String baseUrl = "http://10.0.2.2:8000/api/auth";
+//
+//   // Physical phone example:
+//   // static const String baseUrl = "http://192.168.1.8:8000/api/auth";
+//
+//   static const String login = "$baseUrl/login/";
+//   static const String refresh = "$baseUrl/refresh/";
+//   static const String logout = "$baseUrl/logout/";
+// }
+
 class ApiUrls {
-  // static const String baseUrl = "http://10.0.2.2:8000/api";
+  // Android Emulator
+  //static const String baseUrl = "http://10.0.2.2:8000/api";
+
+  //   // Physical phone example:
+//   // static const String baseUrl = "http://192.168.1.8:8000/api/auth";
+
   static const String baseUrl = "http://127.0.0.1:8000/api";
+
+  // Authentication
   static const String signup = "$baseUrl/auth/signup/";
+  static const String serviceRequests = "$baseUrl/customer/service-requests/";
   static const String verifyOtp = "$baseUrl/auth/verify-otp/";
   static const String resendOtp = "$baseUrl/auth/resend-otp/";
   static const String login = "$baseUrl/auth/login/";
