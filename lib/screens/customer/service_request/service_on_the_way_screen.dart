@@ -647,7 +647,6 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
                       ServiceTrackingRequestDetails(
                         location: widget.serviceLocation,
                         requestedAt: widget.requestedAt,
-                        requestDescription: widget.requestDescription,
                       ),
                       const SizedBox(height: 12),
                       BookingActionButtons(
@@ -977,13 +976,11 @@ class ServiceTrackingRequestDetails extends StatelessWidget {
   const ServiceTrackingRequestDetails({
     required this.location,
     required this.requestedAt,
-    required this.requestDescription,
     super.key,
   });
 
   final SelectedServiceLocation location;
   final DateTime requestedAt;
-  final String requestDescription;
 
   @override
   Widget build(BuildContext context) {
@@ -1016,14 +1013,6 @@ class ServiceTrackingRequestDetails extends StatelessWidget {
             title: 'Requested at',
             subtitle: _formatRequestDateTime(requestedAt),
           ),
-          if (requestDescription.trim().isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _TrackingDetailRow(
-              icon: Icons.chat_bubble_outline_rounded,
-              title: 'Issue',
-              subtitle: requestDescription.trim(),
-            ),
-          ],
         ],
       ),
     );

@@ -86,8 +86,8 @@ void main() {
     expect(find.text('Mechanic Service'), findsOneWidget);
     expect(find.text('Arriving in'), findsOneWidget);
     expect(find.text('2 min (1.2 km away)'), findsOneWidget);
-    expect(find.text('Issue'), findsOneWidget);
-    expect(find.text('The motorcycle will not start.'), findsOneWidget);
+    expect(find.text('Issue'), findsNothing);
+    expect(find.text('The motorcycle will not start.'), findsNothing);
     expect(find.text('More'), findsNothing);
     expect(find.text('Share Live Location'), findsNothing);
     expect(find.textContaining('MOTOR-BIKE'), findsNothing);
