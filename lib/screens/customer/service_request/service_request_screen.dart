@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/colors.dart';
 import '../../../models/service_request/service_category.dart';
 import '../../../models/service_request/service_category_presentation.dart';
+import '../../../models/service_request/request_search_status.dart';
 import '../../../models/service_request/selected_service_location.dart';
 import '../../../models/service_request/service_request_payload.dart';
 import '../../../repositories/service_request/service_request_repository.dart';
@@ -18,6 +19,7 @@ import '../../../widgets/customer/service_request/service_request_submit_button.
 import '../../../widgets/customer/service_request/service_schedule_card.dart';
 import '../../../widgets/customer/service_request/video_upload_card.dart';
 import 'service_location_picker_screen.dart';
+import 'finding_service_person_screen.dart';
 
 class ServiceRequestScreen extends StatefulWidget {
   const ServiceRequestScreen({
@@ -259,18 +261,25 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
         ],
       );
       final result = await _repository.createServiceRequest(payload);
-      if (mounted) {
-        _showMessage(
-          result.message,
-          type: ServiceRequestNotificationType.success,
-        );
-        // Wait a short delay for the user to see the success message, then pop back to home
-        Future.delayed(const Duration(milliseconds: 1500), () {
-          if (mounted) {
-            Navigator.pop(context);
-          }
-        });
-      }
+      if (!mounted) return;
+
+      // BACKEND INTEGRATION:
+      // result.requestId is the ID returned by the create-service-request API.
+      // Connect the final request-status stream/listenable here and pass matched
+      // worker data to FindingServicePersonScreen when the backend is ready.
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FindingServicePersonScreen(
+            requestId: result.requestId,
+            category: widget.category,
+            serviceLocation: _selectedServiceLocation!,
+            requestDescription: payload.description,
+            requestedAt: result.createdAt,
+            initialStatus: RequestSearchStatus.fromBackendValue(result.status),
+          ),
+        ),
+      );
     } on ServiceRequestException catch (error) {
       if (mounted) _showMessage(error.message);
     } catch (_) {
