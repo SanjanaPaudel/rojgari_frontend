@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
+import '../core/utils/category_icon_registry.dart';
 import '../models/category_model.dart';
 
 class CategoryCard extends StatelessWidget {
@@ -94,66 +95,14 @@ class CategoryCard extends StatelessWidget {
       borderCol = borderPalettes[index];
     }
 
-    // 2. Resolve dynamic icon parsing
-    IconData iconData = Icons.handyman_outlined;
-    final cleanIconStr = category.icon.replaceAll('Icons.', '').toLowerCase().trim();
-    if (cleanIconStr.isNotEmpty) {
-      switch (cleanIconStr) {
-        case 'plumbing':
-          iconData = Icons.plumbing;
-          break;
-        case 'electric_bolt':
-          iconData = Icons.electric_bolt;
-          break;
-        case 'build':
-        case 'build_outlined':
-          iconData = Icons.build_outlined;
-          break;
-        case 'local_florist':
-        case 'local_florist_outlined':
-        case 'eco':
-          iconData = Icons.local_florist_outlined;
-          break;
-        case 'cleaning_services':
-        case 'cleaning_services_outlined':
-          iconData = Icons.cleaning_services_outlined;
-          break;
-        case 'handyman':
-        case 'handyman_outlined':
-          iconData = Icons.handyman_outlined;
-          break;
-        case 'format_paint':
-          iconData = Icons.format_paint_outlined;
-          break;
-        case 'format_paint_outlined':
-          iconData = Icons.format_paint_outlined;
-          break;
-        case 'ac_unit':
-        case 'ac_unit_outlined':
-          iconData = Icons.ac_unit_outlined;
-          break;
-        case 'computer':
-        case 'computer_outlined':
-          iconData = Icons.computer_outlined;
-          break;
-        case 'tv':
-        case 'tv_outlined':
-          iconData = Icons.tv_outlined;
-          break;
-      }
-    } else {
-      // Name fallback resolution
-      if (lowerName.contains('plumber')) iconData = Icons.plumbing;
-      else if (lowerName.contains('electrician')) iconData = Icons.electric_bolt;
-      else if (lowerName.contains('mechanic')) iconData = Icons.build_outlined;
-      else if (lowerName.contains('gardener')) iconData = Icons.local_florist_outlined;
-      else if (lowerName.contains('maid')) iconData = Icons.cleaning_services_outlined;
-      else if (lowerName.contains('carpenter')) iconData = Icons.handyman_outlined;
-      else if (lowerName.contains('painter')) iconData = Icons.format_paint_outlined;
-      else if (lowerName.contains('ac repair') || lowerName.contains('ac_repair')) iconData = Icons.ac_unit_outlined;
-      else if (lowerName.contains('computer') || lowerName.contains('pc repair')) iconData = Icons.computer_outlined;
-      else if (lowerName.contains('tv repair')) iconData = Icons.tv_outlined;
-    }
+    // 2. Resolve icon from the backend-provided icon key (falls back to
+    // matching the category name, then to a generic icon). See
+    // CategoryIconRegistry for the full list of known keys and how to add a
+    // new one.
+    final IconData iconData = CategoryIconRegistry.resolve(
+      icon: category.icon,
+      name: category.name,
+    );
 
     return Material(
       color: Color.alphaBlend(
@@ -180,37 +129,66 @@ class CategoryCard extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: boxSize,
-                height: boxSize,
-                padding: EdgeInsets.all(padding),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .48),
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Icon(
-                  iconData,
-                  color: AppColors.primary,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                category.name,
-                textAlign: TextAlign.center,
+          child: LayoutBuilder(
+            builder: (context, innerConstraints) {
+              // Shrink the icon box (never grow it) by exactly as much as
+              // the wrapped title needs, so the card fits the grid cell's
+              // fixed height regardless of name length, font metrics, or the
+              // device's text-scale setting. When there's enough room (as
+              // there is for every current category) this returns `boxSize`
+              // unchanged, so today's layout is pixel-identical.
+              const double gap = 10;
+              const textStyle = TextStyle(
+                color: AppColors.black,
+                fontSize: 14,
+                height: 1.15,
+                fontWeight: FontWeight.w700,
+              );
+              final textPainter = TextPainter(
+                text: TextSpan(text: category.name, style: textStyle),
                 maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.black,
-                  fontSize: 14,
-                  height: 1.15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+                textDirection: TextDirection.ltr,
+                textScaler: MediaQuery.textScalerOf(context),
+              )..layout(maxWidth: innerConstraints.maxWidth);
+
+              final double availableForIcon =
+                  innerConstraints.maxHeight - gap - textPainter.height;
+              final double effectiveBoxSize = availableForIcon.clamp(
+                40.0,
+                boxSize,
+              );
+
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: effectiveBoxSize,
+                    height: effectiveBoxSize,
+                    padding: EdgeInsets.all(padding),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .48),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Icon(
+                        iconData,
+                        color: AppColors.primary,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: gap),
+                  Text(
+                    category.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textStyle,
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
