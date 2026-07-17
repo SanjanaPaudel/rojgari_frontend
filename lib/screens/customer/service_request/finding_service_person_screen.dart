@@ -13,6 +13,7 @@ import '../../../models/service_request/selected_service_location.dart';
 import '../../../models/service_request/service_booking_demo_config.dart';
 import '../../../models/service_request/service_category.dart';
 import '../../../models/service_request/service_category_presentation.dart';
+import '../../../services/service_request/booking_status_service.dart';
 import '../../../widgets/customer/service_request/service_search_map.dart';
 import 'service_on_the_way_screen.dart';
 import 'rate_your_experience_screen.dart';
@@ -40,6 +41,8 @@ class FindingServicePersonScreen extends StatefulWidget {
     this.demoSearchDuration = ServiceBookingDemoConfig.searchingDuration,
     this.acceptedDisplayDuration =
         ServiceBookingDemoConfig.acceptedDisplayDuration,
+    this.enableStatusPolling = true,
+    this.statusPollInterval = const Duration(seconds: 5),
     super.key,
   });
 
@@ -68,6 +71,16 @@ class FindingServicePersonScreen extends StatefulWidget {
   final Duration demoSearchDuration;
   final Duration acceptedDisplayDuration;
 
+  /// Whether to poll `GET /api/services/bookings/<id>/status/` for real
+  /// worker assignment. Defaults to true for production use; the debug-only
+  /// [FindingServicePersonPreview] route sets this to false so it never hits
+  /// the network with its fake preview request id.
+  final bool enableStatusPolling;
+
+  /// How often to poll while [enableStatusPolling] is true and no
+  /// [statusListenable] is supplied.
+  final Duration statusPollInterval;
+
   @override
   State<FindingServicePersonScreen> createState() =>
       _FindingServicePersonScreenState();
@@ -75,12 +88,21 @@ class FindingServicePersonScreen extends StatefulWidget {
 
 class _FindingServicePersonScreenState
     extends State<FindingServicePersonScreen> {
+  /// Consecutive failed polls (network hiccups, unexpected response shapes)
+  /// tolerated before giving up and showing the error state. A 404 (booking
+  /// not found / not yours) is terminal immediately and doesn't count here.
+  static const int _maxStatusPollFailures = 5;
+
   late RequestSearchStatus _status;
   bool _workerFoundNavigationTriggered = false;
   bool _cancellationInFlight = false;
   bool _dialogOpen = false;
   Timer? _demoAcceptedTimer;
   Timer? _acceptedNavigationTimer;
+  Timer? _statusPollTimer;
+  int _statusPollFailureCount = 0;
+  AcceptedWorkerUiModel? _polledWorker;
+  final BookingStatusService _statusService = BookingStatusService();
 
   @override
   void initState() {
@@ -88,15 +110,9 @@ class _FindingServicePersonScreenState
     _status = widget.statusListenable?.value ?? widget.initialStatus;
     widget.statusListenable?.addListener(_handleStatusListenableChanged);
 
-    // BACKEND INTEGRATION:
-    // Subscribe to request status updates using the final backend approach
-    // (polling, WebSocket, server-sent events, or the chosen provider/service).
-    // Map pending/searching/matched/cancelled/failed values with
-    // RequestSearchStatus.fromBackendValue, then update statusListenable.
-    // When matched, pass the matched worker data to the next screen and ensure
-    // worker-found navigation remains a one-time action.
     if (_status.isFound) _scheduleAcceptedNavigation();
     _startDemoSearchIfNeeded();
+    _startStatusPolling();
   }
 
   @override
@@ -118,6 +134,7 @@ class _FindingServicePersonScreenState
   void dispose() {
     _demoAcceptedTimer?.cancel();
     _acceptedNavigationTimer?.cancel();
+    _statusPollTimer?.cancel();
     widget.statusListenable?.removeListener(_handleStatusListenableChanged);
     super.dispose();
   }
@@ -132,7 +149,11 @@ class _FindingServicePersonScreenState
     setState(() => _status = nextStatus);
     if (nextStatus.isFound) {
       _demoAcceptedTimer?.cancel();
+      _statusPollTimer?.cancel();
       _scheduleAcceptedNavigation();
+    } else if (!nextStatus.isSearching) {
+      // cancelled / error: nothing left to poll for.
+      _statusPollTimer?.cancel();
     }
   }
 
@@ -149,13 +170,58 @@ class _FindingServicePersonScreenState
     // real request status updates are connected.
     _demoAcceptedTimer = Timer(widget.demoSearchDuration, () {
       if (!mounted || !_status.isSearching) return;
-
-      // BACKEND INTEGRATION:
-      // Replace the demo timer with the real request-status update. When the
-      // backend status becomes accepted/matched, pass accepted worker data and
-      // request data into ServiceOnTheWayScreen. Trigger navigation only once.
       _applyStatus(RequestSearchStatus.accepted);
     });
+  }
+
+  /// Polls `GET /api/services/bookings/<id>/status/` for real worker
+  /// assignment. Skipped when an external [statusListenable] drives status
+  /// instead (e.g. tests), when [FindingServicePersonScreen.enableStatusPolling]
+  /// is false (the debug preview route), or once no longer searching.
+  void _startStatusPolling() {
+    if (!widget.enableStatusPolling ||
+        widget.statusListenable != null ||
+        !_status.isSearching) {
+      return;
+    }
+
+    unawaited(_pollBookingStatusOnce()); // Immediately calls _poolBookingStatusOnce
+    _statusPollTimer = Timer.periodic(
+      widget.statusPollInterval,
+      (_) => unawaited(_pollBookingStatusOnce()),
+    );
+  }
+
+  Future<void> _pollBookingStatusOnce() async {
+    if (!mounted || !_status.isSearching) return;
+    try {
+      final result = await _statusService.fetchStatus(widget.requestId);
+      if (!mounted) return;
+      _statusPollFailureCount = 0;
+
+      if (result.hasAssignedWorker) {
+        _statusPollTimer?.cancel();
+        _polledWorker = AcceptedWorkerUiModel.fromAssignedWorker(
+          result.worker!,
+        );
+        _applyStatus(RequestSearchStatus.accepted);
+      }
+      // worker == null: still searching — nothing to change, wait for the
+      // next tick.
+    } on BookingNotFoundException {
+      if (!mounted) return;
+      _statusPollTimer?.cancel();
+      _applyStatus(RequestSearchStatus.error);
+    } catch (_) {
+      // Transient failure (network hiccup, unexpected response shape, or a
+      // non-2xx/non-404 status). Keep polling; only give up after repeated
+      // failures so a single blip doesn't interrupt the search.
+      _statusPollFailureCount++;
+      if (_statusPollFailureCount >= _maxStatusPollFailures) {
+        _statusPollTimer?.cancel();
+        if (mounted) _applyStatus(RequestSearchStatus.error);
+      }
+    }
   }
 
   void _scheduleAcceptedNavigation() {
@@ -178,13 +244,14 @@ class _FindingServicePersonScreenState
         return;
       }
 
-      // BACKEND INTEGRATION:
-      // When the search request status becomes accepted/matched, map the
-      // backend response into the worker model and pass it to
-      // ServiceOnTheWayScreen. Remove the demo worker factory after the real
-      // response is available.
+      // widget.acceptedWorker lets tests/preview routes inject a fixed
+      // worker; _polledWorker is what the real status-polling path above
+      // populates. The demo factory is only a last-resort fallback so this
+      // never null-crashes — it shouldn't be reachable once a real booking
+      // is what triggered `accepted` in the first place.
       final worker =
           widget.acceptedWorker ??
+          _polledWorker ??
           AcceptedWorkerUiModel.demo(
             customerLatitude: widget.serviceLocation.latitude,
             customerLongitude: widget.serviceLocation.longitude,
@@ -280,6 +347,7 @@ class _FindingServicePersonScreenState
       final cancelled = await cancellationHandler();
       if (!mounted) return;
       if (!cancelled) {
+        _statusPollTimer?.cancel();
         setState(() {
           _cancellationInFlight = false;
           _status = RequestSearchStatus.error;
@@ -287,10 +355,12 @@ class _FindingServicePersonScreenState
         _showCancellationError();
         return;
       }
+      _statusPollTimer?.cancel();
       setState(() => _status = RequestSearchStatus.cancelled);
       Navigator.pop(context);
     } catch (_) {
       if (!mounted) return;
+      _statusPollTimer?.cancel();
       setState(() {
         _cancellationInFlight = false;
         _status = RequestSearchStatus.error;

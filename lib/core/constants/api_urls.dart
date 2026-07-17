@@ -86,4 +86,16 @@ class ApiUrls {
   static const String workerIdentity = "$baseUrl/auth/worker/identity/";
 
   static const String categories = "$baseUrl/services/categories/";
+
+  // GET — polled while the customer is on the "Finding Service Person"
+  // screen to detect worker assignment.
+  // Response 200, no worker yet: { "id": <int>, "status": "active",
+  //   "worker": null }
+  // Response 200, worker assigned: { "id", "status", "worker": { "id",
+  //   "full_name", "phone_number", "average_rating", "completed_jobs",
+  //   "profile_photo", "current_latitude", "current_longitude" } }
+  // Response 404 — booking doesn't exist, or doesn't belong to the
+  // requesting customer.
+  static String bookingStatus(String bookingId) =>
+      "$baseUrl/services/bookings/$bookingId/status/";
 }

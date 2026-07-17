@@ -33,6 +33,10 @@ class FindingServicePersonPreview extends StatelessWidget {
       requestedAt: DateTime.now(),
       initialStatus: RequestSearchStatus.searching,
       // FRONTEND PREVIEW ONLY:
+      // This route has no real booking behind it (fake id, no auth), so it
+      // must never hit the real status-polling endpoint.
+      enableStatusPolling: false,
+      // FRONTEND PREVIEW ONLY:
       // The normal app already has CustomerHomeScreen underneath this flow.
       // The direct preview does not, so provide the same dashboard destination
       // explicitly for the Thank You page's Back to Home action.

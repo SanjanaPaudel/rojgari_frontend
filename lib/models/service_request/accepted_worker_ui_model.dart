@@ -1,11 +1,15 @@
 import 'package:latlong2/latlong.dart';
 
+import '../../core/constants/api_urls.dart';
+import 'booking_status_response.dart';
+
 class AcceptedWorkerUiModel {
   const AcceptedWorkerUiModel({
     required this.id,
     required this.name,
     required this.latitude,
     required this.longitude,
+    this.phoneNumber,
     this.profileImageUrl,
     this.profileImageAsset,
     this.rating,
@@ -19,6 +23,7 @@ class AcceptedWorkerUiModel {
 
   final String id;
   final String name;
+  final String? phoneNumber;
   final String? profileImageUrl;
   final String? profileImageAsset;
   final double? rating;
@@ -32,6 +37,28 @@ class AcceptedWorkerUiModel {
   final DateTime? arrivedAt;
 
   LatLng get coordinate => LatLng(latitude, longitude);
+
+  /// Maps the real `GET /api/services/bookings/<id>/status/` worker payload
+  /// into the UI model this screen already knows how to render.
+  ///
+  /// `distanceKm` and `estimatedArrivalMinutes` are left null — the status
+  /// endpoint doesn't provide either, and the UI already treats both as
+  /// optional (hidden when absent) rather than showing a fabricated number.
+  factory AcceptedWorkerUiModel.fromAssignedWorker(AssignedWorkerInfo worker) {
+    return AcceptedWorkerUiModel(
+      id: worker.id,
+      name: worker.fullName,
+      phoneNumber: worker.phoneNumber,
+      profileImageUrl: worker.profilePhoto == null
+          ? null
+          : ApiUrls.resolveMediaUrl(worker.profilePhoto!),
+      rating: worker.averageRating,
+      completedJobs: worker.completedJobs,
+      latitude: worker.currentLatitude ?? 0,
+      longitude: worker.currentLongitude ?? 0,
+      acceptedAt: DateTime.now(),
+    );
+  }
 
   // BACKEND INTEGRATION:
   // Populate worker name, profile image, rating, and profile description from
