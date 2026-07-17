@@ -5,7 +5,7 @@
 //   static const String baseUrl = "http://10.0.2.2:8000/api/auth";
 //
 //   // Physical phone example:
-//   // static const String baseUrl = "http://192.168.1.8:8000/api/auth";
+//   static const String baseUrl = "http://192.168.1.8:8000/api/auth";
 //
 //   static const String login = "$baseUrl/login/";
 //   static const String refresh = "$baseUrl/refresh/";
@@ -39,6 +39,26 @@ class ApiUrls {
   static const String workerStatus = "$baseUrl/auth/worker/status/";
   static const String workerLocation = "$baseUrl/auth/worker/location/";
   static const String updateWorkerSkills = "$baseUrl/auth/worker/update-skills/";
+
+  // GET — returns the pending booking offers for the logged-in worker.
+  // Response: { "count": <int>, "requests": [ { offer_id, customer_name,
+  //             service, service_icon, description, address, distance_km,
+  //             created_at } ] }
+  static const String workerIncomingRequests =
+      "$baseUrl/auth/worker/incoming-requests/";
+
+  // Resolves a media path returned by the backend into a loadable URL.
+  //
+  // WHY this exists:
+  //   Django's ImageField.url returns a path relative to MEDIA_URL, e.g.
+  //   "/media/skills/icons/plumbing.png" — not an absolute URL. Passing that
+  //   straight to Image.network fails. Some endpoints (worker profile photo)
+  //   already return an absolute URL, so absolute inputs are passed through
+  //   unchanged.
+  static String resolveMediaUrl(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    return '${Uri.parse(baseUrl).origin}$path';
+  }
 
 
   // POST multipart/form-data — field: "profile_photo" → <image file>

@@ -15,6 +15,7 @@ import '../../widgets/technician/profile_header.dart';
 import '../../widgets/technician/stat_card.dart';
 import '../../widgets/technician/request_card.dart';
 import '../../widgets/technician/pro_tip_card.dart';
+import 'incoming_requests_screen.dart';
 import 'profile_screen.dart';
 
 class TechnicianHomeScreen extends StatefulWidget {
@@ -891,10 +892,12 @@ class _IncomingRequestsSection extends StatelessWidget {
                 InkWell(
                   borderRadius: BorderRadius.circular(10),
                   onTap: () {
-                    // NAVIGATION PLACE:
-                    // Later create requests page and use:
-                    // Navigator.pushNamed(context, AppRoutes.requests);
-                    debugPrint('View All clicked');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const IncomingRequestsScreen(),
+                      ),
+                    );
                   },
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 2, vertical: 8),
