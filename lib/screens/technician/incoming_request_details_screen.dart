@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../core/utils/service_category_icon_resolver.dart';
 import '../../models/technician/incoming_service_request_details.dart';
+import '../../repositories/technician_job/technician_job_repository.dart';
+import '../../repositories/technician_job/technician_job_repository_provider.dart';
+import 'technician_active_job_screen.dart';
 
 typedef RequestActionCallback = Future<void> Function(String requestId);
 typedef RequestNavigationCallback = Future<void> Function();
@@ -17,6 +20,7 @@ class IncomingRequestDetailsScreen extends StatefulWidget {
     this.onAcceptedNavigation,
     this.onDeclinedNavigation,
     this.onVideoTap,
+    this.jobRepository,
   });
 
   final IncomingServiceRequestDetails request;
@@ -25,6 +29,7 @@ class IncomingRequestDetailsScreen extends StatefulWidget {
   final RequestNavigationCallback? onAcceptedNavigation;
   final RequestNavigationCallback? onDeclinedNavigation;
   final VideoTapCallback? onVideoTap;
+  final TechnicianJobRepository? jobRepository;
 
   @override
   State<IncomingRequestDetailsScreen> createState() =>
@@ -49,8 +54,13 @@ class _IncomingRequestDetailsScreenState
   Future<void> _accept() async {
     if (_isProcessing) return;
     final callback = widget.onAcceptRequest;
-    if (callback == null) {
-      _showMessage('Accept API will be connected during backend integration.');
+    if (callback != null) {
+      await _runAction(
+        action: _RequestAction.accept,
+        callback: callback,
+        navigation: widget.onAcceptedNavigation,
+        successMessage: 'Request accepted.',
+      );
       return;
     }
 
@@ -67,12 +77,32 @@ class _IncomingRequestDetailsScreenState
     // NAVIGATION INTEGRATION:
     // After successful acceptance, navigate to the actual accepted-job,
     // active-job, matching, or job-details screen.
-    await _runAction(
-      action: _RequestAction.accept,
-      callback: callback,
-      navigation: widget.onAcceptedNavigation,
-      successMessage: 'Request accepted.',
-    );
+    setState(() => _processingAction = _RequestAction.accept);
+    try {
+      // BACKEND INTEGRATION:
+      // Replace the default mock repository with the real technician accept
+      // operation (suggested, not confirmed: POST
+      // /technician/requests/{requestId}/accept). Include the bearer token via
+      // the existing ApiService, parse the returned active-job object, and
+      // navigate only after a successful 2xx response. If another technician
+      // already accepted it, keep this page open and show a friendly error.
+      // Persist "accepted" and notify the customer through the final realtime
+      // approach; this technician UI must not update the customer UI directly.
+      final repository = widget.jobRepository ?? technicianJobRepository;
+      final activeJob = await repository.acceptRequest(widget.request);
+      if (!mounted) return;
+      await Navigator.pushReplacement<void, void>(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              TechnicianActiveJobScreen(job: activeJob, repository: repository),
+        ),
+      );
+    } catch (_) {
+      _showMessage('Unable to accept this request. Please try again.');
+    } finally {
+      if (mounted) setState(() => _processingAction = null);
+    }
   }
 
   Future<void> _decline() async {
