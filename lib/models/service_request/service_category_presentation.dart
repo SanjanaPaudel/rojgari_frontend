@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'service_category.dart';
+
 class ServiceCategoryPresentation {
   const ServiceCategoryPresentation._();
 
@@ -40,6 +42,30 @@ class ServiceCategoryPresentation {
         return Icons.computer;
       default:
         return Icons.home_repair_service_outlined;
+    }
+  }
+
+  static String serviceTitleFor(ServiceCategory category) {
+    final name = category.name.trim();
+    if (name.isEmpty) return 'Service';
+    return name.toLowerCase().endsWith('service') ? name : '$name Service';
+  }
+
+  static String issueLabelFor(ServiceCategory category) {
+    switch (_normalized(category.slug)) {
+      case 'plumber':
+      case 'plumbing':
+        return 'Plumbing Issue';
+      case 'electrician':
+      case 'electrical':
+        return 'Electrical Issue';
+      case 'maid':
+      case 'cleaning':
+      case 'maid-cleaning':
+        return 'Cleaning Issue';
+      default:
+        final name = category.name.trim();
+        return '${name.isEmpty ? 'Service' : name} Issue';
     }
   }
 
