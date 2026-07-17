@@ -4,6 +4,7 @@ import '../../core/constants/colors.dart';
 import '../../models/incoming_request_model.dart';
 import '../../services/incoming_request_service.dart';
 import '../../widgets/technician/incoming_request_card.dart';
+import 'incoming_request_details_loader.dart';
 
 // "All Incoming Requests" — the View All destination from the technician
 // home screen's "New requests near you" section.
@@ -13,10 +14,10 @@ import '../../widgets/technician/incoming_request_card.dart';
 //
 // KNOWN BACKEND LIMITATION:
 // That endpoint returns only offers with status="pending" and sends no status
-// field, so every request loads as `isNew`. The Viewed and Offered tabs will
-// therefore always be empty until the backend tracks and returns a status.
+// field, so every request loads as `isNew`. The Viewed tab will therefore
+// always be empty until the backend tracks and returns a status.
 
-enum _RequestFilter { all, isNew, viewed, offered }
+enum _RequestFilter { all, isNew, viewed }
 
 class IncomingRequestsScreen extends StatefulWidget {
   const IncomingRequestsScreen({super.key});
@@ -72,9 +73,6 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
     _RequestFilter.viewed => _requests
         .where((r) => r.status == IncomingRequestStatus.viewed)
         .length,
-    _RequestFilter.offered => _requests
-        .where((r) => r.status == IncomingRequestStatus.offered)
-        .length,
   };
 
   List<IncomingRequest> get _visibleRequests => switch (_activeFilter) {
@@ -84,9 +82,6 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
         .toList(),
     _RequestFilter.viewed => _requests
         .where((r) => r.status == IncomingRequestStatus.viewed)
-        .toList(),
-    _RequestFilter.offered => _requests
-        .where((r) => r.status == IncomingRequestStatus.offered)
         .toList(),
   };
 
@@ -113,39 +108,9 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
             color: Color(0xff171725),
           ),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(0, 8, 12, 8),
-            child: OutlinedButton.icon(
-              onPressed: () {
-                // NAVIGATION PLACE:
-                // Filter options are not specified yet. Wire this to the
-                // filter sheet once the criteria are defined.
-                debugPrint('Filter clicked');
-              },
-              icon: const Icon(Icons.filter_list, size: 18),
-              label: const Text(
-                'Filter',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: Color(0xffD8CCFB)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(14, 4, 14, 0),
-            child: _OfferInfoBanner(),
-          ),
-          const SizedBox(height: 14),
           _FilterTabs(
             activeFilter: _activeFilter,
             countFor: _countFor,
@@ -156,6 +121,18 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
         ],
       ),
     );
+  }
+
+  /// Opens the detail page. It pops `true` after a successful accept, which
+  /// means this list is stale — the accepted offer is no longer pending.
+  Future<void> _openDetails(IncomingRequest request) async {
+    final accepted = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => IncomingRequestDetailsLoader(offerId: request.id),
+      ),
+    );
+    if (accepted == true) await _loadRequests();
   }
 
   Widget _buildBody(List<IncomingRequest> visible) {
@@ -191,12 +168,7 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
                 final request = visible[index];
                 return IncomingRequestCard(
                   request: request,
-                  onTap: () {
-                    // NAVIGATION PLACE:
-                    // GET /api/auth/worker/request/<offer_id>/ backs the
-                    // detail page. Push it here with request.id once built.
-                    debugPrint('${request.title} clicked');
-                  },
+                  onTap: () => _openDetails(request),
                 );
               },
             ),
@@ -252,56 +224,6 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
-class _OfferInfoBanner extends StatelessWidget {
-  const _OfferInfoBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xffF1ECFF),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.info_outline,
-            size: 20,
-            color: AppColors.primary,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Set your service charge (per hour) and estimated time.',
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'Customer will review and accept your offer.',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: Color(0xff6E7191),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _FilterTabs extends StatelessWidget {
   const _FilterTabs({
     required this.activeFilter,
@@ -317,7 +239,6 @@ class _FilterTabs extends StatelessWidget {
     _RequestFilter.all: 'All Requests',
     _RequestFilter.isNew: 'New',
     _RequestFilter.viewed: 'Viewed',
-    _RequestFilter.offered: 'Offered',
   };
 
   @override

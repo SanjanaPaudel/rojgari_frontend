@@ -5,9 +5,11 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../core/constants/api_urls.dart';
 import '../../core/constants/colors.dart';
+import '../../models/incoming_request_model.dart';
 import '../../models/technician_model.dart';
 import '../../models/worker_dashboard_response.dart';
 import '../../services/location/location_service.dart';
+import '../../services/incoming_request_service.dart';
 import '../../services/worker_dashboard_service.dart';
 
 import '../../widgets/technician/dashboard_appbar.dart';
@@ -15,6 +17,7 @@ import '../../widgets/technician/profile_header.dart';
 import '../../widgets/technician/stat_card.dart';
 import '../../widgets/technician/request_card.dart';
 import '../../widgets/technician/pro_tip_card.dart';
+import 'incoming_request_details_loader.dart';
 import 'incoming_requests_screen.dart';
 import 'profile_screen.dart';
 
@@ -43,8 +46,20 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   late bool isOnline;
   late TechnicianModel _profile;
 
-  // ── Location streaming state ──────────────────────────────────────────────
-  StreamSubscription<Position>? _locationStreamSub;
+  // ── Location reporting state ──────────────────────────────────────────────
+
+  /// Drives the periodic location upload while the worker is online.
+  Timer? _locationTimer;
+
+  /// How often the worker's location is sent to the backend while online.
+  ///
+  /// This is a fixed time interval, not a distance trigger: the worker's
+  /// position is reported every 30 seconds whether or not they have moved.
+  static const Duration _locationUpdateInterval = Duration(seconds: 30);
+
+  /// Guards against overlapping uploads if one tick's request has not finished
+  /// before the next timer tick fires.
+  bool _isSendingLocation = false;
 
   /// True while an async permission-check + backend toggle round-trip is
   /// in progress — prevents double-taps and shows a loading indicator.
@@ -55,27 +70,17 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   int _locationFailureCount = 0;
   static const int _maxLocationFailures = 5;
 
-  /// The last known GPS position — used to compute distance travelled
-  /// between consecutive stream events for debug logging.
-  Position? _previousPosition;
+  /// The last reported location — used to compute distance travelled between
+  /// consecutive uploads for debug logging.
+  CurrentDeviceLocation? _previousLocation;
 
-  // Requests list remains local until a dedicated requests API is available.
-  final List<Map<String, String>> requests = [
-    {
-      "title": "Plumbing Service",
-      "location": "Lazimpat, Kathmandu",
-      "issue": "Leaking in bathroom pipe",
-      "time": "Posted 5 mins ago",
-      "image": "assets/images/plumbing_icon.png",
-    },
-    {
-      "title": "Electrician Service",
-      "location": "Maitidevi, Kathmandu",
-      "issue": "Switch board not working",
-      "time": "Posted 12 mins ago",
-      "image": "assets/images/electrician_icon.png",
-    },
-  ];
+  final IncomingRequestService _requestService = IncomingRequestService();
+
+  /// Pending offers shown in the "New requests near you" preview. Loaded from
+  /// GET /api/auth/worker/incoming-requests/ — the same endpoint that backs
+  /// IncomingRequestsScreen. Failures leave the list empty rather than
+  /// blocking the dashboard, which loads independently.
+  List<IncomingRequest> _requests = [];
 
   @override
   void initState() {
@@ -92,14 +97,40 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
           selectedSkills: widget.signupSelectedSkills ?? const [],
         );
     _loadDashboard();
+    _loadRequests();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkLocationOnStartup();
     });
   }
 
+  Future<void> _loadRequests() async {
+    try {
+      final requests = await _requestService.fetchIncomingRequests();
+      if (!mounted) return;
+      setState(() => _requests = requests);
+    } catch (error) {
+      // The preview is secondary to the dashboard, so a failure here degrades
+      // to an empty section instead of an error screen. The full list on
+      // IncomingRequestsScreen surfaces the error properly.
+      debugPrint('Failed to load incoming requests: $error');
+    }
+  }
+
+  /// Opens the detail page for a pending offer. It pops `true` after a
+  /// successful accept, which makes the preview list stale.
+  Future<void> _openRequestDetails(IncomingRequest request) async {
+    final accepted = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => IncomingRequestDetailsLoader(offerId: request.id),
+      ),
+    );
+    if (accepted == true) await _loadRequests();
+  }
+
   @override
   void dispose() {
-    _stopLocationStream();
+    _stopLocationUpdates();
     super.dispose();
   }
 
@@ -138,13 +169,13 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
         );
       });
 
-      // If the worker was online when they last closed the app, restart the
-      // location stream automatically after verifying permission is still granted.
+      // If the worker was online when they last closed the app, resume the
+      // periodic location updates after verifying permission is still granted.
       if (dashboard.worker.isOnline) {
         final permission = await _locationService.checkPermission();
         final serviceEnabled = await _locationService.isLocationServiceEnabled();
         if (permission == AppLocationPermission.granted && serviceEnabled) {
-          _startLocationStream();
+          _startLocationUpdates();
         } else {
           // Permission revoked or service disabled since last session — force offline.
           _forceToggleOffline(
@@ -335,7 +366,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
       // 4. Inform backend of the new status.
       await _dashboardService.updateOnlineStatus(true);
       // 5. Start streaming location to the backend.
-      _startLocationStream();
+      _startLocationUpdates();
     } catch (e) {
       // 6. Rollback on failure.
       if (!mounted) return;
@@ -356,7 +387,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     if (_isTogglingStatus) return;
 
     // 1. Stop streaming immediately.
-    _stopLocationStream();
+    _stopLocationUpdates();
 
     // 2. Optimistic UI update.
     setState(() {
@@ -384,7 +415,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   /// Forces the worker offline — used when location access is revoked while
   /// the worker is online, or on session restore when permission was lost.
   Future<void> _forceToggleOffline({required String reason}) async {
-    _stopLocationStream();
+    _stopLocationUpdates();
     if (!mounted) return;
     setState(() => isOnline = false);
     try {
@@ -401,84 +432,117 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     );
   }
 
-  // ── Location stream lifecycle ───────────────────────────────────────────────
+  // ── Location reporting lifecycle ────────────────────────────────────────────
 
-  void _startLocationStream() {
-    _locationStreamSub?.cancel();
+  /// Starts reporting the worker's location every [_locationUpdateInterval].
+  ///
+  /// The first report is sent immediately so the backend is not blind for the
+  /// first interval after the worker goes online.
+  void _startLocationUpdates() {
+    _locationTimer?.cancel();
     _locationFailureCount = 0;
 
-    _locationStreamSub =
-        _locationService.getLocationStream().listen(
-          (Position position) async {
-            // ── Debug: print distance since last known position ────────────
-            if (_previousPosition != null) {
-              final distanceMetres = Geolocator.distanceBetween(
-                _previousPosition!.latitude,
-                _previousPosition!.longitude,
-                position.latitude,
-                position.longitude,
-              );
-              debugPrint(
-                '[Location] Moved ${distanceMetres.toStringAsFixed(2)} m '
-                '→ (${position.latitude.toStringAsFixed(6)}, '
-                '${position.longitude.toStringAsFixed(6)})',
-              );
-            } else {
-              debugPrint(
-                '[Location] First fix: '
-                '(${position.latitude.toStringAsFixed(6)}, '
-                '${position.longitude.toStringAsFixed(6)})',
-              );
-            }
-            _previousPosition = position;
-            // ──────────────────────────────────────────────────────────────
-
-            // Reset failure counter on each successful GPS event.
-            _locationFailureCount = 0;
-            debugPrint(
-              '[Location] → Sending PATCH to backend: '
-              '(${position.latitude.toStringAsFixed(6)}, '
-              '${position.longitude.toStringAsFixed(6)})',
-            );
-            try {
-              await _dashboardService.updateWorkerLocation(
-                latitude: position.latitude,
-                longitude: position.longitude,
-              );
-              debugPrint('[Location] ✓ PATCH sent successfully.');
-            } catch (e) {
-              // Count consecutive failures; auto-offline after _maxLocationFailures.
-              _locationFailureCount++;
-              debugPrint(
-                '[Location] ✗ Upload failed (#$_locationFailureCount): $e',
-              );
-              if (_locationFailureCount >= _maxLocationFailures && mounted) {
-                _forceToggleOffline(
-                  reason:
-                      'Could not send your location to the server. You have been set to Offline.',
-                );
-              }
-            }
-          },
-          onError: (Object error) {
-            // Stream-level error (e.g. location service disabled mid-session).
-            debugPrint('[Location] Stream error: $error');
-            if (mounted) {
-              _forceToggleOffline(
-                reason:
-                    'Location service was turned off. You have been set to Offline.',
-              );
-            }
-          },
-          cancelOnError: true,
-        );
+    _sendLocationUpdate();
+    _locationTimer = Timer.periodic(
+      _locationUpdateInterval,
+      (_) => _sendLocationUpdate(),
+    );
   }
 
-  void _stopLocationStream() {
-    _locationStreamSub?.cancel();
-    _locationStreamSub = null;
+  void _stopLocationUpdates() {
+    _locationTimer?.cancel();
+    _locationTimer = null;
     _locationFailureCount = 0;
-    _previousPosition = null;
+    _isSendingLocation = false;
+    _previousLocation = null;
+  }
+
+  /// Reads one GPS fix and PATCHes it to /api/auth/worker/location/.
+  ///
+  /// Runs on a fixed 30-second timer rather than per metre travelled, so the
+  /// worker is reported at a steady cadence regardless of movement.
+  Future<void> _sendLocationUpdate() async {
+    // A slow request must not let ticks pile up on top of each other, which
+    // could land older fixes after newer ones.
+    if (_isSendingLocation) {
+      debugPrint('[Location] Skipped tick — previous upload still in flight.');
+      return;
+    }
+    _isSendingLocation = true;
+
+    try {
+      final CurrentDeviceLocation location;
+      try {
+        location = await _locationService.getCurrentLocation();
+      } catch (e) {
+        // Could not obtain a fix. Only force the worker offline when the cause
+        // is permanent — location switched off or permission revoked — so a
+        // transient GPS failure just waits for the next tick.
+        debugPrint('[Location] ✗ Could not get a fix: $e');
+        final serviceEnabled = await _locationService.isLocationServiceEnabled();
+        final permission = await _locationService.checkPermission();
+        if ((!serviceEnabled || permission != AppLocationPermission.granted) &&
+            mounted) {
+          _forceToggleOffline(
+            reason:
+                'Location service was turned off. You have been set to Offline.',
+          );
+        }
+        return;
+      }
+
+      // ── Debug: print distance since the last reported location ───────────
+      if (_previousLocation != null) {
+        final distanceMetres = Geolocator.distanceBetween(
+          _previousLocation!.latitude,
+          _previousLocation!.longitude,
+          location.latitude,
+          location.longitude,
+        );
+        debugPrint(
+          '[Location] Moved ${distanceMetres.toStringAsFixed(2)} m '
+          'since last report → (${location.latitude.toStringAsFixed(6)}, '
+          '${location.longitude.toStringAsFixed(6)})',
+        );
+      } else {
+        debugPrint(
+          '[Location] First fix: '
+          '(${location.latitude.toStringAsFixed(6)}, '
+          '${location.longitude.toStringAsFixed(6)})',
+        );
+      }
+      _previousLocation = location;
+      // ─────────────────────────────────────────────────────────────────────
+
+      debugPrint(
+        '[Location] → Sending PATCH to backend: '
+        '(${location.latitude.toStringAsFixed(6)}, '
+        '${location.longitude.toStringAsFixed(6)})',
+      );
+
+      try {
+        await _dashboardService.updateWorkerLocation(
+          latitude: location.latitude,
+          longitude: location.longitude,
+        );
+        // Reset only on a successful upload — this counter tracks consecutive
+        // upload failures, so resetting it merely because a fix was obtained
+        // would stop it ever reaching _maxLocationFailures.
+        _locationFailureCount = 0;
+        debugPrint('[Location] ✓ PATCH sent successfully.');
+      } catch (e) {
+        _locationFailureCount++;
+        debugPrint('[Location] ✗ Upload failed (#$_locationFailureCount): $e');
+        if (_locationFailureCount >= _maxLocationFailures && mounted) {
+          _forceToggleOffline(
+            reason:
+                'Could not send your location to the server. You have been set to Offline.',
+          );
+        }
+      }
+    } finally {
+      _isSendingLocation = false;
+    }
   }
 
   /// Resolves a profile photo URL/path from the API into a usable URL string.
@@ -519,7 +583,8 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                 dashboard: _dashboard!,
                 profile: _profile,
                 isOnline: isOnline,
-                requests: requests,
+                requests: _requests,
+                onRequestTap: _openRequestDetails,
                 onStatusChanged: (newStatus) {
                   if (_isTogglingStatus) return; // debounce double-taps
                   if (newStatus) {
@@ -562,6 +627,7 @@ class _DashboardBody extends StatelessWidget {
     required this.profile,
     required this.isOnline,
     required this.requests,
+    required this.onRequestTap,
     required this.onStatusChanged,
     required this.onProfileUpdated,
     required this.onMenuTap,
@@ -572,7 +638,8 @@ class _DashboardBody extends StatelessWidget {
   final WorkerDashboardResponse dashboard;
   final TechnicianModel profile;
   final bool isOnline;
-  final List<Map<String, String>> requests;
+  final List<IncomingRequest> requests;
+  final ValueChanged<IncomingRequest> onRequestTap;
   final ValueChanged<bool> onStatusChanged;
   final ValueChanged<TechnicianModel> onProfileUpdated;
   final VoidCallback onMenuTap;
@@ -696,6 +763,7 @@ class _DashboardBody extends StatelessWidget {
 
           _IncomingRequestsSection(
             requests: requests,
+            onRequestTap: onRequestTap,
             incomingCount: dashboard.incomingRequestCount,
           ),
 
@@ -771,10 +839,12 @@ class _ErrorBody extends StatelessWidget {
 class _IncomingRequestsSection extends StatelessWidget {
   const _IncomingRequestsSection({
     required this.requests,
+    required this.onRequestTap,
     required this.incomingCount,
   });
 
-  final List<Map<String, String>> requests;
+  final List<IncomingRequest> requests;
+  final ValueChanged<IncomingRequest> onRequestTap;
   final int incomingCount;
 
   @override
@@ -937,21 +1007,11 @@ class _IncomingRequestsSection extends StatelessWidget {
               // Later backend should send serviceTitle, location, issue,
               // postedTime, serviceType, and isNew.
               return RequestCard(
-                title: request['title']!,
-                location: request['location']!,
-                issue: request['issue']!,
-                time: request['time']!,
-                image: request['image']!,
-                onTap: () {
-                  // NAVIGATION PLACE:
-                  // Later create request detail page and use:
-                  // Navigator.pushNamed(
-                  //   context,
-                  //   AppRoutes.requestDetail,
-                  //   arguments: request,
-                  // );
-                  debugPrint('${request["title"]} clicked');
-                },
+                title: request.title,
+                location: request.location,
+                time: request.postedLabel,
+                iconUrl: request.iconUrl,
+                onTap: () => onRequestTap(request),
               );
             },
           ),

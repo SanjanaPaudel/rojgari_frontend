@@ -1,3 +1,5 @@
+import '../../core/constants/api_urls.dart';
+
 class IncomingServiceRequestDetails {
   const IncomingServiceRequestDetails({
     required this.id,
@@ -40,6 +42,51 @@ class IncomingServiceRequestDetails {
   final String? videoThumbnailUrl;
   final int? videoDurationSeconds;
   final String? status;
+
+  /// Maps `GET /api/auth/worker/request/<offer_id>/`.
+  ///
+  /// Response fields: offer_id, customer_name, service, service_icon,
+  /// description, address, latitude, longitude, distance_km, photos, video,
+  /// status, created_at.
+  ///
+  /// Fields with no backend source:
+  ///   • categoryId / categorySlug — the API returns a flat `service` name.
+  ///     categorySlug is left empty; ServiceCategoryIconResolver falls back to
+  ///     matching on categoryName, so the icon still resolves.
+  ///   • videoThumbnailUrl / videoDurationSeconds — not returned. The screen
+  ///     already falls back to a placeholder and hides the duration badge.
+  factory IncomingServiceRequestDetails.fromJson(Map<String, dynamic> json) {
+    final video = json['video']?.toString();
+
+    return IncomingServiceRequestDetails(
+      id: json['offer_id'].toString(),
+      customerName: json['customer_name']?.toString() ?? '',
+      categoryId: '',
+      categoryName: json['service']?.toString() ?? '',
+      categorySlug: '',
+      description: json['description']?.toString() ?? '',
+      locationText: json['address']?.toString() ?? '',
+      latitude: _toDouble(json['latitude']),
+      longitude: _toDouble(json['longitude']),
+      // Hardcoded to 0 by the backend today (WorkerService.get_request_detail).
+      distanceKm: _toDouble(json['distance_km']),
+      photoUrls: (json['photos'] as List<dynamic>? ?? const [])
+          .map((photo) => ApiUrls.resolveMediaUrl(photo.toString()))
+          .toList(growable: false),
+      videoUrl: (video == null || video.isEmpty)
+          ? null
+          : ApiUrls.resolveMediaUrl(video),
+      status: json['status']?.toString(),
+    );
+  }
+
+  /// Django DecimalField values can arrive as either a JSON number or a
+  /// quoted string depending on renderer settings, so both are handled.
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
 
   String get shortDescription {
     final normalized = description.trim().replaceAll(RegExp(r'\s+'), ' ');

@@ -47,6 +47,18 @@ class ApiUrls {
   static const String workerIncomingRequests =
       "$baseUrl/auth/worker/incoming-requests/";
 
+  // GET — full detail of one offer, including media.
+  // Response adds to the list shape: latitude, longitude, photos (list of
+  // relative media URLs), video (relative media URL or null), status.
+  // [offerId] is the BookingOffer id, not a booking id.
+  static String workerRequestDetail(String offerId) =>
+      "$baseUrl/auth/worker/request/$offerId/";
+
+  // POST — accept an offer. Takes no request body.
+  // Response: { "message": "...", "booking_id": <int>, "status": "scheduled" }
+  static String workerAcceptRequest(String offerId) =>
+      "$baseUrl/auth/worker/request/$offerId/accept/";
+
   // Resolves a media path returned by the backend into a loadable URL.
   //
   // WHY this exists:
