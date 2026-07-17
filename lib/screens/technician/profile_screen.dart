@@ -505,28 +505,39 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
       ),
       (Icons.info_outline, 'About Rojgari', 'Learn more about Rojgari'),
     ];
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: Material(
+    // Chrome matches _SectionCard. This card cannot use _SectionCard itself
+    // because the tiles must run edge to edge for their dividers and ripples,
+    // so it carries no inner padding.
+    return Container(
+      decoration: BoxDecoration(
         color: Colors.white,
-        child: Column(
-          children: [
-            for (var index = 0; index < items.length; index++) ...[
-              ProfileMenuTile(
-                icon: items[index].$1,
-                title: items[index].$2,
-                subtitle: items[index].$3,
-                trailingText: items[index].$2 == 'About Rojgari'
-                    ? 'v1.0.0'
-                    : null,
-                onTap: items[index].$2 == 'Identity Documents'
-                    ? _openDocuments
-                    : () => _comingSoon(items[index].$2),
-              ),
-              if (index != items.length - 1)
-                const Divider(height: 1, indent: 74),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFEEEAF9)),
+        boxShadow: const [BoxShadow(color: Color(0x0A231447), blurRadius: 14)],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Material(
+          color: Colors.white,
+          child: Column(
+            children: [
+              for (var index = 0; index < items.length; index++) ...[
+                ProfileMenuTile(
+                  icon: items[index].$1,
+                  title: items[index].$2,
+                  subtitle: items[index].$3,
+                  trailingText: items[index].$2 == 'About Rojgari'
+                      ? 'v1.0.0'
+                      : null,
+                  onTap: items[index].$2 == 'Identity Documents'
+                      ? _openDocuments
+                      : () => _comingSoon(items[index].$2),
+                ),
+                if (index != items.length - 1)
+                  const Divider(height: 1, indent: 74),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
