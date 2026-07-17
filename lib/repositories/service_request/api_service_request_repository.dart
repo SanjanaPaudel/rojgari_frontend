@@ -49,137 +49,56 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
   final Future<String?> Function() _accessTokenProvider;
 
   // ========================================================================
-  // BACKEND HANDOFF: REAL MULTIPART SERVICE REQUEST API
+  // REAL MULTIPART SERVICE REQUEST API (CONFIRMED CONTRACT)
   // ========================================================================
   //
-  // PURPOSE
-  // This repository method is the only place where the completed Flutter
-  // Request Page connects to the real service-request backend. Do not move
-  // HTTP code into the Request Page or redesign the completed UI.
+  // Method: POST ApiUrls.serviceRequests ("/services/bookings/")
+  // Auth: Authorization: Bearer <access_token> (read via StorageService),
+  //       Accept: application/json.
   //
   // ------------------------------------------------------------------------
-  // CURRENT FRONTEND STATUS
+  // MULTIPART TEXT FIELDS (only these six are sent — nothing else)
   // ------------------------------------------------------------------------
-  // The application currently uses MockServiceRequestRepository. The frontend
-  // already collects the category, description, up to three photos, one
-  // optional video, raw OpenStreetMap coordinates, optional GPS accuracy,
-  // optional landmark, and either service now or later today. Selected media
-  // is attached as real bytes. The backend remains responsible for trusted
-  // reverse geocoding even if the location UI has an optional display hint.
+  // category    — integer, required. The active Category id from
+  //               GET /services/categories/ (the same id the customer-home
+  //               category grid uses). An inactive or non-existent id is
+  //               rejected by the backend.
+  // description — text, required, max 300 chars, cannot be blank/
+  //               whitespace-only.
+  // latitude    — decimal, required. No fallback location exists.
+  // longitude   — decimal, required.
   //
-  // ------------------------------------------------------------------------
-  // FINAL API ENDPOINT
-  // ------------------------------------------------------------------------
-  // Method: POST
-  // Suggested endpoint: /api/customer/service-requests/
-  // Keep the base URL in API_BASE_URL. Never hardcode localhost or a computer
-  // LAN IP here. Confirm or replace only ApiUrls.serviceRequests.
-  //
-  // ------------------------------------------------------------------------
-  // AUTHENTICATION
-  // ------------------------------------------------------------------------
-  // Read the access token from the existing StorageService and add:
-  // Authorization: Bearer <access_token>
-  // Accept: application/json
-  //
-  // The real login implementation must save the backend token with:
-  // await StorageService().saveAccessToken(accessToken);
-  // Do not create another secure-storage or authentication system.
-  //
-  // ------------------------------------------------------------------------
-  // MULTIPART TEXT FIELDS
-  // ------------------------------------------------------------------------
-  // category_id
-  // description
-  // schedule_type
-  // scheduled_time
-  // timezone
-  // latitude
-  // longitude
-  // accuracy_meters
-  // landmark
-  // location_source
-  //
-  // schedule_type supports exactly: now, later_today.
-  // For "now", scheduled_time is omitted.
-  // For "later_today", scheduled_time is HH:mm:ss and must be later today.
-  // No date field is sent. The backend interprets the time using the supplied
-  // timezone, currently Asia/Kathmandu.
-  //
-  // Do not send preferredDate, preferredTime, scheduleForLater, or
-  // formatted_address.
+  // "Schedule for Later" (ServiceScheduleCard) is intentionally NOT part of
+  // this contract yet — it stays in the UI as an inert control (per product
+  // decision) but nothing it collects is sent.
   //
   // ------------------------------------------------------------------------
   // MULTIPART MEDIA FIELDS
   // ------------------------------------------------------------------------
-  // Multiple image files: photos
-  // Optional single video: video
-  //
-  // Add each selected photo using repeated field name "photos". Do not use
-  // photos[], photos[0], or photos[1]. Local paths only locate files; never
-  // send a local path as text or JSON.
+  // photos — 0-3 image files, repeated field name "photos" for each.
+  // video  — 0-1 video file, field name "video".
   //
   // ------------------------------------------------------------------------
-  // LOCATION RESPONSIBILITY
-  // ------------------------------------------------------------------------
-  // Flutter sends latitude, longitude, optional accuracy_meters, optional
-  // landmark, and location_source. The backend must validate coordinates,
-  // perform reverse geocoding, produce formatted_address, store both raw and
-  // resolved locations, check the service area, and use coordinates for
-  // matching and distance calculations.
-  //
-  // ------------------------------------------------------------------------
-  // EXPECTED SUCCESS RESPONSE (HTTP 201)
+  // SUCCESS RESPONSE (HTTP 201, flat — no "data" wrapper)
   // ------------------------------------------------------------------------
   // {
-  //   "success": true,
-  //   "message": "Service request created successfully.",
-  //   "data": {
-  //     "request_id": "req_123",
-  //     "status": "searching",
-  //     "category_id": "mechanic",
-  //     "schedule_type": "later_today",
-  //     "scheduled_time": "20:30:00",
-  //     "created_at": "2026-07-15T15:45:00+05:45",
-  //     "service_location": {
-  //       "latitude": 27.671234,
-  //       "longitude": 85.339876,
-  //       "formatted_address": "Balkumari Road, Lalitpur",
-  //       "landmark": "Near NCIT College"
-  //     }
-  //   }
+  //   "id": 12,
+  //   "category": "Plumber",
+  //   "description": "Kitchen pipe is leaking",
+  //   "address_text": "Lazimpat, Kathmandu, Bagmati Province, Nepal",
+  //   "status": "active",
+  //   "offers_sent": 3
   // }
-  // Parse this into ServiceRequestResult. Adjust only repository parsing for
-  // a documented backend variation.
+  // Parsed by _parseResult into ServiceRequestResult (id -> requestId,
+  // address_text -> addressText, offers_sent -> offersSent). There is no
+  // created_at in this response; createdAt falls back to the submission time.
   //
   // ------------------------------------------------------------------------
-  // EXPECTED ERROR RESPONSE
+  // ERROR RESPONSES
   // ------------------------------------------------------------------------
-  // {
-  //   "success": false,
-  //   "code": "VALIDATION_ERROR",
-  //   "message": "Please correct the submitted information.",
-  //   "errors": {
-  //     "scheduled_time": [
-  //       "Scheduled time must be later than the current time."
-  //     ]
-  //   }
-  // }
-  // Convert errors into readable ServiceRequestException values. Never expose
-  // raw server exceptions or HTML in the UI.
-  //
-  // ------------------------------------------------------------------------
-  // BACKEND DEVELOPER CHECKLIST
-  // ------------------------------------------------------------------------
-  // 1. Confirm the endpoint in api_urls.dart.
-  // 2. Implement or confirm the backend POST endpoint.
-  // 3. Confirm repeated photo field "photos" and optional video field "video".
-  // 4. Confirm accepted media types and maximum file sizes.
-  // 5. Confirm success and standard error response structures.
-  // 6. Confirm login returns an access token and save it via StorageService.
-  // 7. Switch the provider from mock to API only after end-to-end testing.
-  //
-  // Do not change the Request Page UI during backend integration.
+  // 400 — validation errors (bad category, empty description, too many
+  //       photos, missing lat/long), read via _readErrorMessage.
+  // 403 — not a customer account.
   // ========================================================================
   @override
   Future<ServiceRequestResult> createServiceRequest(
@@ -359,7 +278,24 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
       message:
           _readPlainMessage(response) ??
           'Service request created successfully.',
+      addressText: _readAddressText(data),
+      offersSent: _readOffersSent(data),
     );
+  }
+
+  String? _readAddressText(Map<String, dynamic> data) {
+    final text = (data['address_text'] ?? data['addressText'])
+        ?.toString()
+        .trim();
+    return text == null || text.isEmpty ? null : text;
+  }
+
+  int? _readOffersSent(Map<String, dynamic> data) {
+    final value = data['offers_sent'] ?? data['offersSent'];
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value.trim());
+    return null;
   }
 
   Map<String, dynamic> _decodeObject(String body) {
@@ -436,10 +372,6 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
     }
     return null;
   }
-
-  bool _isValidTime(String? value) =>
-      value != null &&
-      RegExp(r'^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$').hasMatch(value);
 
   String _statusMessage(int statusCode) => switch (statusCode) {
     400 => 'Please correct the submitted information.',

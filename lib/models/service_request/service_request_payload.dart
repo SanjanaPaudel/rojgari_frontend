@@ -79,10 +79,22 @@ class ServiceRequestResult {
     required this.status,
     required this.createdAt,
     required this.message,
+    this.addressText,
+    this.offersSent,
   });
 
   final String requestId;
   final String status;
   final DateTime createdAt;
   final String message;
+
+  /// Backend-resolved, authoritative address for the booking (from
+  /// `address_text` in the create-booking response). Null when the backend
+  /// didn't include it (e.g. older responses, or non-API repositories such as
+  /// the mock/demo preview).
+  final String? addressText;
+
+  /// Number of technicians the backend has already sent this booking's offer
+  /// to (from `offers_sent`). Null when unavailable.
+  final int? offersSent;
 }

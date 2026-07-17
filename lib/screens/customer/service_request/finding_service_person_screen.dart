@@ -27,6 +27,8 @@ class FindingServicePersonScreen extends StatefulWidget {
     required this.requestDescription,
     required this.requestedAt,
     this.initialStatus = RequestSearchStatus.searching,
+    this.addressText,
+    this.offersSent,
     this.statusListenable,
     this.workerCoordinates,
     this.onWorkerFound,
@@ -47,6 +49,14 @@ class FindingServicePersonScreen extends StatefulWidget {
   final String requestDescription;
   final DateTime requestedAt;
   final RequestSearchStatus initialStatus;
+
+  /// Backend-resolved address from the create-booking response
+  /// (`address_text`). Null falls back to the locally-selected landmark.
+  final String? addressText;
+
+  /// Number of technicians already notified about this booking
+  /// (`offers_sent`). Null/0 hides the "X professionals notified" line.
+  final int? offersSent;
   final ValueListenable<RequestSearchStatus>? statusListenable;
   final List<LatLng>? workerCoordinates;
   final VoidCallback? onWorkerFound;
@@ -328,7 +338,10 @@ class _FindingServicePersonScreenState
                         isFound: _status.isFound,
                       ),
                       const SizedBox(height: 18),
-                      _SearchStatusSection(status: _status),
+                      _SearchStatusSection(
+                        status: _status,
+                        offersSent: widget.offersSent,
+                      ),
                       const SizedBox(height: 18),
                       ServiceSearchMap(
                         location: widget.serviceLocation,
@@ -340,6 +353,7 @@ class _FindingServicePersonScreenState
                       RequestDetailsCard(
                         location: widget.serviceLocation,
                         requestedAt: widget.requestedAt,
+                        addressText: widget.addressText,
                       ),
                       const SizedBox(height: 20),
                       _CancelRequestButton(
@@ -634,12 +648,14 @@ class _AnimatedSearchingTextState extends State<AnimatedSearchingText>
 }
 
 class _SearchStatusSection extends StatelessWidget {
-  const _SearchStatusSection({required this.status});
+  const _SearchStatusSection({required this.status, this.offersSent});
 
   final RequestSearchStatus status;
+  final int? offersSent;
 
   @override
   Widget build(BuildContext context) {
+    final showOffersSent = status.isSearching && (offersSent ?? 0) > 0;
     return _WhiteCard(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 17),
       child: Column(
@@ -664,6 +680,19 @@ class _SearchStatusSection extends StatelessWidget {
               fontFamily: 'Poppins',
             ),
           ),
+          if (showOffersSent) ...[
+            const SizedBox(height: 3),
+            Text(
+              '$offersSent professional${offersSent == 1 ? '' : 's'} notified',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 11.5,
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           AnimatedSearchingText(status: status),
         ],
@@ -755,13 +784,21 @@ class RequestDetailsCard extends StatelessWidget {
   const RequestDetailsCard({
     required this.location,
     required this.requestedAt,
+    this.addressText,
     super.key,
   });
 
   final SelectedServiceLocation location;
   final DateTime requestedAt;
 
+  /// Backend-resolved address (`address_text`). Preferred over the
+  /// device-selected [location.landmark] when present, since it's the
+  /// authoritative reverse-geocoded value rather than a client-side hint.
+  final String? addressText;
+
   String get _address {
+    final resolved = addressText?.trim();
+    if (resolved != null && resolved.isNotEmpty) return resolved;
     final landmark = location.landmark?.trim();
     return landmark == null || landmark.isEmpty
         ? 'Selected service location'

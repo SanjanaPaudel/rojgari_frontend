@@ -277,6 +277,8 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
             requestDescription: payload.description,
             requestedAt: result.createdAt,
             initialStatus: RequestSearchStatus.fromBackendValue(result.status),
+            addressText: result.addressText,
+            offersSent: result.offersSent,
           ),
         ),
       );

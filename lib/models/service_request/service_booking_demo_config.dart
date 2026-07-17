@@ -6,7 +6,11 @@ class ServiceBookingDemoConfig {
   // can be reviewed without a connected backend. Remove/disable these timers
   // after the real request-status API, polling, WebSocket or server event
   // integration is connected.
-  static const bool enableDemoBookingFlow = true;
+  //
+  // DISABLED (2026-07-17): backend status integration is being wired up step
+  // by step, starting from FindingServicePersonScreen staying on "searching".
+  // Flip back to true only for a one-off visual preview of the full flow.
+  static const bool enableDemoBookingFlow = false;
   static const Duration searchingDuration = Duration(seconds: 20);
   static const Duration acceptedDisplayDuration = Duration(milliseconds: 1500);
   static const Duration workerArrivalDuration = Duration(seconds: 15);
