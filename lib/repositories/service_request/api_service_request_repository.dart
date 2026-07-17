@@ -248,7 +248,8 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
       }
       throw ServiceRequestException(
         statusCode: response.statusCode,
-        message: _readMessage(decoded) ?? _statusMessage(response.statusCode),
+        message:
+            _readErrorMessage(decoded) ?? _statusMessage(response.statusCode),
         responseBody: response.body.isEmpty ? null : response.body,
       );
     } on ServiceRequestException {
@@ -356,7 +357,8 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
           )?.toUtc() ??
           DateTime.now().toUtc(),
       message:
-          _readMessage(response) ?? 'Service request created successfully.',
+          _readPlainMessage(response) ??
+          'Service request created successfully.',
     );
   }
 
@@ -373,7 +375,34 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
     }
   }
 
-  String? _readMessage(Map<String, dynamic> response) {
+  /// Reads only an explicit message the server sent. Used on the success path.
+  ///
+  /// WHY this is separate from [_readErrorMessage]:
+  ///   The booking endpoint returns 201 with {id, category, description,
+  ///   address_text, status, offers_sent} and no message field. Running the
+  ///   error formatter over that would scrape the created booking's own data
+  ///   into "category: Plumbing Service\ndescription: ..." and show it to the
+  ///   customer as the success text. A success response has no field errors to
+  ///   collect, so there is nothing here to fall back to but the caller's
+  ///   default.
+  String? _readPlainMessage(Map<String, dynamic> response) {
+    for (final key in const ['message', 'detail']) {
+      final text = response[key]?.toString().trim();
+      if (text != null && text.isNotEmpty) return text;
+    }
+
+    final nested = response['data'];
+    if (nested is Map<String, dynamic>) {
+      final text = nested['message']?.toString().trim();
+      if (text != null && text.isNotEmpty) return text;
+    }
+    return null;
+  }
+
+  /// Builds a readable message from an error response, falling back to
+  /// collecting DRF field errors such as {"description": ["Cannot be empty"]}.
+  /// Only call this for non-2xx responses — see [_readPlainMessage].
+  String? _readErrorMessage(Map<String, dynamic> response) {
     if (response.containsKey('detail')) {
       return response['detail']?.toString().trim();
     }
@@ -390,7 +419,7 @@ class ApiServiceRequestRepository implements ServiceRequestRepository {
       } else if (value is String) {
         errorParts.add('$key: ${value.trim()}');
       } else if (value is Map) {
-        final subMsg = _readMessage(Map<String, dynamic>.from(value));
+        final subMsg = _readErrorMessage(Map<String, dynamic>.from(value));
         if (subMsg != null && subMsg.isNotEmpty) {
           errorParts.add('$key: $subMsg');
         }

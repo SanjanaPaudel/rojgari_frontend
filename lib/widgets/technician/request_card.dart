@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
+import 'category_avatar.dart';
 
 class RequestCard extends StatelessWidget {
   final String title;
   final String location;
-  final String issue;
   final String time;
-  final String image;
+
+  /// Absolute URL of the category icon, or null when the Skill has no icon.
+  final String? iconUrl;
+
   final VoidCallback? onTap;
 
   const RequestCard({
     super.key,
     required this.title,
     required this.location,
-    required this.issue,
     required this.time,
-    required this.image,
+    required this.iconUrl,
     this.onTap,
   });
 
@@ -34,16 +36,7 @@ class RequestCard extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Container(
-                width: 58,
-                height: 58,
-                padding: const EdgeInsets.all(5),
-                decoration: const BoxDecoration(
-                  color: Color(0xffF5F1FC),
-                  shape: BoxShape.circle,
-                ),
-                child: Image.asset(image, fit: BoxFit.contain),
-              ),
+              CategoryAvatar(iconUrl: iconUrl, size: 58, padding: 5),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

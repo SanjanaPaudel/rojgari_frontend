@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/colors.dart';
 import '../../models/incoming_request_model.dart';
+import 'category_avatar.dart';
 
 // Card used on the "All Incoming Requests" screen.
 //
@@ -46,7 +47,7 @@ class IncomingRequestCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _CategoryAvatar(iconUrl: request.iconUrl),
+                CategoryAvatar(iconUrl: request.iconUrl),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -129,50 +130,6 @@ class IncomingRequestCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-// The category icon comes from Skill.icon, which is nullable on the backend
-// and can also fail to load (bad path, server down). Both cases fall back to
-// a neutral tool glyph rather than showing a broken image.
-class _CategoryAvatar extends StatelessWidget {
-  const _CategoryAvatar({required this.iconUrl});
-
-  final String? iconUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 56,
-      height: 56,
-      padding: const EdgeInsets.all(9),
-      decoration: const BoxDecoration(
-        color: Color(0xffF3EBFF),
-        shape: BoxShape.circle,
-      ),
-      child: iconUrl == null
-          ? const _FallbackIcon()
-          : Image.network(
-              iconUrl!,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => const _FallbackIcon(),
-              loadingBuilder: (context, child, progress) =>
-                  progress == null ? child : const _FallbackIcon(),
-            ),
-    );
-  }
-}
-
-class _FallbackIcon extends StatelessWidget {
-  const _FallbackIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Icon(
-      Icons.handyman_outlined,
-      size: 24,
-      color: AppColors.primary,
     );
   }
 }
