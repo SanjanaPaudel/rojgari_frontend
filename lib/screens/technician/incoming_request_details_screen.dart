@@ -113,13 +113,9 @@ class _IncomingRequestDetailsScreenState
       return;
     }
 
-    // BACKEND INTEGRATION - DECLINE:
-    // Call the technician request-action API here through a repository/service.
-    // Send the request ID and change the request status to "declined".
-    //
-    // NAVIGATION INTEGRATION:
-    // After successful decline, navigate back to or refresh the technician
-    // incoming-requests list.
+    // The actual POST .../request/<offer_id>/reject/ call and post-decline
+    // navigation are injected by the caller (IncomingRequestDetailsLoader),
+    // keeping this screen presentational — see its class doc.
     await _runAction(
       action: _RequestAction.decline,
       callback: callback,

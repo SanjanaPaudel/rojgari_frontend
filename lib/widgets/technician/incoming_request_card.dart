@@ -4,22 +4,183 @@ import '../../core/constants/colors.dart';
 import '../../models/incoming_request_model.dart';
 import 'category_avatar.dart';
 
-// Card used on the "All Incoming Requests" screen.
-//
-// Layout mirrors the customer summary container at the top of the Request
-// Details design: avatar, customer name, requested service, a short preview
-// of the problem description, then location and distance from the worker.
-//
-// WHY this is separate from RequestCard:
-//   RequestCard is the compact tile on the technician home screen, keyed on
-//   the service name. This card leads with the customer and adds distance.
-//   Keeping them apart leaves the working home screen untouched.
+/// Which layout [IncomingRequestCard] renders.
+enum IncomingRequestCardStyle {
+  /// The compact tile used on the technician home screen's "New requests
+  /// near you" preview: title + "New" badge, location, time, chevron button.
+  compact,
+
+  /// The denser tile used on "All Incoming Requests": leads with the
+  /// customer name, then service, a description preview, location, and
+  /// distance.
+  detailed,
+}
+
+/// The single reusable card for rendering an [IncomingRequest], used by both
+/// the technician home screen preview and the "All Incoming Requests" list.
+/// [style] picks which of the two layouts to render — the two screens show
+/// different information density, not different widgets.
 class IncomingRequestCard extends StatelessWidget {
   const IncomingRequestCard({
     super.key,
     required this.request,
+    required this.style,
     this.onTap,
   });
+
+  final IncomingRequest request;
+  final IncomingRequestCardStyle style;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (style) {
+      IncomingRequestCardStyle.compact => _CompactCard(
+        request: request,
+        onTap: onTap,
+      ),
+      IncomingRequestCardStyle.detailed => _DetailedCard(
+        request: request,
+        onTap: onTap,
+      ),
+    };
+  }
+}
+
+class _CompactCard extends StatelessWidget {
+  const _CompactCard({required this.request, this.onTap});
+
+  final IncomingRequest request;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xffE9E5EF)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              CategoryAvatar(iconUrl: request.iconUrl, size: 58, padding: 5),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            request.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xff171725),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xffF4EEFF),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: const Text(
+                            'New',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    _InfoLine(
+                      icon: Icons.location_on_outlined,
+                      text: request.location,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      request.distanceLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xffF3ECFF),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 15,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _InfoLine({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: const Color(0xff5F6A8A)),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: Color(0xff5F6A8A),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DetailedCard extends StatelessWidget {
+  const _DetailedCard({required this.request, this.onTap});
 
   final IncomingRequest request;
   final VoidCallback? onTap;

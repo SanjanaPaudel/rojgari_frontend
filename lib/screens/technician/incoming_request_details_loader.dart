@@ -100,10 +100,13 @@ class _IncomingRequestDetailsLoaderState
         if (!mounted) return;
         Navigator.pop(context, true);
       },
-      // onDeclineRequest is intentionally omitted: the backend has no decline
-      // route. BookingOffer supports a "rejected" status but nothing sets it,
-      // so the screen keeps showing its "not connected" message until a
-      // POST .../request/<offer_id>/decline/ endpoint exists.
+      onDeclineRequest: (offerId) => _service.rejectRequest(offerId),
+      onDeclinedNavigation: () async {
+        // Pops `true` for the same reason as accept: the rejected offer no
+        // longer belongs in the pending list, so the caller must refresh.
+        if (!mounted) return;
+        Navigator.pop(context, true);
+      },
     );
   }
 }

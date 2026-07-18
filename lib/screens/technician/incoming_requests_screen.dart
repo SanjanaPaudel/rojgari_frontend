@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../../core/constants/colors.dart';
 import '../../models/incoming_request_model.dart';
 import '../../services/incoming_request_service.dart';
 import '../../widgets/technician/incoming_request_card.dart';
+import 'debug_incoming_request_fixtures.dart';
 import 'incoming_request_details_loader.dart';
 
 // "All Incoming Requests" — the View All destination from the technician
@@ -45,6 +47,22 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
       _isLoading = true;
       _error = null;
     });
+
+    // ─── DEBUG-ONLY FIXTURE TOGGLE — DELETE BEFORE MERGING ─────────────────
+    // Mirrors the same toggle in technician_home_screen.dart: flip
+    // debugFakeIncomingRequestCount in debug_incoming_request_fixtures.dart
+    // and hot-restart. Both screens read the same constant, so "View All"
+    // here shows the full fake set while the home screen preview shows only
+    // the latest two of it.
+    if (kDebugMode && debugFakeIncomingRequestCount > 0) {
+      if (!mounted) return;
+      setState(() {
+        _requests = debugFakeIncomingRequests(debugFakeIncomingRequestCount);
+        _isLoading = false;
+      });
+      return;
+    }
+    // ─── END DEBUG-ONLY FIXTURE TOGGLE ──────────────────────────────────────
 
     try {
       final requests = await _service.fetchIncomingRequests();
@@ -168,6 +186,7 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
                 final request = visible[index];
                 return IncomingRequestCard(
                   request: request,
+                  style: IncomingRequestCardStyle.detailed,
                   onTap: () => _openDetails(request),
                 );
               },

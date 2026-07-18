@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -13,10 +14,11 @@ import '../../services/incoming_request_service.dart';
 import '../../services/worker_dashboard_service.dart';
 
 import '../../widgets/technician/dashboard_appbar.dart';
+import '../../widgets/technician/incoming_request_card.dart';
 import '../../widgets/technician/profile_header.dart';
 import '../../widgets/technician/stat_card.dart';
-import '../../widgets/technician/request_card.dart';
 import '../../widgets/technician/pro_tip_card.dart';
+import 'debug_incoming_request_fixtures.dart';
 import 'incoming_request_details_loader.dart';
 import 'incoming_requests_screen.dart';
 import 'profile_screen.dart';
@@ -104,6 +106,25 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   }
 
   Future<void> _loadRequests() async {
+    // ─── DEBUG-ONLY FIXTURE TOGGLE — DELETE BEFORE MERGING ─────────────────
+    // The real backend for GET /api/auth/worker/incoming-requests/ isn't
+    // ready yet. Flip debugFakeIncomingRequestCount in
+    // debug_incoming_request_fixtures.dart and hot-restart to preview each
+    // state — including how the "top 2" preview cap and the empty state
+    // look — without a backend, auth, or a server. IncomingRequestsScreen
+    // ("View All") reads the same constant, so both screens preview the
+    // same fake dataset consistently.
+    if (kDebugMode && debugFakeIncomingRequestCount > 0) {
+      if (!mounted) return;
+      setState(
+        () => _requests = debugFakeIncomingRequests(
+          debugFakeIncomingRequestCount,
+        ),
+      );
+      return;
+    }
+    // ─── END DEBUG-ONLY FIXTURE TOGGLE ──────────────────────────────────────
+
     try {
       final requests = await _requestService.fetchIncomingRequests();
       if (!mounted) return;
@@ -585,6 +606,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                 isOnline: isOnline,
                 requests: _requests,
                 onRequestTap: _openRequestDetails,
+                onCheckIncomingRequests: _loadRequests,
                 onStatusChanged: (newStatus) {
                   if (_isTogglingStatus) return; // debounce double-taps
                   if (newStatus) {
@@ -628,6 +650,7 @@ class _DashboardBody extends StatelessWidget {
     required this.isOnline,
     required this.requests,
     required this.onRequestTap,
+    required this.onCheckIncomingRequests,
     required this.onStatusChanged,
     required this.onProfileUpdated,
     required this.onMenuTap,
@@ -640,6 +663,7 @@ class _DashboardBody extends StatelessWidget {
   final bool isOnline;
   final List<IncomingRequest> requests;
   final ValueChanged<IncomingRequest> onRequestTap;
+  final VoidCallback onCheckIncomingRequests;
   final ValueChanged<bool> onStatusChanged;
   final ValueChanged<TechnicianModel> onProfileUpdated;
   final VoidCallback onMenuTap;
@@ -764,7 +788,11 @@ class _DashboardBody extends StatelessWidget {
           _IncomingRequestsSection(
             requests: requests,
             onRequestTap: onRequestTap,
-            incomingCount: dashboard.incomingRequestCount,
+            // The real count of currently-loaded requests, not the
+            // dashboard's separate incoming_request_count field — that value
+            // comes from a different endpoint and can drift out of sync with
+            // what this section actually has to show.
+            incomingCount: requests.length,
           ),
 
           ProTipCard(
@@ -774,6 +802,36 @@ class _DashboardBody extends StatelessWidget {
               // Navigator.pushNamed(context, AppRoutes.profileTips);
               debugPrint('Pro Tip clicked');
             },
+          ),
+
+          // TEMPORARY — REMOVE ONCE PUSH/REALTIME EXISTS:
+          // There's currently no push notification, WebSocket, or polling
+          // mechanism to tell the app when a new offer has come in, so the
+          // worker has no way to know without manually asking. This button
+          // is that manual ask. Delete it once the app can learn about new
+          // incoming requests on its own.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: SizedBox(
+              height: 52,
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onCheckIncomingRequests,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                child: const Text('Check for any incoming request'),
+              ),
+            ),
           ),
 
           const SizedBox(height: 50),
@@ -847,8 +905,18 @@ class _IncomingRequestsSection extends StatelessWidget {
   final ValueChanged<IncomingRequest> onRequestTap;
   final int incomingCount;
 
+  /// The newest [_maxPreviewRequests] requests, regardless of the order the
+  /// backend returned them in. IncomingRequestsScreen ("View All") shows
+  /// every request; this preview only ever shows the latest couple.
+  List<IncomingRequest> get _previewRequests {
+    final sorted = [...requests]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return sorted.take(_maxPreviewRequests).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final preview = _previewRequests;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 22),
       decoration: BoxDecoration(
@@ -995,28 +1063,60 @@ class _IncomingRequestsSection extends StatelessWidget {
             ),
           ),
 
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: requests.length,
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final request = requests[index];
-              // BACKEND READY:
-              // Later backend should send serviceTitle, location, issue,
-              // postedTime, serviceType, and isNew.
-              return RequestCard(
-                title: request.title,
-                location: request.location,
-                time: request.postedLabel,
-                iconUrl: request.iconUrl,
-                onTap: () => onRequestTap(request),
-              );
-            },
-          ),
+          if (requests.isEmpty)
+            const _IncomingRequestsEmptyState()
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              // Preview shows only the latest two requests; the full set
+              // (however many the backend returned) is available from
+              // "View All" on IncomingRequestsScreen.
+              itemCount: preview.length,
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final request = preview[index];
+                return IncomingRequestCard(
+                  request: request,
+                  style: IncomingRequestCardStyle.compact,
+                  onTap: () => onRequestTap(request),
+                );
+              },
+            ),
 
           const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  static const int _maxPreviewRequests = 2;
+}
+
+/// Shown in place of the request list when there are no pending offers.
+///
+/// Sized to occupy roughly the same vertical space as the two-card preview so
+/// the section doesn't visually collapse when empty.
+class _IncomingRequestsEmptyState extends StatelessWidget {
+  const _IncomingRequestsEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(12, 28, 12, 32),
+      child: Column(
+        children: [
+          Icon(Icons.inbox_outlined, size: 46, color: Color(0xffBFC4D2)),
+          SizedBox(height: 10),
+          Text(
+            'No incoming requests right now.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xff6E7191),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );

@@ -59,6 +59,13 @@ class ApiUrls {
   static String workerAcceptRequest(String offerId) =>
       "$baseUrl/auth/worker/request/$offerId/accept/";
 
+  // POST — reject an offer. Takes no request body.
+  // Response 200: { "message": "Request rejected successfully" }
+  // Response 401: { "detail": "Authentication credentials were not provided." }
+  // Response 403: { "detail": "Only workers can access this endpoint." }
+  static String workerRejectRequest(String offerId) =>
+      "$baseUrl/auth/worker/request/$offerId/reject/";
+
   // Resolves a media path returned by the backend into a loadable URL.
   //
   // WHY this exists:

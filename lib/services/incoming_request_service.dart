@@ -110,6 +110,36 @@ class IncomingRequestService {
     }
   }
 
+  /// POST /api/auth/worker/request/[offerId]/reject/
+  ///
+  /// Takes no body. On success the backend marks the offer rejected.
+  ///
+  /// Returns the backend `message` string.
+  Future<String> rejectRequest(String offerId) async {
+    try {
+      final response = await _api.post(
+        ApiUrls.workerRejectRequest(offerId),
+        const {},
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return body['message']?.toString() ?? 'Request rejected successfully.';
+      }
+
+      throw Exception(
+        _messageFor(
+          response.body,
+          'Failed to reject request (HTTP ${response.statusCode})',
+        ),
+      );
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
+    }
+  }
+
   /// Pulls the backend's `detail` message out of an error body, falling back
   /// to [fallback] when the body is not JSON or carries no message.
   String _messageFor(String body, String fallback) {
