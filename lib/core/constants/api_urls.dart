@@ -105,4 +105,11 @@ class ApiUrls {
   // requesting customer.
   static String bookingStatus(String bookingId) =>
       "$baseUrl/services/bookings/$bookingId/status/";
+
+  // POST — tells the backend the worker has physically reached the
+  // customer's location (client detects this by distance-to-customer
+  // reaching ~0 km while tracking).
+  // Request: { "status": "arrived" }
+  // Response 200: { "status": "arrived" }
+  static const String bookingArrived = "$baseUrl/services/bookings/arrived";
 }

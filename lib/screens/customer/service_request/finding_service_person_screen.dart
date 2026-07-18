@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/service_request/accepted_worker_ui_model.dart';
+import '../../../models/service_request/booking_status_response.dart';
 import '../../../models/service_request/request_search_status.dart';
 import '../../../models/service_request/selected_service_location.dart';
 import '../../../models/service_request/service_booking_demo_config.dart';
@@ -43,6 +44,7 @@ class FindingServicePersonScreen extends StatefulWidget {
         ServiceBookingDemoConfig.acceptedDisplayDuration,
     this.enableStatusPolling = true,
     this.statusPollInterval = const Duration(seconds: 5),
+    this.debugMockWorkerAssignment = false,
     super.key,
   });
 
@@ -81,6 +83,25 @@ class FindingServicePersonScreen extends StatefulWidget {
   /// [statusListenable] is supplied.
   final Duration statusPollInterval;
 
+  /// TEMP DEBUG ONLY — backend for `GET /api/services/bookings/{id}/status/`
+  /// is not deployed yet. While true (and [enableStatusPolling] is true),
+  /// every poll skips the real network call and feeds a canned "worker
+  /// assigned" response through the exact same parsing + navigation path a
+  /// real assignment would use: `BookingStatusResponse.fromJson` ->
+  /// `hasAssignedWorker` -> `AcceptedWorkerUiModel.fromAssignedWorker` ->
+  /// `pushReplacement` to [ServiceOnTheWayScreen]. Only the HTTP call itself
+  /// is skipped, so this is proof the real contract works end to end.
+  ///
+  /// >>> WHEN THE BACKEND IS READY, set this default to false (or delete
+  /// this field and `_buildDebugWorkerAssignedResponse`, and the branch that
+  /// uses them inside `_pollBookingStatusOnce`). Nothing else needs to
+  /// change — the real call is already wired to the documented contract. <<<
+  ///
+  /// Callers that need deterministic "still searching" behavior (tests,
+  /// the cancellation flow) pass false explicitly, the same way they
+  /// already override [enableStatusPolling].
+  final bool debugMockWorkerAssignment;
+
   @override
   State<FindingServicePersonScreen> createState() =>
       _FindingServicePersonScreenState();
@@ -103,6 +124,28 @@ class _FindingServicePersonScreenState
   int _statusPollFailureCount = 0;
   AcceptedWorkerUiModel? _polledWorker;
   final BookingStatusService _statusService = BookingStatusService();
+
+  /// TEMP DEBUG ONLY — see [FindingServicePersonScreen.debugMockWorkerAssignment].
+  /// Matches the documented "worker assigned" success response exactly,
+  /// offset near the real service location so ServiceOnTheWayScreen's map
+  /// draws a sensible route instead of a marker on the other side of the
+  /// world.
+  BookingStatusResponse _buildDebugWorkerAssignedResponse() {
+    return BookingStatusResponse.fromJson({
+      'id': int.tryParse(widget.requestId) ?? 12,
+      'status': 'active',
+      'worker': {
+        'id': 5,
+        'full_name': 'Rajan Sharma',
+        'phone_number': '+9779800000010',
+        'average_rating': 4.7,
+        'completed_jobs': 8,
+        'profile_photo': 'http://127.0.0.1:8000/media/technician_avatar.png',
+        'current_latitude': widget.serviceLocation.latitude + 0.006,
+        'current_longitude': widget.serviceLocation.longitude - 0.004,
+      },
+    });
+  }
 
   @override
   void initState() {
@@ -195,7 +238,13 @@ class _FindingServicePersonScreenState
   Future<void> _pollBookingStatusOnce() async {
     if (!mounted || !_status.isSearching) return;
     try {
-      final result = await _statusService.fetchStatus(widget.requestId);
+      // TEMP DEBUG ONLY — see FindingServicePersonScreen.debugMockWorkerAssignment.
+      // Delete this branch when the backend is ready; the real call in the
+      // else branch already matches the documented contract and needs no
+      // changes.
+      final result = (kDebugMode && widget.debugMockWorkerAssignment)
+          ? _buildDebugWorkerAssignedResponse()
+          : await _statusService.fetchStatus(widget.requestId);
       if (!mounted) return;
       _statusPollFailureCount = 0;
 

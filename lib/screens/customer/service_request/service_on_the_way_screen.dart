@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/constants/colors.dart';
@@ -15,6 +16,7 @@ import '../../../models/service_request/service_booking_demo_config.dart';
 import '../../../models/service_request/service_category.dart';
 import '../../../models/service_request/service_category_presentation.dart';
 import '../../../models/service_request/worker_tracking_ui_state.dart';
+import '../../../services/service_request/booking_status_service.dart';
 import '../../../widgets/customer/service_request/horizontal_service_status_tracker.dart';
 import '../../../widgets/customer/service_request/service_search_map.dart';
 import 'rate_your_experience_screen.dart';
@@ -43,6 +45,8 @@ class ServiceOnTheWayScreen extends StatefulWidget {
         ServiceBookingDemoConfig.workingPreviewDuration,
     this.completedDisplayDuration =
         ServiceBookingDemoConfig.completedDisplayDuration,
+    this.enableLocationPolling = true,
+    this.locationPollInterval = const Duration(seconds: 30),
     this.onCancelRequested,
     this.onChat,
     this.onCall,
@@ -68,6 +72,19 @@ class ServiceOnTheWayScreen extends StatefulWidget {
   final Duration arrivedAcknowledgementDuration;
   final Duration workingPreviewDuration;
   final Duration completedDisplayDuration;
+
+  /// Whether to poll `GET /api/services/bookings/<id>/status/` for the
+  /// worker's live `current_latitude`/`current_longitude` while en route.
+  /// Defaults to true for production use. Ignored when [trackingListenable]
+  /// or [statusListenable] is supplied (an external source already drives
+  /// tracking — tests and preview routes use this) or once the worker has
+  /// arrived.
+  final bool enableLocationPolling;
+
+  /// How often to poll while [enableLocationPolling] is true and no
+  /// [trackingListenable] is supplied.
+  final Duration locationPollInterval;
+
   final TrackingCancelCallback? onCancelRequested;
   final VoidCallback? onChat;
   final VoidCallback? onCall;
@@ -80,22 +97,37 @@ class ServiceOnTheWayScreen extends StatefulWidget {
 }
 
 class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late RequestSearchStatus _status;
   late WorkerTrackingUiState _trackingState;
   late final ValueNotifier<WorkerTrackingUiState> _trackingNotifier;
   late final AnimationController _arrivalAnimationController;
+
+  /// Drives the one-shot "pop" entrance of the arrived status tracker —
+  /// separate from [_arrivalAnimationController], which only pulses the
+  /// pre-arrival card and reverses back down afterward.
+  late final AnimationController _arrivedPopController;
   Timer? _trackingDemoTimer;
   Timer? _snapshotInterpolationTimer;
   Timer? _workingTransitionTimer;
   Timer? _completionDemoTimer;
   Timer? _ratingNavigationTimer;
+  Timer? _locationPollTimer;
+  final BookingStatusService _statusService = BookingStatusService();
   int _trackingDemoStep = 0;
   bool _cancellationInFlight = false;
   bool _dialogOpen = false;
   bool _allowRoutePop = false;
   bool _ratingNavigationTriggered = false;
   DateTime? _arrivedAt;
+
+  /// Guards against overlapping POST .../bookings/arrived calls if two
+  /// location polls both see ~0 km before the first call resolves.
+  bool _arrivalReportInFlight = false;
+
+  /// True once the backend has confirmed arrival, so a worker who lingers at
+  /// ~0 km doesn't re-trigger the report on every subsequent poll.
+  bool _arrivalReported = false;
 
   bool get _hasReachedService => _status.hasReachedService;
   bool get _canCancel =>
@@ -117,12 +149,21 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
       vsync: this,
       duration: const Duration(milliseconds: 650),
     );
+    _arrivedPopController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 550),
+      // Starting already arrived (e.g. a rebuild, or a preview route) should
+      // show the tracker at rest, not replay the pop-in every time.
+      value: _status.hasReachedService ? 1 : 0,
+    );
     widget.statusListenable?.addListener(_handleExternalStatusChanged);
     widget.trackingListenable?.addListener(_handleExternalTrackingChanged);
     if (_status.hasReachedService) {
       _arrivedAt = widget.worker.arrivedAt ?? DateTime.now();
+      _arrivalReported = true;
     }
     _startArrivalDemoIfNeeded();
+    _startLocationPollingIfNeeded();
     _handleLifecycleStatus(_status);
   }
 
@@ -155,10 +196,12 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
     _workingTransitionTimer?.cancel();
     _completionDemoTimer?.cancel();
     _ratingNavigationTimer?.cancel();
+    _locationPollTimer?.cancel();
     widget.statusListenable?.removeListener(_handleExternalStatusChanged);
     widget.trackingListenable?.removeListener(_handleExternalTrackingChanged);
     _trackingNotifier.dispose();
     _arrivalAnimationController.dispose();
+    _arrivedPopController.dispose();
     super.dispose();
   }
 
@@ -322,6 +365,116 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
     });
   }
 
+  /// Polls `GET /api/services/bookings/<id>/status/` every
+  /// [ServiceOnTheWayScreen.locationPollInterval] for the worker's live
+  /// `current_latitude`/`current_longitude`, feeding each snapshot through
+  /// [_interpolateToTrackingSnapshot] — the same smoothing path
+  /// [trackingListenable] updates already use — so the marker eases between
+  /// polls instead of jumping. Skipped when an external tracking/status
+  /// source is supplied (tests, preview routes), when
+  /// [ServiceOnTheWayScreen.enableLocationPolling] is false, or once the
+  /// worker has already arrived.
+  void _startLocationPollingIfNeeded() {
+    if (!widget.enableLocationPolling ||
+        _usesExternalStatusSource ||
+        _hasReachedService) {
+      return;
+    }
+
+    _locationPollTimer?.cancel();
+    unawaited(_pollWorkerLocationOnce());
+    _locationPollTimer = Timer.periodic(
+      widget.locationPollInterval,
+      (_) => unawaited(_pollWorkerLocationOnce()),
+    );
+  }
+
+  Future<void> _pollWorkerLocationOnce() async {
+    if (!mounted || _hasReachedService) {
+      _locationPollTimer?.cancel();
+      return;
+    }
+    try {
+      final result = await _statusService.fetchStatus(widget.requestId);
+      if (!mounted || _hasReachedService) return;
+
+      final latitude = result.worker?.currentLatitude;
+      final longitude = result.worker?.currentLongitude;
+      // No coordinate in this poll (worker object absent, or the backend
+      // hasn't reported a fix yet) — nothing to update, wait for the next tick.
+      if (latitude == null || longitude == null) return;
+
+      final coordinate = LatLng(latitude, longitude);
+      final customer = LatLng(
+        widget.serviceLocation.latitude,
+        widget.serviceLocation.longitude,
+      );
+      final distanceKm = const Distance().as(
+        LengthUnit.Kilometer,
+        coordinate,
+        customer,
+      );
+
+      if (distanceKm <= _arrivalDistanceThresholdKm) {
+        await _reportArrivalIfNeeded(coordinate);
+        return;
+      }
+
+      _interpolateToTrackingSnapshot(
+        WorkerTrackingUiState(
+          coordinate: coordinate,
+          distanceKm: distanceKm,
+          estimatedArrivalMinutes: _trackingState.estimatedArrivalMinutes,
+          status: _status,
+          updatedAt: DateTime.now(),
+          routeProgress: _trackingState.routeProgress,
+        ),
+      );
+    } catch (e) {
+      // Transient failure (network hiccup, unexpected response shape). Keep
+      // polling — a single blip shouldn't interrupt live tracking, and the
+      // marker simply stays at its last known position until the next tick.
+      debugPrint('[Tracking] Failed to poll worker location: $e');
+    }
+  }
+
+  /// Distance at which the worker is considered to have physically reached
+  /// the customer. Matches the ~50 m precision the UI already rounds
+  /// distance display to (`toStringAsFixed(1)` on km), rather than requiring
+  /// an exact 0.0 that GPS coordinates will rarely produce.
+  static const double _arrivalDistanceThresholdKm = 0.05;
+
+  /// Tells the backend the worker has arrived (POST .../bookings/arrived)
+  /// and only flips the UI to "Arrived" — with its pop + haptic effect —
+  /// once that call actually succeeds. A failure here leaves the UI showing
+  /// "Arriving in..." and simply retries on the next poll, since the worker
+  /// is still ~0 km away.
+  Future<void> _reportArrivalIfNeeded(LatLng coordinate) async {
+    if (_arrivalReported || _arrivalReportInFlight) return;
+    _arrivalReportInFlight = true;
+    try {
+      await _statusService.markWorkerArrived();
+      if (!mounted) return;
+      _arrivalReported = true;
+      _applyTrackingState(
+        _trackingState.copyWith(
+          coordinate: coordinate,
+          distanceKm: 0,
+          estimatedArrivalMinutes: 0,
+          status: RequestSearchStatus.arrived,
+          updatedAt: DateTime.now(),
+          routeProgress: 1,
+        ),
+      );
+    } catch (e) {
+      // Transient failure — the worker is still ~0 km away, so the next poll
+      // tick will simply try reporting arrival again.
+      debugPrint('[Tracking] Failed to confirm arrival with backend: $e');
+    } finally {
+      _arrivalReportInFlight = false;
+    }
+  }
+
   void _setTrackingStatus(RequestSearchStatus next) {
     final customer = LatLng(
       widget.serviceLocation.latitude,
@@ -357,6 +510,8 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
       _trackingDemoTimer?.cancel();
       _snapshotInterpolationTimer?.cancel();
       unawaited(_playArrivalAnimation());
+      HapticFeedback.mediumImpact();
+      _arrivedPopController.forward(from: 0);
     }
     _handleLifecycleStatus(next.status);
 
@@ -642,7 +797,17 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
                           ),
                         )
                       else
-                        HorizontalServiceStatusTracker(status: _status),
+                        ScaleTransition(
+                          scale: Tween<double>(begin: 0.82, end: 1).animate(
+                            CurvedAnimation(
+                              parent: _arrivedPopController,
+                              curve: Curves.easeOutBack,
+                            ),
+                          ),
+                          child: HorizontalServiceStatusTracker(
+                            status: _status,
+                          ),
+                        ),
                       const SizedBox(height: 12),
                       ServiceTrackingRequestDetails(
                         location: widget.serviceLocation,

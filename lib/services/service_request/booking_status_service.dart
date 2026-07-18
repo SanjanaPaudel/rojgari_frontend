@@ -54,4 +54,29 @@ class BookingStatusService {
       'Unable to check the request status (${response.statusCode}).',
     );
   }
+
+  /// POST /api/services/bookings/arrived — tells the backend the worker has
+  /// physically reached the customer's location. Returns once the backend
+  /// confirms with `{ "status": "arrived" }`; throws otherwise so the caller
+  /// never flips the UI to "Arrived" on anything less than a confirmed
+  /// success response.
+  Future<void> markWorkerArrived() async {
+    final response = await _api.post(ApiUrls.bookingArrived, const {
+      'status': 'arrived',
+    });
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic> && decoded['status'] == 'arrived') {
+        return;
+      }
+      throw const BookingStatusException(
+        'Unexpected response while confirming arrival.',
+      );
+    }
+
+    throw BookingStatusException(
+      'Unable to confirm arrival (${response.statusCode}).',
+    );
+  }
 }

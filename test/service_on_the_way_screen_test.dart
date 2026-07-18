@@ -78,6 +78,7 @@ void main() {
           worker: _worker,
           demoArrivalDuration: const Duration(milliseconds: 100),
           demoTrackingInterval: const Duration(milliseconds: 20),
+          enableLocationPolling: false,
         ),
       ),
     );
@@ -176,6 +177,7 @@ void main() {
                       requestedAt: DateTime.now(),
                       worker: _worker,
                       enableDemoFlow: false,
+                      enableLocationPolling: false,
                     ),
                   ),
                 ),
@@ -229,6 +231,7 @@ void main() {
           requestedAt: DateTime.now(),
           worker: _worker,
           enableDemoFlow: false,
+          enableLocationPolling: false,
         ),
       ),
     );
