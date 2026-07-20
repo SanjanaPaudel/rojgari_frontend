@@ -121,12 +121,8 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
   bool _ratingNavigationTriggered = false;
   DateTime? _arrivedAt;
 
-  /// Guards against overlapping POST .../bookings/arrived calls if two
-  /// location polls both see ~0 km before the first call resolves.
-  bool _arrivalReportInFlight = false;
-
-  /// True once the backend has confirmed arrival, so a worker who lingers at
-  /// ~0 km doesn't re-trigger the report on every subsequent poll.
+  /// True once arrival has been detected, so a worker who lingers at ~0 km
+  /// doesn't re-trigger the transition on every subsequent poll.
   bool _arrivalReported = false;
 
   bool get _hasReachedService => _status.hasReachedService;
@@ -444,35 +440,22 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
   /// an exact 0.0 that GPS coordinates will rarely produce.
   static const double _arrivalDistanceThresholdKm = 0.05;
 
-  /// Tells the backend the worker has arrived (POST .../bookings/arrived)
-  /// and only flips the UI to "Arrived" — with its pop + haptic effect —
-  /// once that call actually succeeds. A failure here leaves the UI showing
-  /// "Arriving in..." and simply retries on the next poll, since the worker
-  /// is still ~0 km away.
+  /// Flips the UI to "Arrived" — with its pop + haptic effect — once the
+  /// worker has physically reached the customer (~0 km away). This is a
+  /// client-side transition detected purely from the tracked distance.
   Future<void> _reportArrivalIfNeeded(LatLng coordinate) async {
-    if (_arrivalReported || _arrivalReportInFlight) return;
-    _arrivalReportInFlight = true;
-    try {
-      await _statusService.markWorkerArrived();
-      if (!mounted) return;
-      _arrivalReported = true;
-      _applyTrackingState(
-        _trackingState.copyWith(
-          coordinate: coordinate,
-          distanceKm: 0,
-          estimatedArrivalMinutes: 0,
-          status: RequestSearchStatus.arrived,
-          updatedAt: DateTime.now(),
-          routeProgress: 1,
-        ),
-      );
-    } catch (e) {
-      // Transient failure — the worker is still ~0 km away, so the next poll
-      // tick will simply try reporting arrival again.
-      debugPrint('[Tracking] Failed to confirm arrival with backend: $e');
-    } finally {
-      _arrivalReportInFlight = false;
-    }
+    if (_arrivalReported) return;
+    _arrivalReported = true;
+    _applyTrackingState(
+      _trackingState.copyWith(
+        coordinate: coordinate,
+        distanceKm: 0,
+        estimatedArrivalMinutes: 0,
+        status: RequestSearchStatus.arrived,
+        updatedAt: DateTime.now(),
+        routeProgress: 1,
+      ),
+    );
   }
 
   void _setTrackingStatus(RequestSearchStatus next) {
