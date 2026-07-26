@@ -5,7 +5,19 @@ import '../../core/utils/service_category_icon_resolver.dart';
 import '../../models/technician/incoming_service_request_details.dart';
 import '../../repositories/technician_job/technician_job_repository.dart';
 import '../../repositories/technician_job/technician_job_repository_provider.dart';
+import '../../widgets/media_gallery_viewer.dart';
 import 'technician_active_job_screen.dart';
+
+/// Builds the combined, swipeable media sequence for this request — every
+/// photo first, then the video (if any) last — matching the order they're
+/// already displayed in on screen.
+List<GalleryMediaItem> _galleryItemsFor(IncomingServiceRequestDetails request) {
+  return [
+    for (final url in request.photoUrls) GalleryMediaItem.photo(url),
+    if ((request.videoUrl ?? '').trim().isNotEmpty)
+      GalleryMediaItem.video(request.videoUrl!),
+  ];
+}
 
 typedef RequestActionCallback = Future<void> Function(String requestId);
 typedef RequestNavigationCallback = Future<void> Function();
@@ -291,6 +303,7 @@ class _DetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasVideo = request.videoUrl?.trim().isNotEmpty ?? false;
+    final galleryItems = _galleryItemsFor(request);
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,9 +345,17 @@ class _DetailsCard extends StatelessWidget {
                     mainAxisSpacing: 12,
                     childAspectRatio: 0.88,
                   ),
-                  itemBuilder: (_, index) => _MediaImage(
-                    source: request.photoUrls[index],
-                    semanticLabel: 'Customer photo ${index + 1}',
+                  itemBuilder: (_, index) => InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => MediaGalleryViewer.show(
+                      context,
+                      items: galleryItems,
+                      initialIndex: index,
+                    ),
+                    child: _MediaImage(
+                      source: request.photoUrls[index],
+                      semanticLabel: 'Customer photo ${index + 1}',
+                    ),
                   ),
                 );
               },
@@ -344,7 +365,12 @@ class _DetailsCard extends StatelessWidget {
             const SizedBox(height: 22),
             const _SectionTitle('Video (1)'),
             const SizedBox(height: 10),
-            _VideoPreview(request: request, onVideoTap: onVideoTap),
+            _VideoPreview(
+              request: request,
+              onVideoTap: onVideoTap,
+              galleryItems: galleryItems,
+              videoIndex: request.photoUrls.length,
+            ),
           ],
         ],
       ),
@@ -353,9 +379,16 @@ class _DetailsCard extends StatelessWidget {
 }
 
 class _VideoPreview extends StatelessWidget {
-  const _VideoPreview({required this.request, required this.onVideoTap});
+  const _VideoPreview({
+    required this.request,
+    required this.onVideoTap,
+    required this.galleryItems,
+    required this.videoIndex,
+  });
   final IncomingServiceRequestDetails request;
   final VideoTapCallback? onVideoTap;
+  final List<GalleryMediaItem> galleryItems;
+  final int videoIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -366,20 +399,18 @@ class _VideoPreview extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // VIDEO INTEGRATION:
-          // Connect this tap callback to the project’s final video player
-          // or full-screen media viewer after backend media URLs are available.
-          if (onVideoTap == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Video player will be connected during integration.',
-                ),
-              ),
-            );
-          } else {
+          // A caller can still inject its own handling via onVideoTap; the
+          // default (nothing injected, which is every real caller today)
+          // opens the same full-screen swipeable viewer the photos use.
+          if (onVideoTap != null) {
             onVideoTap!(videoUrl);
+            return;
           }
+          MediaGalleryViewer.show(
+            context,
+            items: galleryItems,
+            initialIndex: videoIndex,
+          );
         },
         child: AspectRatio(
           aspectRatio: 16 / 9,
