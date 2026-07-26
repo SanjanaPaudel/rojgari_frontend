@@ -120,12 +120,55 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
   Future<void> _pickPhoto(int index) async {
     final source = await _showSourceSheet(video: false);
     if (source == null || !mounted) return;
+
+    // Choosing from the gallery into a currently-empty box lets the
+    // customer fill every remaining empty box in one visit. Replacing an
+    // already-filled box, or taking a new photo with the camera, stays
+    // single-photo — a camera can only produce one photo per shot anyway.
+    if (source == ImageSource.gallery && _photoSlots[index] == null) {
+      await _pickMultiplePhotosIntoEmptySlots();
+      return;
+    }
+
     try {
       final file = await _mediaPicker.pickPhoto(source);
       if (!mounted || file == null) return;
       setState(() => _photoSlots[index] = file);
     } catch (error) {
       if (mounted) _showMessage('Unable to select photo. Please try again.');
+    }
+  }
+
+  Future<void> _pickMultiplePhotosIntoEmptySlots() async {
+    final emptySlotCount = _photoSlots.where((item) => item == null).length;
+    if (emptySlotCount == 0) return;
+
+    try {
+      final files = await _mediaPicker.pickMultiplePhotos(
+        limit: emptySlotCount,
+      );
+      if (!mounted || files.isEmpty) return;
+
+      final accepted = files.length > emptySlotCount
+          ? files.sublist(0, emptySlotCount)
+          : files;
+
+      setState(() {
+        for (final file in accepted) {
+          final emptyIndex = _photoSlots.indexWhere((item) => item == null);
+          if (emptyIndex == -1) break;
+          _photoSlots[emptyIndex] = file;
+        }
+      });
+
+      // Safety net for pickers that don't honor `limit` (e.g. some Android
+      // versions fall back to a picker that ignores it) — same message
+      // style as the skill-selection screens' own selection cap.
+      if (files.length > emptySlotCount) {
+        _showMessage('You can select a maximum of 3 photos.');
+      }
+    } catch (error) {
+      if (mounted) _showMessage('Unable to select photos. Please try again.');
     }
   }
 

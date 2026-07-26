@@ -17,6 +17,14 @@ class RequestMediaPicker {
   Future<XFile?> pickPhoto(ImageSource source) =>
       _picker.pickImage(source: source, imageQuality: 82, maxWidth: 1600);
 
+  /// Lets the user select several gallery photos in one visit, capped at
+  /// [limit] so the native picker itself refuses further taps past that
+  /// count (mirrors the disabled-card cap used on the skill-selection
+  /// screens, just enforced inside the OS picker instead of a Flutter
+  /// widget).
+  Future<List<XFile>> pickMultiplePhotos({required int limit}) =>
+      _picker.pickMultiImage(imageQuality: 82, maxWidth: 1600, limit: limit);
+
   Future<PickedVideo?> pickVideo(ImageSource source) async {
     final file = await _picker.pickVideo(
       source: source,
