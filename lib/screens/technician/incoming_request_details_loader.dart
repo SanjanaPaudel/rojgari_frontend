@@ -135,6 +135,15 @@ class _IncomingRequestDetailsLoaderState
         ],
       ),
     );
+    _goToIncomingRequestsList();
+  }
+
+  /// Clears back to the incoming-requests list — regardless of whether this
+  /// screen was reached from the home-screen preview or from the list
+  /// itself, the worker always ends up on a fresh copy of the list, which
+  /// re-fetches on its own the moment it opens (so a just-rejected/expired
+  /// offer is already gone from it before the worker even sees it).
+  Future<void> _goToIncomingRequestsList() async {
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const IncomingRequestsScreen()),
@@ -182,12 +191,11 @@ class _IncomingRequestDetailsLoaderState
         Navigator.pop(context, true);
       },
       onDeclineRequest: (offerId) => _service.rejectRequest(offerId),
-      onDeclinedNavigation: () async {
-        // Pops `true` for the same reason as accept: the rejected offer no
-        // longer belongs in the pending list, so the caller must refresh.
-        if (!mounted) return;
-        Navigator.pop(context, true);
-      },
+      // A successful decline always takes the worker to a fresh
+      // "All Incoming Requests" list — the rejected offer is already gone
+      // from it (and from the home screen's preview, since both read the
+      // same shared store) by the time this list is shown.
+      onDeclinedNavigation: _goToIncomingRequestsList,
       onOfferNoLongerAvailable: _showOfferGoneDialogThenGoToList,
     );
   }
