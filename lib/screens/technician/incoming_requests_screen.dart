@@ -1,18 +1,18 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../../core/constants/colors.dart';
 import '../../models/incoming_request_model.dart';
-import '../../services/incoming_request_service.dart';
+import '../../services/incoming_requests_store.dart';
 import '../../widgets/technician/incoming_request_card.dart';
-import 'debug_incoming_request_fixtures.dart';
 import 'incoming_request_details_loader.dart';
 
 // "All Incoming Requests" — the View All destination from the technician
 // home screen's "New requests near you" section.
 //
-// Backed by GET /api/auth/worker/incoming-requests/ via
-// IncomingRequestService.
+// Backed by the shared IncomingRequestsStore (GET
+// /api/auth/worker/incoming-requests/ under the hood) — the same store
+// TechnicianHomeScreen's preview reads from, so both always show the same
+// data at the same time.
 //
 // KNOWN BACKEND LIMITATION:
 // That endpoint returns only offers with status="pending" and sends no status
@@ -29,48 +29,39 @@ class IncomingRequestsScreen extends StatefulWidget {
 }
 
 class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
-  final IncomingRequestService _service = IncomingRequestService();
-
   _RequestFilter _activeFilter = _RequestFilter.all;
-  List<IncomingRequest> _requests = [];
   bool _isLoading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    IncomingRequestsStore.instance.attach();
     _loadRequests();
   }
 
+  @override
+  void dispose() {
+    IncomingRequestsStore.instance.detach();
+    super.dispose();
+  }
+
+  /// Initial load, pull-to-refresh, and the error-state "Try again" button
+  /// all funnel through here, since all three need this screen's own
+  /// loading/error UI around a single fetch attempt — unlike the shared
+  /// store's own background polling, which stays silent on failure.
+  ///
   Future<void> _loadRequests() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
-    // ─── DEBUG-ONLY FIXTURE TOGGLE — DELETE BEFORE MERGING ─────────────────
-    // Mirrors the same toggle in technician_home_screen.dart: flip
-    // debugFakeIncomingRequestCount in debug_incoming_request_fixtures.dart
-    // and hot-restart. Both screens read the same constant, so "View All"
-    // here shows the full fake set while the home screen preview shows only
-    // the latest two of it.
-    if (kDebugMode && debugFakeIncomingRequestCount > 0) {
-      if (!mounted) return;
-      setState(() {
-        _requests = debugFakeIncomingRequests(debugFakeIncomingRequestCount);
-        _isLoading = false;
-      });
-      return;
-    }
-    // ─── END DEBUG-ONLY FIXTURE TOGGLE ──────────────────────────────────────
 
     try {
-      final requests = await _service.fetchIncomingRequests();
+      await IncomingRequestsStore.instance.refreshOrThrow();
       if (!mounted) return;
-      setState(() {
-        _requests = requests;
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -83,61 +74,71 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
     }
   }
 
-  int _countFor(_RequestFilter filter) => switch (filter) {
-    _RequestFilter.all => _requests.length,
-    _RequestFilter.isNew => _requests
-        .where((r) => r.status == IncomingRequestStatus.isNew)
-        .length,
-    _RequestFilter.viewed => _requests
-        .where((r) => r.status == IncomingRequestStatus.viewed)
-        .length,
-  };
+  int _countFor(_RequestFilter filter, List<IncomingRequest> requests) =>
+      switch (filter) {
+        _RequestFilter.all => requests.length,
+        _RequestFilter.isNew => requests
+            .where((r) => r.status == IncomingRequestStatus.isNew)
+            .length,
+        _RequestFilter.viewed => requests
+            .where((r) => r.status == IncomingRequestStatus.viewed)
+            .length,
+      };
 
-  List<IncomingRequest> get _visibleRequests => switch (_activeFilter) {
-    _RequestFilter.all => _requests,
-    _RequestFilter.isNew => _requests
-        .where((r) => r.status == IncomingRequestStatus.isNew)
-        .toList(),
-    _RequestFilter.viewed => _requests
-        .where((r) => r.status == IncomingRequestStatus.viewed)
-        .toList(),
-  };
+  List<IncomingRequest> _visibleRequests(List<IncomingRequest> requests) =>
+      switch (_activeFilter) {
+        _RequestFilter.all => requests,
+        _RequestFilter.isNew => requests
+            .where((r) => r.status == IncomingRequestStatus.isNew)
+            .toList(),
+        _RequestFilter.viewed => requests
+            .where((r) => r.status == IncomingRequestStatus.viewed)
+            .toList(),
+      };
 
   @override
   Widget build(BuildContext context) {
-    final visible = _visibleRequests;
-
-    return Scaffold(
-      backgroundColor: const Color(0xffFAF9FE),
-      appBar: AppBar(
-        backgroundColor: const Color(0xffFAF9FE),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xff171725)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'All Incoming Requests',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xff171725),
+    return ValueListenableBuilder<List<IncomingRequest>>(
+      valueListenable: IncomingRequestsStore.instance.requests,
+      builder: (context, requests, _) {
+        final visible = _visibleRequests(requests);
+        return Scaffold(
+          backgroundColor: const Color(0xffFAF9FE),
+          appBar: AppBar(
+            backgroundColor: const Color(0xffFAF9FE),
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            centerTitle: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Color(0xff171725)),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: const Text(
+              'All Incoming Requests',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xff171725),
+              ),
+            ),
           ),
-        ),
-      ),
-      body: Column(
-        children: [
-          _FilterTabs(
-            activeFilter: _activeFilter,
-            countFor: _countFor,
-            onChanged: (filter) => setState(() => _activeFilter = filter),
+          body: Column(
+            children: [
+              _FilterTabs(
+                activeFilter: _activeFilter,
+                countFor: (filter) => _countFor(filter, requests),
+                onChanged: (filter) => setState(() => _activeFilter = filter),
+              ),
+              const Divider(
+                height: 1,
+                thickness: 1,
+                color: Color(0xffECE9F3),
+              ),
+              Expanded(child: _buildBody(visible)),
+            ],
           ),
-          const Divider(height: 1, thickness: 1, color: Color(0xffECE9F3)),
-          Expanded(child: _buildBody(visible)),
-        ],
-      ),
+        );
+      },
     );
   }
 

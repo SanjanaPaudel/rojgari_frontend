@@ -1,9 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/constants/colors.dart';
 import '../../models/technician/incoming_service_request_details.dart';
 import '../../services/incoming_request_service.dart';
 import 'incoming_request_details_screen.dart';
+import 'incoming_requests_screen.dart';
+
+/// How often to quietly re-check the offer's status while the worker is
+/// sitting on this screen, so an expiry or another worker taking it is
+/// noticed without waiting for the worker to tap Accept/Decline. The offer
+/// window itself is 120 seconds server-side, so this gives several checks
+/// within that time.
+const Duration _staleCheckInterval = Duration(seconds: 12);
 
 /// Fetches one incoming request and hands it to [IncomingRequestDetailsScreen].
 ///
@@ -32,11 +42,18 @@ class _IncomingRequestDetailsLoaderState
   IncomingServiceRequestDetails? _request;
   bool _isLoading = true;
   String? _error;
+  Timer? _staleCheckTimer;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _staleCheckTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -52,6 +69,7 @@ class _IncomingRequestDetailsLoaderState
         _request = request;
         _isLoading = false;
       });
+      _startStaleCheck();
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -59,6 +77,69 @@ class _IncomingRequestDetailsLoaderState
         _isLoading = false;
       });
     }
+  }
+
+  /// Quietly re-fetches this offer on a timer so an expiry or another
+  /// worker accepting it first is noticed while the worker is just looking
+  /// at the screen, not only when they tap Accept/Decline. Uses the exact
+  /// same detail endpoint the initial load already uses — no new endpoint,
+  /// no visible loading state.
+  void _startStaleCheck() {
+    _staleCheckTimer?.cancel();
+    _staleCheckTimer = Timer.periodic(_staleCheckInterval, (_) async {
+      if (!mounted) return;
+      try {
+        final latest = await _service.fetchRequestDetail(widget.offerId);
+        if (!mounted) return;
+        if (latest.status != null && latest.status != 'pending') {
+          _handleOfferNoLongerAvailable(latest.status!);
+        }
+      } catch (_) {
+        // A single failed check is likely a transient network issue — leave
+        // the timer running and try again next tick rather than disturbing
+        // the worker over something that might not even be real.
+      }
+    });
+  }
+
+  void _handleOfferNoLongerAvailable(String status) {
+    _staleCheckTimer?.cancel();
+    final message = switch (status) {
+      'expired' => 'This request has expired and is no longer available.',
+      'accepted' ||
+      'cancelled' => 'This request has already been taken by another technician.',
+      _ => 'This request is no longer available.',
+    };
+    _showOfferGoneDialogThenGoToList(message);
+  }
+
+  /// Shows a popup with [message] that the worker must dismiss with "OK",
+  /// then clears back to the incoming-requests list — regardless of whether
+  /// this screen was reached from the home-screen preview or from the list
+  /// itself, the worker always ends up on the list afterwards, and it will
+  /// show fresh data since that screen re-fetches every time it opens.
+  Future<void> _showOfferGoneDialogThenGoToList(String message) async {
+    if (!mounted) return;
+    _staleCheckTimer?.cancel();
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Request unavailable'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const IncomingRequestsScreen()),
+      (route) => route.isFirst,
+    );
   }
 
   @override
@@ -107,6 +188,7 @@ class _IncomingRequestDetailsLoaderState
         if (!mounted) return;
         Navigator.pop(context, true);
       },
+      onOfferNoLongerAvailable: _showOfferGoneDialogThenGoToList,
     );
   }
 }

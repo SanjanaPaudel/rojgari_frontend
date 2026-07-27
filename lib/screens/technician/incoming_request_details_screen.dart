@@ -5,6 +5,7 @@ import '../../core/utils/service_category_icon_resolver.dart';
 import '../../models/technician/incoming_service_request_details.dart';
 import '../../repositories/technician_job/technician_job_repository.dart';
 import '../../repositories/technician_job/technician_job_repository_provider.dart';
+import '../../services/incoming_request_service.dart' show IncomingRequestActionException;
 import '../../widgets/media_gallery_viewer.dart';
 import 'technician_active_job_screen.dart';
 
@@ -22,6 +23,7 @@ List<GalleryMediaItem> _galleryItemsFor(IncomingServiceRequestDetails request) {
 typedef RequestActionCallback = Future<void> Function(String requestId);
 typedef RequestNavigationCallback = Future<void> Function();
 typedef VideoTapCallback = void Function(String videoUrl);
+typedef OfferGoneCallback = Future<void> Function(String message);
 
 class IncomingRequestDetailsScreen extends StatefulWidget {
   const IncomingRequestDetailsScreen({
@@ -32,6 +34,7 @@ class IncomingRequestDetailsScreen extends StatefulWidget {
     this.onAcceptedNavigation,
     this.onDeclinedNavigation,
     this.onVideoTap,
+    this.onOfferNoLongerAvailable,
     this.jobRepository,
   });
 
@@ -41,6 +44,11 @@ class IncomingRequestDetailsScreen extends StatefulWidget {
   final RequestNavigationCallback? onAcceptedNavigation;
   final RequestNavigationCallback? onDeclinedNavigation;
   final VideoTapCallback? onVideoTap;
+  // Called instead of _showMessage + navigation when accept/decline fails
+  // with a 409 — the offer is permanently gone (expired, or already handled
+  // elsewhere). The caller (IncomingRequestDetailsLoader) shows a popup with
+  // this message and takes the worker to the incoming-requests list.
+  final OfferGoneCallback? onOfferNoLongerAvailable;
   final TechnicianJobRepository? jobRepository;
 
   @override
@@ -149,7 +157,21 @@ class _IncomingRequestDetailsScreenState
       _showMessage(successMessage);
       await navigation?.call();
     } catch (error) {
-      _showMessage('Unable to update the request. Please try again.');
+      if (!mounted) return;
+      final message = error is IncomingRequestActionException
+          ? error.message
+          : error.toString().replaceFirst('Exception: ', '');
+      final isGone =
+          error is IncomingRequestActionException && error.statusCode == 409;
+      // A 409 means the offer is permanently gone (expired, or already
+      // accepted/rejected elsewhere) — show the dedicated popup + list
+      // navigation instead of a plain toast. Any other failure (network,
+      // 5xx) is potentially transient, so the worker stays here and can retry.
+      if (isGone && widget.onOfferNoLongerAvailable != null) {
+        await widget.onOfferNoLongerAvailable!(message);
+      } else {
+        _showMessage(message);
+      }
     } finally {
       if (mounted) setState(() => _processingAction = null);
     }
@@ -402,6 +424,7 @@ class _VideoPreview extends StatelessWidget {
           // A caller can still inject its own handling via onVideoTap; the
           // default (nothing injected, which is every real caller today)
           // opens the same full-screen swipeable viewer the photos use.
+
           if (onVideoTap != null) {
             onVideoTap!(videoUrl);
             return;

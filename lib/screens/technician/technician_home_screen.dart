@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -10,7 +9,7 @@ import '../../models/incoming_request_model.dart';
 import '../../models/technician_model.dart';
 import '../../models/worker_dashboard_response.dart';
 import '../../services/location/location_service.dart';
-import '../../services/incoming_request_service.dart';
+import '../../services/incoming_requests_store.dart';
 import '../../services/worker_dashboard_service.dart';
 
 import '../../widgets/technician/dashboard_appbar.dart';
@@ -18,7 +17,6 @@ import '../../widgets/technician/incoming_request_card.dart';
 import '../../widgets/technician/profile_header.dart';
 import '../../widgets/technician/stat_card.dart';
 import '../../widgets/technician/pro_tip_card.dart';
-import 'debug_incoming_request_fixtures.dart';
 import 'incoming_request_details_loader.dart';
 import 'incoming_requests_screen.dart';
 import 'profile_screen.dart';
@@ -76,14 +74,6 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   /// consecutive uploads for debug logging.
   CurrentDeviceLocation? _previousLocation;
 
-  final IncomingRequestService _requestService = IncomingRequestService();
-
-  /// Pending offers shown in the "New requests near you" preview. Loaded from
-  /// GET /api/auth/worker/incoming-requests/ — the same endpoint that backs
-  /// IncomingRequestsScreen. Failures leave the list empty rather than
-  /// blocking the dashboard, which loads independently.
-  List<IncomingRequest> _requests = [];
-
   @override
   void initState() {
     super.initState();
@@ -99,46 +89,18 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
           selectedSkills: widget.signupSelectedSkills ?? const [],
         );
     _loadDashboard();
-    _loadRequests();
+    // The "New requests near you" preview reads from the shared
+    // IncomingRequestsStore (also used by IncomingRequestsScreen's "View
+    // All") rather than fetching its own copy — see that file for why.
+    IncomingRequestsStore.instance.attach();
+    IncomingRequestsStore.instance.refreshNow();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkLocationOnStartup();
     });
   }
 
-  Future<void> _loadRequests() async {
-    // ─── DEBUG-ONLY FIXTURE TOGGLE — DELETE BEFORE MERGING ─────────────────
-    // The real backend for GET /api/auth/worker/incoming-requests/ isn't
-    // ready yet. Flip debugFakeIncomingRequestCount in
-    // debug_incoming_request_fixtures.dart and hot-restart to preview each
-    // state — including how the "top 2" preview cap and the empty state
-    // look — without a backend, auth, or a server. IncomingRequestsScreen
-    // ("View All") reads the same constant, so both screens preview the
-    // same fake dataset consistently.
-    if (kDebugMode && debugFakeIncomingRequestCount > 0) {
-      if (!mounted) return;
-      setState(
-        () => _requests = debugFakeIncomingRequests(
-          debugFakeIncomingRequestCount,
-        ),
-      );
-      return;
-    }
-    // ─── END DEBUG-ONLY FIXTURE TOGGLE ──────────────────────────────────────
-
-    try {
-      final requests = await _requestService.fetchIncomingRequests();
-      if (!mounted) return;
-      setState(() => _requests = requests);
-    } catch (error) {
-      // The preview is secondary to the dashboard, so a failure here degrades
-      // to an empty section instead of an error screen. The full list on
-      // IncomingRequestsScreen surfaces the error properly.
-      debugPrint('Failed to load incoming requests: $error');
-    }
-  }
-
   /// Opens the detail page for a pending offer. It pops `true` after a
-  /// successful accept, which makes the preview list stale.
+  /// successful accept, which makes the shared list stale until refreshed.
   Future<void> _openRequestDetails(IncomingRequest request) async {
     final accepted = await Navigator.push<bool>(
       context,
@@ -146,12 +108,13 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
         builder: (_) => IncomingRequestDetailsLoader(offerId: request.id),
       ),
     );
-    if (accepted == true) await _loadRequests();
+    if (accepted == true) await IncomingRequestsStore.instance.refreshNow();
   }
 
   @override
   void dispose() {
     _stopLocationUpdates();
+    IncomingRequestsStore.instance.detach();
     super.dispose();
   }
 
@@ -600,39 +563,44 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
             ? _ErrorBody(message: _errorMessage!, onRetry: _loadDashboard)
-            : _DashboardBody(
-                dashboard: _dashboard!,
-                profile: _profile,
-                isOnline: isOnline,
-                requests: _requests,
-                onRequestTap: _openRequestDetails,
-                onCheckIncomingRequests: _loadRequests,
-                onStatusChanged: (newStatus) {
-                  if (_isTogglingStatus) return; // debounce double-taps
-                  if (newStatus) {
-                    _handleToggleOnline();
-                  } else {
-                    _handleToggleOffline();
-                  }
-                },
-                isTogglingStatus: _isTogglingStatus,
-                onProfileUpdated: (updatedProfile) {
-                  setState(() => _profile = updatedProfile);
-                },
-                onMenuTap: () async {
-                  final updatedProfile = await Navigator.push<TechnicianModel>(
-                    context,
-                    MaterialPageRoute<TechnicianModel>(
-                      builder: (_) => TechnicianProfileScreen(
-                        initialSelectedSkills: _profile.selectedSkills,
-                        dashboardResponse: _dashboard,
-                      ),
-                    ),
-                  );
-                  if (!mounted || updatedProfile == null) return;
-                  setState(() => _profile = updatedProfile);
-                },
-                resolvePhotoUrl: _resolvePhotoUrl,
+            : ValueListenableBuilder<List<IncomingRequest>>(
+                valueListenable: IncomingRequestsStore.instance.requests,
+                builder: (context, requests, _) => _DashboardBody(
+                  dashboard: _dashboard!,
+                  profile: _profile,
+                  isOnline: isOnline,
+                  requests: requests,
+                  onRequestTap: _openRequestDetails,
+                  onCheckIncomingRequests:
+                      IncomingRequestsStore.instance.refreshNow,
+                  onStatusChanged: (newStatus) {
+                    if (_isTogglingStatus) return; // debounce double-taps
+                    if (newStatus) {
+                      _handleToggleOnline();
+                    } else {
+                      _handleToggleOffline();
+                    }
+                  },
+                  isTogglingStatus: _isTogglingStatus,
+                  onProfileUpdated: (updatedProfile) {
+                    setState(() => _profile = updatedProfile);
+                  },
+                  onMenuTap: () async {
+                    final updatedProfile =
+                        await Navigator.push<TechnicianModel>(
+                          context,
+                          MaterialPageRoute<TechnicianModel>(
+                            builder: (_) => TechnicianProfileScreen(
+                              initialSelectedSkills: _profile.selectedSkills,
+                              dashboardResponse: _dashboard,
+                            ),
+                          ),
+                        );
+                    if (!mounted || updatedProfile == null) return;
+                    setState(() => _profile = updatedProfile);
+                  },
+                  resolvePhotoUrl: _resolvePhotoUrl,
+                ),
               ),
       ),
     );

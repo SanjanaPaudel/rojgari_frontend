@@ -5,6 +5,24 @@ import '../models/incoming_request_model.dart';
 import '../models/technician/incoming_service_request_details.dart';
 import 'api_service.dart';
 
+/// Thrown by [IncomingRequestService.acceptRequest] / [rejectRequest] on a
+/// non-2xx response. Carries the HTTP status code alongside the backend's
+/// message so callers can tell a permanent conflict (409 — the offer already
+/// expired or was taken by another worker) apart from a transient failure
+/// worth retrying.
+class IncomingRequestActionException implements Exception {
+  const IncomingRequestActionException({
+    required this.statusCode,
+    required this.message,
+  });
+
+  final int statusCode;
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// Fetches the pending booking offers addressed to the logged-in worker.
 ///
 /// Goes through [ApiService] so the request inherits the shared JWT
@@ -97,8 +115,9 @@ class IncomingRequestService {
         return body['message']?.toString() ?? 'Request accepted successfully.';
       }
 
-      throw Exception(
-        _messageFor(
+      throw IncomingRequestActionException(
+        statusCode: response.statusCode,
+        message: _messageFor(
           response.body,
           'Failed to accept request (HTTP ${response.statusCode})',
         ),
@@ -127,8 +146,9 @@ class IncomingRequestService {
         return body['message']?.toString() ?? 'Request rejected successfully.';
       }
 
-      throw Exception(
-        _messageFor(
+      throw IncomingRequestActionException(
+        statusCode: response.statusCode,
+        message: _messageFor(
           response.body,
           'Failed to reject request (HTTP ${response.statusCode})',
         ),
