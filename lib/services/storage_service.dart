@@ -12,10 +12,13 @@
 // _storage.read(key:"access_token")
 // If token exists
 // No need to login again.
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class StorageService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const String _viewedOfferIdsKey = 'viewed_offer_ids';
 
   // BACKEND LOGIN TODO:
   // After a successful real login, persist the returned access token with:
@@ -56,5 +59,28 @@ class StorageService {
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'refresh_token');
     await _storage.delete(key: 'next_screen');
+  }
+
+  // Save the full set of incoming-request offer IDs the worker has opened,
+  // so "Viewed" status survives an app restart on this device. See
+  // IncomingRequestsStore for how this gets used.
+  static Future<void> saveViewedOfferIds(Set<String> ids) async {
+    await _storage.write(
+      key: _viewedOfferIdsKey,
+      value: jsonEncode(ids.toList()),
+    );
+  }
+
+  // Get the saved set of viewed offer IDs, or an empty set if none saved yet
+  // (first run, or the saved value is missing/corrupted).
+  static Future<Set<String>> getViewedOfferIds() async {
+    final raw = await _storage.read(key: _viewedOfferIdsKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded.map((e) => e.toString()).toSet();
+    } catch (_) {
+      return {};
+    }
   }
 }

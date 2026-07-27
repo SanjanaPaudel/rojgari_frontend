@@ -102,6 +102,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   /// Opens the detail page for a pending offer. It pops `true` after a
   /// successful accept, which makes the shared list stale until refreshed.
   Future<void> _openRequestDetails(IncomingRequest request) async {
+    IncomingRequestsStore.instance.markViewed(request.id);
     final accepted = await Navigator.push<bool>(
       context,
       MaterialPageRoute(

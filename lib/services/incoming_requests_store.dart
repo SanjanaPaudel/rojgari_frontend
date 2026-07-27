@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../models/incoming_request_model.dart';
 import '../screens/technician/debug_incoming_request_fixtures.dart';
 import 'incoming_request_service.dart';
+import 'storage_service.dart';
 
 /// Single shared source of truth for the worker's pending incoming-request
 /// offers.
@@ -38,6 +39,11 @@ class IncomingRequestsStore {
 
   Timer? _timer;
   int _listenerCount = 0;
+
+  /// Offer IDs the worker has opened, cached in memory after the first
+  /// read from StorageService so we don't hit device storage on every
+  /// fetch. Null means "not loaded yet."
+  Set<String>? _viewedIds;
 
   /// Call when a screen showing this list becomes active (e.g. in
   /// initState). Multiple screens can be attached at once — the underlying
@@ -78,11 +84,55 @@ class IncomingRequestsStore {
   /// initial load / pull-to-refresh) that show their own loading/error UI
   /// around a single fetch attempt.
   Future<void> refreshOrThrow() async {
-    if (kDebugMode && debugFakeIncomingRequestCount > 0) {
-      requests.value = debugFakeIncomingRequests(debugFakeIncomingRequestCount);
-      return;
+    final fresh = (kDebugMode && debugFakeIncomingRequestCount > 0)
+        ? debugFakeIncomingRequests(debugFakeIncomingRequestCount)
+        : await _service.fetchIncomingRequests();
+    requests.value = await _applyViewedStatus(fresh);
+  }
+
+  /// Call when the worker opens a specific offer's details — remembers it
+  /// as "viewed" on this device (surviving app restarts) and updates the
+  /// currently-shown list immediately, without waiting for the next fetch.
+  Future<void> markViewed(String offerId) async {
+    final ids = await _loadViewedIds();
+    if (!ids.add(offerId)) return; // already known as viewed
+    await StorageService.saveViewedOfferIds(ids);
+
+    for (final request in requests.value) {
+      if (request.id == offerId) {
+        request.status = IncomingRequestStatus.viewed;
+      }
     }
-    requests.value = await _service.fetchIncomingRequests();
+    // Reassigning — not just mutating the existing list's contents — is
+    // what actually makes ValueListenableBuilder notice and rebuild.
+    requests.value = [...requests.value];
+  }
+
+  Future<Set<String>> _loadViewedIds() async {
+    return _viewedIds ??= await StorageService.getViewedOfferIds();
+  }
+
+  /// Marks any freshly-fetched request already known as "viewed" and, as
+  /// housekeeping, drops saved IDs for offers that aren't in this fetch
+  /// anymore (expired / taken / accepted / rejected) so the saved list
+  /// doesn't grow forever with IDs for offers that no longer exist.
+  Future<List<IncomingRequest>> _applyViewedStatus(
+    List<IncomingRequest> fresh,
+  ) async {
+    final viewedIds = await _loadViewedIds();
+    final freshIds = fresh.map((r) => r.id).toSet();
+    final trimmed = viewedIds.intersection(freshIds);
+    if (trimmed.length != viewedIds.length) {
+      _viewedIds = trimmed;
+      await StorageService.saveViewedOfferIds(trimmed);
+    }
+
+    for (final request in fresh) {
+      if (trimmed.contains(request.id)) {
+        request.status = IncomingRequestStatus.viewed;
+      }
+    }
+    return fresh;
   }
 
   Future<void> _fetch() => refreshNow();

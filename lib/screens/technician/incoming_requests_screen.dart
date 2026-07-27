@@ -145,6 +145,7 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
   /// Opens the detail page. It pops `true` after a successful accept, which
   /// means this list is stale — the accepted offer is no longer pending.
   Future<void> _openDetails(IncomingRequest request) async {
+    IncomingRequestsStore.instance.markViewed(request.id);
     final accepted = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
