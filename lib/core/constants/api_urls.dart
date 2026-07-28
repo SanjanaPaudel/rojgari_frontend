@@ -66,6 +66,28 @@ class ApiUrls {
   static String workerRejectRequest(String offerId) =>
       "$baseUrl/auth/worker/request/$offerId/reject/";
 
+  // GET — the worker's current accepted (in-progress) job, if any.
+  // Response 200: booking_id, request_id, category, customer{name,
+  //   profile_photo}, description, address, latitude, longitude,
+  //   requested_at, job_progress, distance_km.
+  // Response 404: { "message": "No active job found." }
+  static const String workerCurrentJob = "$baseUrl/auth/worker/current-job/";
+
+  // POST — mark the accepted job as started (job_progress: accepted ->
+  // working). Takes no request body. [offerId] is the BookingOffer id, same
+  // one used by accept/reject.
+  // Response: { "message": "...", "job_progress": "working" }
+  static String workerStartJob(String offerId) =>
+      "$baseUrl/auth/worker/request/$offerId/start/";
+
+  // POST — mark the accepted job as completed. Takes no request body.
+  // Requires job_progress to already be "working" server-side, or the
+  // backend rejects it.
+  // Response: { "message": "...", "status": "completed",
+  //   "job_progress": "completed", "completed_jobs": <int> }
+  static String workerCompleteJob(String offerId) =>
+      "$baseUrl/auth/worker/request/$offerId/complete/";
+
   // Resolves a media path returned by the backend into a loadable URL.
   //
   // WHY this exists:

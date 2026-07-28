@@ -113,6 +113,7 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
   Timer? _completionDemoTimer;
   Timer? _ratingNavigationTimer;
   Timer? _locationPollTimer;
+  Timer? _jobProgressPollTimer;
   final BookingStatusService _statusService = BookingStatusService();
   int _trackingDemoStep = 0;
   bool _cancellationInFlight = false;
@@ -160,6 +161,7 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
     }
     _startArrivalDemoIfNeeded();
     _startLocationPollingIfNeeded();
+    _startJobProgressPollingIfNeeded();
     _handleLifecycleStatus(_status);
   }
 
@@ -193,6 +195,7 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
     _completionDemoTimer?.cancel();
     _ratingNavigationTimer?.cancel();
     _locationPollTimer?.cancel();
+    _jobProgressPollTimer?.cancel();
     widget.statusListenable?.removeListener(_handleExternalStatusChanged);
     widget.trackingListenable?.removeListener(_handleExternalTrackingChanged);
     _trackingNotifier.dispose();
@@ -431,6 +434,42 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
       // polling — a single blip shouldn't interrupt live tracking, and the
       // marker simply stays at its last known position until the next tick.
       debugPrint('[Tracking] Failed to poll worker location: $e');
+    }
+  }
+
+  /// Independently polls `GET /api/services/bookings/<id>/status/` purely to
+  /// detect the worker-side job_progress flipping to "working" (set for real
+  /// when the worker taps Start on their own screen) and mirror it into this
+  /// screen's status/progress tracker. Deliberately decoupled from
+  /// _startLocationPollingIfNeeded, which stops once an external tracking
+  /// source is supplied or arrival is reached — job-progress detection needs
+  /// to keep running in exactly those situations, since it's the only way
+  /// this screen can learn the worker started working.
+  void _startJobProgressPollingIfNeeded() {
+    if (!widget.enableLocationPolling || _status.isCompleted) return;
+    _jobProgressPollTimer?.cancel();
+    unawaited(_pollJobProgressOnce());
+    _jobProgressPollTimer = Timer.periodic(
+      widget.locationPollInterval,
+      (_) => unawaited(_pollJobProgressOnce()),
+    );
+  }
+
+  Future<void> _pollJobProgressOnce() async {
+    if (!mounted || _status.isCompleted) {
+      _jobProgressPollTimer?.cancel();
+      return;
+    }
+    try {
+      final result = await _statusService.fetchStatus(widget.requestId);
+      if (!mounted || _status.isCompleted) return;
+      if (result.jobProgress == RequestSearchStatus.working &&
+          !_status.isWorking) {
+        _setTrackingStatus(RequestSearchStatus.working);
+      }
+    } catch (e) {
+      // Transient failure — keep polling, same tolerance as location polling.
+      debugPrint('[Tracking] Failed to poll job progress: $e');
     }
   }
 

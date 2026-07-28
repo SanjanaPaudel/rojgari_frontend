@@ -1,19 +1,18 @@
-import 'mock_technician_job_repository.dart';
+import 'api_technician_job_repository.dart';
 import 'technician_job_repository.dart';
 
-// FRONTEND MOCK DEFAULT:
-// This feature deliberately uses a local repository until the technician-job
-// API contract is finalized. Keep the UI unchanged when switching providers.
+// ============================================================================
+// ACTIVE: ApiTechnicianJobRepository (real backend)
+// ============================================================================
+//
+// MockTechnicianJobRepository still exists in this folder for tests/local UI
+// preview, but is not used by the app at runtime. Integration is being done
+// one capability at a time — only getActiveJob (GET current-job/) is
+// exercised for real so far. acceptRequest is deliberately never called
+// through this repository (the real accept happens via
+// IncomingRequestService instead, to keep the existing 409/expired-offer
+// handling); updateJobStatus (start job) and completeJob are still pending
+// their own integration steps.
+// ============================================================================
 final TechnicianJobRepository technicianJobRepository =
-    MockTechnicianJobRepository();
-
-// BACKEND INTEGRATION:
-// Replace the mock above with an API implementation that uses the existing
-// ApiService/StorageService bearer-token flow. Suggested integration points
-// (not confirmed production routes):
-// POST  /technician/requests/{requestId}/accept
-// GET   /technician/jobs/{requestId}
-// PATCH /technician/jobs/{requestId}/status
-// PATCH /technician/jobs/{requestId}/location
-// POST  /technician/jobs/{requestId}/complete
-// Treat 409/already-accepted as an accept failure and do not navigate.
+    ApiTechnicianJobRepository();

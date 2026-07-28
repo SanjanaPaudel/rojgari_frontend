@@ -1,3 +1,5 @@
+import 'request_search_status.dart';
+
 /// Worker payload nested inside a [BookingStatusResponse] once assigned.
 ///
 /// Maps `GET /api/services/bookings/<id>/status/`'s "worker" object.
@@ -58,11 +60,18 @@ class BookingStatusResponse {
   const BookingStatusResponse({
     required this.id,
     required this.status,
+    required this.jobProgress,
     this.worker,
   });
 
   final String id;
   final String status;
+
+  /// The worker-side job stage ("accepted" / "working" / "completed"),
+  /// mapped through the same [RequestSearchStatus.fromBackendValue] the rest
+  /// of the app uses — distinct from [status], which is the booking's own
+  /// lifecycle ("active" / "assigned" / etc), not the in-progress job stage.
+  final RequestSearchStatus jobProgress;
   final AssignedWorkerInfo? worker;
 
   bool get hasAssignedWorker => worker != null;
@@ -72,6 +81,9 @@ class BookingStatusResponse {
     return BookingStatusResponse(
       id: json['id']?.toString() ?? '',
       status: json['status']?.toString() ?? 'active',
+      jobProgress: RequestSearchStatus.fromBackendValue(
+        json['job_progress']?.toString(),
+      ),
       worker: workerJson is Map<String, dynamic>
           ? AssignedWorkerInfo.fromJson(workerJson)
           : null,

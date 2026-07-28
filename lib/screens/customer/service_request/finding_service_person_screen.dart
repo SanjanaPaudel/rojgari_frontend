@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../dev_testing/fake_worker_movement.dart';
 import '../../../models/service_request/accepted_worker_ui_model.dart';
 import '../../../models/service_request/booking_status_response.dart';
 import '../../../models/service_request/request_search_status.dart';
@@ -305,6 +306,21 @@ class _FindingServicePersonScreenState
             customerLatitude: widget.serviceLocation.latitude,
             customerLongitude: widget.serviceLocation.longitude,
           );
+      // TEMP TEST-ONLY (remove before shipping): drives the tracking screen's
+      // marker with a fake coordinate walk from the worker's accepted
+      // position to this real service location, since manually moving a
+      // real device there isn't practical for this test — see
+      // dev_testing/fake_worker_movement.dart. Supplying trackingListenable
+      // below is what makes ServiceOnTheWayScreen disable its own real
+      // location polling and demo timers, so nothing auto-advances past
+      // "arrived" (no working/completed/rate navigation).
+      final fakeTracking = FakeWorkerTrackingController(
+        start: worker.coordinate,
+        destination: LatLng(
+          widget.serviceLocation.latitude,
+          widget.serviceLocation.longitude,
+        ),
+      );
       Navigator.pushReplacement<void, void>(
         context,
         MaterialPageRoute(
@@ -317,6 +333,7 @@ class _FindingServicePersonScreenState
             worker: worker,
             onSubmitReview: widget.onSubmitReview,
             onBackToHome: widget.onBackToHome,
+            trackingListenable: fakeTracking.notifier,
           ),
         ),
       );

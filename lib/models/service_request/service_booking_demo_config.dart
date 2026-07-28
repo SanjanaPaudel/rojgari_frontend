@@ -12,7 +12,7 @@ class ServiceBookingDemoConfig {
   // Flip back to true only for a one-off visual preview of the full flow.
   static const bool enableDemoBookingFlow = false;
   static const Duration searchingDuration = Duration(seconds: 20);
-  static const Duration acceptedDisplayDuration = Duration(milliseconds: 1500);
+  static const Duration acceptedDisplayDuration = Duration(seconds: 2);
   static const Duration workerArrivalDuration = Duration(seconds: 15);
   static const Duration trackingUpdateInterval = Duration(milliseconds: 50);
   static const Duration trackingSnapshotInterpolationDuration = Duration(

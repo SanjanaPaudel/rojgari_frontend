@@ -2,11 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:latlong2/latlong.dart';
+
 import '../../core/constants/colors.dart';
+import '../../dev_testing/fake_worker_movement.dart';
 import '../../models/technician/incoming_service_request_details.dart';
+import '../../repositories/technician_job/technician_job_repository_provider.dart';
 import '../../services/incoming_request_service.dart';
 import 'incoming_request_details_screen.dart';
 import 'incoming_requests_screen.dart';
+import 'technician_active_job_screen.dart';
 
 /// How often to quietly re-check the offer's status while the worker is
 /// sitting on this screen, so an expiry or another worker taking it is
@@ -186,9 +191,51 @@ class _IncomingRequestDetailsLoaderState
       // Throwing propagates to the screen's own error handling, which shows a
       // message and clears its processing state.
       onAcceptRequest: (offerId) => _service.acceptRequest(offerId),
+      // The real POST .../accept/ call already happened by the time this
+      // runs (that's onAcceptRequest, above) — the backend has genuinely
+      // recorded the acceptance. This fetches the real resulting job via
+      // GET .../current-job/ (getActiveJob) — deliberately NOT calling
+      // repository.acceptRequest() here, since that would trigger a second,
+      // redundant accept call against an offer that's no longer "pending"
+      // and fail.
       onAcceptedNavigation: () async {
         if (!mounted) return;
-        Navigator.pop(context, true);
+        final repository = technicianJobRepository;
+        final activeJob = await repository.getActiveJob(widget.offerId);
+        if (!mounted) return;
+        await Navigator.pushReplacement<void, void>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TechnicianActiveJobScreen(
+              job: activeJob,
+              repository: repository,
+              // Real accept/current-job data is being used from here on —
+              // the screen's built-in fake-GPS-travel/auto-advancing-status
+              // demo timers must stay off so nothing fabricated overlays it.
+              enableDemoFlow: false,
+              // Turns on the screen's real device-location tracking
+              // (permission check, live GPS stream, PATCH .../location/
+              // publishing, arrival detection).
+              enableDeviceLocation: true,
+              // TEMP TEST-ONLY (remove before shipping): swaps in a fake
+              // coordinate source instead of the real device/browser GPS,
+              // walking from this job's starting position to the real
+              // customer coordinates. Everything downstream of it (arrival
+              // detection, status persistence) is the real, unmodified code
+              // path — see dev_testing/fake_worker_movement.dart.
+              locationService: FakeWorkerLocationService(
+                start: LatLng(
+                  activeJob.technicianLatitude,
+                  activeJob.technicianLongitude,
+                ),
+                destination: LatLng(
+                  activeJob.customerLatitude,
+                  activeJob.customerLongitude,
+                ),
+              ),
+            ),
+          ),
+        );
       },
       onDeclineRequest: (offerId) => _service.rejectRequest(offerId),
       // A successful decline always takes the worker to a fresh

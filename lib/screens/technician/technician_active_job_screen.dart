@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/constants/colors.dart';
@@ -37,7 +36,7 @@ class TechnicianActiveJobScreen extends StatefulWidget {
     this.acceptedDisplayDuration = const Duration(milliseconds: 900),
     this.demoTravelDuration = const Duration(seconds: 45),
     this.demoLocationInterval = const Duration(milliseconds: 250),
-    this.arrivedDisplayDuration = const Duration(milliseconds: 1400),
+    this.arrivedDisplayDuration = const Duration(seconds: 2),
     this.onCallCustomer,
     this.onBackToHome,
     this.completionScreenBuilder,
@@ -46,9 +45,12 @@ class TechnicianActiveJobScreen extends StatefulWidget {
 
   static const double arrivalThresholdMeters = 50;
   static const double rerouteDistanceMeters = 30;
-  static const double publishLocationDistanceMeters = 20;
   static const Duration rerouteMinimumInterval = Duration(seconds: 10);
-  static const Duration publishLocationMinimumInterval = Duration(seconds: 5);
+  // How often to re-read the device's own position for this screen's own
+  // local map. Not sent to the backend from here — TechnicianHomeScreen's
+  // own timer already owns publishing the worker's location for the whole
+  // time they're online, regardless of which screen is showing.
+  static const Duration locationPollInterval = Duration(seconds: 5);
 
   final TechnicianActiveJobModel job;
   final TechnicianJobRepository? repository;
@@ -95,23 +97,29 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
   double _durationSeconds = 0;
   _TechnicianLocationViewState _locationState =
       _TechnicianLocationViewState.idle;
-  StreamSubscription<Position>? _locationSubscription;
+  Timer? _locationPollTimer;
   Timer? _acceptedTimer;
   Timer? _demoTravelTimer;
   Timer? _workingTimer;
+  Timer? _arrivedIntroTimer;
+  // Whether the brief plain "Arrived" card has already been shown for
+  // arrivedDisplayDuration and the screen can move on to StartWorkIndicator.
+  // Defaults to true unless the job is starting out already arrived — see
+  // initState — so the intro only plays once, right at the moment arrival
+  // is actually detected (_markArrived), not on every rebuild/resume.
+  late bool _arrivedIntroComplete;
   int _demoStep = 0;
   bool _completionInFlight = false;
   bool _completionNavigationTriggered = false;
   bool _mapFullScreen = false;
   LatLng? _lastRouteOrigin;
-  LatLng? _lastPublishedLocation;
   DateTime? _lastRouteAt;
-  DateTime? _lastLocationPublishedAt;
 
   @override
   void initState() {
     super.initState();
     _job = widget.job;
+    _arrivedIntroComplete = _job.currentStatus != TechnicianJobStatus.arrived;
     _repository = widget.repository ?? technicianJobRepository;
     _routeService = widget.routeService ?? const MockTechnicianRouteService();
     _technician = LatLng(_job.technicianLatitude, _job.technicianLongitude);
@@ -158,7 +166,8 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
     _acceptedTimer?.cancel();
     _demoTravelTimer?.cancel();
     _workingTimer?.cancel();
-    _locationSubscription?.cancel();
+    _locationPollTimer?.cancel();
+    _arrivedIntroTimer?.cancel();
     widget.statusListenable?.removeListener(_handleExternalStatusChanged);
     _routeService.dispose();
     super.dispose();
@@ -321,22 +330,38 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
       final current = await widget.locationService.getCurrentLocation();
       if (!mounted) return;
       setState(() => _locationState = _TechnicianLocationViewState.ready);
+      debugPrint(
+        '[ActiveJobLocation] First fix: '
+        '(${current.latitude}, ${current.longitude})',
+      );
       _handleLiveLocation(LatLng(current.latitude, current.longitude));
-      _locationSubscription = widget.locationService
-          .getLocationStream(distanceFilterMetres: 5)
-          .listen(
-            (position) => _handleLiveLocation(
-              LatLng(position.latitude, position.longitude),
-            ),
-            onError: (_) {
-              if (mounted) {
-                setState(
-                  () =>
-                      _locationState = _TechnicianLocationViewState.unavailable,
-                );
-              }
-            },
-          );
+      // Re-reads the device's position on a timer rather than subscribing to
+      // a continuous position stream. Both read the same real device GPS —
+      // this is not a demo/mock substitute — but a fresh read each tick is
+      // what's proven to reliably reflect location changes in this project's
+      // Chrome-based test setup, where a long-lived stream subscription
+      // wasn't being renotified. TechnicianHomeScreen's own location timer
+      // uses this same repeated-read approach successfully. Unlike that
+      // timer, this one does not publish to the backend — see
+      // _handleLiveLocation for why.
+      _locationPollTimer?.cancel();
+      _locationPollTimer = Timer.periodic(
+        TechnicianActiveJobScreen.locationPollInterval,
+        (_) async {
+          if (!mounted) return;
+          try {
+            final position = await widget.locationService.getCurrentLocation();
+            if (!mounted) return;
+            debugPrint(
+              '[ActiveJobLocation] Tick: '
+              '(${position.latitude}, ${position.longitude})',
+            );
+            _handleLiveLocation(LatLng(position.latitude, position.longitude));
+          } catch (e) {
+            debugPrint('[ActiveJobLocation] ✗ Could not get a fix: $e');
+          }
+        },
+      );
     } catch (_) {
       if (mounted) {
         setState(
@@ -363,7 +388,12 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
     if (_job.currentStatus == TechnicianJobStatus.accepted) {
       _setStatus(TechnicianJobStatus.enRoute);
     }
-    _publishLocationIfNeeded(coordinate);
+    // Not publishing this coordinate to the backend here — TechnicianHomeScreen
+    // already runs its own independent location timer for the entire time the
+    // worker is online, regardless of which screen is showing. Having this
+    // screen also publish created two uncoordinated writers racing to update
+    // the same backend value, which could overwrite a fresher reading with a
+    // stale one. This screen's own polling only drives its local map now.
     _rerouteIfNeeded(coordinate);
     if (distanceToCustomer <=
         TechnicianActiveJobScreen.arrivalThresholdMeters) {
@@ -384,40 +414,6 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
     unawaited(_loadRoute(showLoading: false));
   }
 
-  void _publishLocationIfNeeded(LatLng coordinate) {
-    final previous = _lastPublishedLocation;
-    final previousAt = _lastLocationPublishedAt;
-    if (previous != null &&
-        previousAt != null &&
-        _distanceBetween(previous, coordinate) <
-            TechnicianActiveJobScreen.publishLocationDistanceMeters &&
-        DateTime.now().difference(previousAt) <
-            TechnicianActiveJobScreen.publishLocationMinimumInterval) {
-      return;
-    }
-    _lastPublishedLocation = coordinate;
-    _lastLocationPublishedAt = DateTime.now();
-    unawaited(_sendLocation(coordinate));
-  }
-
-  Future<void> _sendLocation(LatLng coordinate) async {
-    // BACKEND INTEGRATION:
-    // Send meaningful, throttled coordinates with the authenticated technician
-    // and active request ID. Do not upload every GPS event. Stop after
-    // completion/cancellation, respect platform background rules and privacy,
-    // and let the backend publish approved location/status updates to the
-    // customer through WebSocket, SSE, Firebase, push, or controlled polling.
-    try {
-      await _repository.updateTechnicianLocation(
-        _job.requestId,
-        coordinate.latitude,
-        coordinate.longitude,
-      );
-    } catch (_) {
-      // The next meaningful GPS event can retry; tracking UI stays available.
-    }
-  }
-
   void _markArrived() {
     if (_job.currentStatus.index >= TechnicianJobStatus.arrived.index) return;
     _demoTravelTimer?.cancel();
@@ -432,8 +428,14 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
         technicianLatitude: _customer.latitude,
         technicianLongitude: _customer.longitude,
       );
+      _arrivedIntroComplete = false;
     });
     unawaited(_persistStatus(TechnicianJobStatus.arrived));
+    _arrivedIntroTimer?.cancel();
+    _arrivedIntroTimer = Timer(widget.arrivedDisplayDuration, () {
+      if (!mounted) return;
+      setState(() => _arrivedIntroComplete = true);
+    });
 
     // BACKEND INTEGRATION:
     // Client GPS proximity is useful for preview UX, but production arrival
@@ -456,6 +458,17 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
     // BACKEND INTEGRATION:
     // Replace this mock delay with the backend job-status response. The same
     // "working" state must be delivered to the customer-side request screen.
+  }
+
+  /// Manually moves the job from "arrived" to "working" — the worker
+  /// confirms this in person by tapping Start, since the backend has no
+  /// arrival concept of its own to trigger it automatically. Reuses the
+  /// same _setStatus -> _persistStatus path the (now-disabled) demo timer
+  /// used, which calls the real POST .../start/ endpoint via the
+  /// repository.
+  void _handleStartWork() {
+    if (_job.currentStatus != TechnicianJobStatus.arrived) return;
+    _setStatus(TechnicianJobStatus.working, workStartedAt: DateTime.now());
   }
 
   void _setStatus(TechnicianJobStatus status, {DateTime? workStartedAt}) {
@@ -595,7 +608,8 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
     _acceptedTimer?.cancel();
     _demoTravelTimer?.cancel();
     _workingTimer?.cancel();
-    _locationSubscription?.cancel();
+    _locationPollTimer?.cancel();
+    _arrivedIntroTimer?.cancel();
   }
 
   void _handleCall() {
@@ -793,7 +807,10 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
           detail: '$minutes min ($km km away)',
         );
       case TechnicianJobStatus.arrived:
-        return _ArrivalStatusCard(arrivedAt: _job.arrivedAt ?? DateTime.now());
+        if (!_arrivedIntroComplete) {
+          return _ArrivalStatusCard(arrivedAt: _job.arrivedAt ?? DateTime.now());
+        }
+        return StartWorkIndicator(onStart: _handleStartWork);
       case TechnicianJobStatus.working:
         return WorkingStatusIndicator(
           completing: _completionInFlight,
@@ -1207,19 +1224,6 @@ class _TravelStatusCard extends StatelessWidget {
   );
 }
 
-class _ArrivalStatusCard extends StatelessWidget {
-  const _ArrivalStatusCard({required this.arrivedAt});
-  final DateTime arrivedAt;
-
-  @override
-  Widget build(BuildContext context) => _TravelStatusCard(
-    icon: Icons.check_circle_rounded,
-    title: 'Arrived',
-    detail: '0 km away • ${_formatJobTime(arrivedAt)}',
-    success: true,
-  );
-}
-
 class _WorkCompletionDialog extends StatelessWidget {
   const _WorkCompletionDialog({
     required this.onKeepWorking,
@@ -1307,6 +1311,150 @@ class _WorkCompletionDialog extends StatelessWidget {
           ),
         ],
       ),
+    ),
+  );
+}
+
+class _ArrivalStatusCard extends StatelessWidget {
+  const _ArrivalStatusCard({required this.arrivedAt});
+  final DateTime arrivedAt;
+
+  @override
+  Widget build(BuildContext context) => _TravelStatusCard(
+    icon: Icons.check_circle_rounded,
+    title: 'Arrived',
+    detail: '0 km away • ${_formatJobTime(arrivedAt)}',
+    success: true,
+  );
+}
+
+/// Separate, standalone widget for the "arrived" state — deliberately not
+/// sharing implementation with [WorkingStatusIndicator] (own animation
+/// controller, own timer, own class). Visually identical to it except for
+/// the animated message and the button label/action: "Start Work?" / tap
+/// [onStart] to persist the real transition to working, instead of
+/// "Working..." / [WorkingStatusIndicator]'s "Work Done".
+class StartWorkIndicator extends StatefulWidget {
+  const StartWorkIndicator({required this.onStart, super.key});
+
+  final VoidCallback onStart;
+
+  @override
+  State<StartWorkIndicator> createState() => _StartWorkIndicatorState();
+}
+
+class _StartWorkIndicatorState extends State<StartWorkIndicator> {
+  static const _startWorkMessage = 'Start Work?';
+
+  Timer? _typingTimer;
+  int _visibleCharacters = 1;
+  int _completedPauseTicks = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _typingTimer = Timer.periodic(const Duration(milliseconds: 180), (_) {
+      if (!mounted) return;
+      setState(() {
+        if (_visibleCharacters < _startWorkMessage.length) {
+          _visibleCharacters++;
+          return;
+        }
+        if (_completedPauseTicks < 5) {
+          _completedPauseTicks++;
+          return;
+        }
+        _visibleCharacters = 1;
+        _completedPauseTicks = 0;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _typingTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const ValueKey('technician-start-work-status'),
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: AppColors.border),
+      boxShadow: [
+        BoxShadow(
+          color: AppColors.primary.withValues(alpha: .05),
+          blurRadius: 14,
+          offset: const Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: const BoxDecoration(
+            color: AppColors.lightPurple,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.settings_rounded,
+            color: AppColors.primary,
+            size: 27,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Semantics(
+                label: _startWorkMessage,
+                child: SizedBox(
+                  height: 22,
+                  child: Text(
+                    _startWorkMessage.substring(0, _visibleCharacters),
+                    key: const ValueKey('start-work-typing-text'),
+                    maxLines: 1,
+                    softWrap: false,
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'Service is currently in progress',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: AppColors.grey, fontSize: 10.5),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          height: 42,
+          child: FilledButton(
+            key: const ValueKey('start-work-button'),
+            onPressed: widget.onStart,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.green,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Start'),
+          ),
+        ),
+      ],
     ),
   );
 }
