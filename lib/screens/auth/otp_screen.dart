@@ -135,17 +135,26 @@ class _OTPScreenState extends State<OTPScreen> { //Everything that changes while
               top: 125,
               left: 0,
               right: 0,
-              child: Opacity(
-              opacity: .5,
-                child: Image.asset(
-                  "assets/images/bg_signup.png",
-                  fit: BoxFit.cover,
+              child: ShaderMask(
+                shaderCallback: (rect) => const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black, Colors.transparent],
+                  stops: [0.9, 1.0],
+                ).createShader(rect),
+                blendMode: BlendMode.dstIn,
+                child: Opacity(
+                  opacity: .5,
+                  child: Image.asset(
+                    "assets/images/bg_signup.png",
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             ),
 
             SingleChildScrollView(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(5),
               child: Column(
                 children: [
                   const SizedBox(height: 25),
@@ -250,12 +259,15 @@ class _OTPScreenState extends State<OTPScreen> { //Everything that changes while
                             Positioned(
                               left: 0,
                               top: 60,
-                              right: 110,
+                              right: 20,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
                                     "Verify Email Address",
+                                    maxLines: 1,
+                                    overflow: TextOverflow.visible,
+                                    softWrap: false,
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
@@ -316,7 +328,7 @@ class _OTPScreenState extends State<OTPScreen> { //Everything that changes while
                   ),
 
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 20),
                   //--------------------------------
                   // WHITE CARD
                   //--------------------------------
@@ -348,14 +360,14 @@ class _OTPScreenState extends State<OTPScreen> { //Everything that changes while
                           const Text(
                             "Enter Verification Code",
                             style: TextStyle(
-                              fontSize: 23,
+                              fontSize: 15,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
 
                           const SizedBox(height: 8),
                           const Text(
-                            "Please enter the 6-digit OTP sent to your mobile number.",
+                            "Please enter the 6-digit OTP sent to your Email",
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: AppColors.grey,
