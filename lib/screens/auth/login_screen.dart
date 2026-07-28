@@ -8,6 +8,7 @@ import 'package:rojgari_frontend_one/services/storage_service.dart';
 import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
 import 'package:rojgari_frontend_one/screens/technician/technician_home_screen.dart';
 import 'package:rojgari_frontend_one/screens/auth/skill_selection_screen.dart';
+import 'package:rojgari_frontend_one/screens/auth/forget_password_email_screen.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -324,14 +325,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
                                   onPressed: () {
-                                    // Navigator.push(
-                                    //   context,
-                                    //   MaterialPageRoute(
-                                    //     builder: (context) {
-                                    //       return const ForgotPasswordScreen();
-                                    //     },
-                                    //   ),
-                                    // );
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) {
+                                          return ForgotPasswordEmailScreen();
+                                        },
+                                      ),
+                                    );
                                   },
                                   child: const Text(
                                     "Forgot Password?",
