@@ -15,6 +15,7 @@ import '../../repositories/technician_job/technician_job_repository_provider.dar
 import '../../services/location/location_service.dart';
 import '../../services/technician_job/technician_route_service.dart';
 import '../../widgets/technician/technician_route_map.dart';
+import 'technician_home_screen.dart';
 import 'technician_work_completed_screen.dart';
 
 typedef TechnicianCompletionScreenBuilder =
@@ -599,7 +600,23 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
       MaterialPageRoute(
         builder: (context) => builder != null
             ? builder(context, completedJob)
-            : TechnicianWorkCompletedScreen(onBackToHome: widget.onBackToHome),
+            : TechnicianWorkCompletedScreen(
+                // widget.onBackToHome was captured way up in the accept/
+                // active-job navigation chain, several pushReplacements
+                // before this route exists — by the time "Back to Home" is
+                // actually tapped here, that captured context would already
+                // be deactivated. Falls back to a fresh callback built from
+                // *this* builder's own context, which stays valid for as
+                // long as this completion route is on screen.
+                onBackToHome:
+                    widget.onBackToHome ??
+                    () => Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (_) => const TechnicianHomeScreen(),
+                      ),
+                      (route) => false,
+                    ),
+              ),
       ),
     );
   }

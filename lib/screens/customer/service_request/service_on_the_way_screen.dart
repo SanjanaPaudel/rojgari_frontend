@@ -463,7 +463,10 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
     try {
       final result = await _statusService.fetchStatus(widget.requestId);
       if (!mounted || _status.isCompleted) return;
-      if (result.jobProgress == RequestSearchStatus.working &&
+      if (result.jobProgress == RequestSearchStatus.completed &&
+          !_status.isCompleted) {
+        _setTrackingStatus(RequestSearchStatus.completed);
+      } else if (result.jobProgress == RequestSearchStatus.working &&
           !_status.isWorking) {
         _setTrackingStatus(RequestSearchStatus.working);
       }
