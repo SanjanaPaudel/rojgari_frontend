@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../models/service_request/accepted_worker_ui_model.dart';
 import '../../../models/service_request/service_category.dart';
 import '../../../models/service_request/service_review_payload.dart';
+import '../customer_home_screen.dart';
 import 'review_thank_you_screen.dart';
 
 typedef SubmitServiceReviewCallback =
@@ -116,6 +117,25 @@ class _RateYourExperienceScreenState extends State<RateYourExperienceScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// The top back arrow goes straight to the customer's home screen rather
+  /// than popping — by the time this screen shows, the job is already
+  /// completed, so there's no "active request" underneath worth returning
+  /// to (unlike ServiceOnTheWayScreen's back button, which still has a live
+  /// booking to protect). Uses this screen's own, currently-mounted context
+  /// directly, so unlike onBackToHome callbacks threaded in from several
+  /// screens earlier, there's no stale-context risk here.
+  void _handleBack() {
+    final callback = widget.onBackToHome;
+    if (callback != null) {
+      callback();
+      return;
+    }
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const CustomerHomeScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Theme(
@@ -134,7 +154,7 @@ class _RateYourExperienceScreenState extends State<RateYourExperienceScreen> {
             ),
             child: Column(
               children: [
-                _RatingHeader(onBack: () => Navigator.pop(context)),
+                _RatingHeader(onBack: _handleBack),
                 const SizedBox(height: 18),
                 _ReviewCard(
                   worker: widget.worker,
