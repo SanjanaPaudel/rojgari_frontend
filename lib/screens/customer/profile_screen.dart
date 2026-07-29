@@ -96,22 +96,15 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     // so this is already the server-confirmed profile.
     setState(() {
       _profile = updated;
-      // resolveMediaUrl() is idempotent on an already-absolute URL, so
-      // storing the resolved value back into profilePhoto here is safe —
-      // a future _loadProfile() re-resolve is a no-op.
-      final updatedPhoto = updated.networkImageUrl ?? _serverProfile?.profilePhoto;
-      if (updated.networkImageUrl != null) {
-        _networkImageUrl = updated.networkImageUrl;
-      }
-      // Keep id/isVerified from the last known server model — the edit
-      // form never touches those.
+      // Keep id/profilePhoto/isVerified from the last known server model —
+      // the edit form never touches those.
       _serverProfile = CustomerProfileModel(
         id: _serverProfile?.id ?? 0,
         fullName: updated.name,
         phoneNumber: updated.phone,
         email: updated.email,
         isVerified: _isVerified,
-        profilePhoto: updatedPhoto,
+        profilePhoto: _serverProfile?.profilePhoto,
       );
     });
   }
