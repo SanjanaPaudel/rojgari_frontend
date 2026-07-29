@@ -4,13 +4,14 @@ import 'package:rojgari_frontend_one/services/navigation_service.dart';
 // import 'package:rojgari_frontend_one/screens/auth/logIn_screen.dart';
 // import 'screens/auth/signup_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/otp_screen.dart';
+import 'package:rojgari_frontend_one/screens/auth/reset_passord_screen.dart';
 // import 'screens/welcome/welcome_screen.dart';
 // import 'core/theme/app_theme.dart';
 // import 'screens/technician/technician_home_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/reset_passord_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/forget_password_email_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/skill_selection_screen.dart';
-import 'screens/splash/splash_screen.dart';
+// import 'screens/splash/splash_screen.dart';
 // import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
 // import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
 // import 'core/theme/app_theme.dart';
@@ -48,7 +49,8 @@ class MyApp extends StatelessWidget {
       // home: ResetPasswordScreen(),
       // home: ForgotPasswordEmailScreen(),
       // home: SkillSelectionScreen()
-      home: SplashScreen(),
+      // home: SplashScreen(),
+      home: ResetPasswordScreen(),
 
       // The Incoming Request Details page is reached by tapping a request on
       // the technician home screen or the All Incoming Requests screen. It is

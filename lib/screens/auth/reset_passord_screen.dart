@@ -6,19 +6,17 @@ import 'package:rojgari_frontend_one/widgets/custom_textfield.dart';
 import 'package:rojgari_frontend_one/widgets/password_requirement.dart';
 import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
 
-
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
 
   @override
-  State<ResetPasswordScreen> createState() =>
-      _ResetPasswordScreenState();
+  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-
   final TextEditingController newPasswordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
 
   bool hasMinLength = false;
   bool hasUppercase = false;
@@ -46,40 +44,39 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   void validateFields() {
-
-    setState(() {
-      newPasswordError = null;
-      confirmPasswordError = null;
-    });
+    String? newError;
+    String? confirmError;
 
     if (newPasswordController.text.trim().isEmpty) {
-      newPasswordError =
-      "Password is required";
-    }
-    if(
-    !hasMinLength ||
+      newError = "Password is required";
+    } else if (!hasMinLength ||
         !hasUppercase ||
         !hasLowercase ||
         !hasNumber ||
-        !hasSpecial
-    ){
-      newPasswordError =
-      "Password doesn't meet requirements";
+        !hasSpecial) {
+      newError = "Password doesn't meet requirements";
     }
 
-    if(confirmPasswordController.text.isEmpty) {
-      confirmPasswordError =
-      "Please confirm your password";
+    if (confirmPasswordController.text.isEmpty) {
+      confirmError = "Please confirm your password";
+    } else if (newPasswordController.text != confirmPasswordController.text) {
+      confirmError = "Passwords do not match";
     }
 
-    if(
-    newPasswordController.text !=
-        confirmPasswordController.text
-    ){
-      confirmPasswordError =
-      "Passwords do not match";
-    }
+    setState(() {
+      newPasswordError = newError;
+      confirmPasswordError = confirmError;
+    });
 
+    if (newError != null || confirmError != null) return;
+
+    // Navigation-only for now — no reset-password API call yet, matching
+    // the rest of this auth flow's current scope.
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (route) => false,
+    );
   }
 
   void validatePassword(String password) {
@@ -92,238 +89,305 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.lightPurple,
-      body: Stack( //Allows widgets ot overlap
-        children: [
-        //=====================
-        // MANDALA
-        //=====================
-        Positioned(
-        top: -18,
-        left: -80,
-        right: -80,
-        child: Opacity(
-          opacity: 0.6,
-          child: Image.asset("assets/images/mandala.png", height: 600),
-        ),
-      ),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(25),
-              // padding: const EdgeInsets.symmetric(horizontal: 24),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            //=========================
+            // MANDALA
+            //=========================
+            Positioned(
+              top: -18,
+              left: -80,
+              right: -80,
+              child: Opacity(
+                opacity: 0.6,
+                child: Image.asset("assets/images/mandala.png", height: 600),
+              ),
+            ),
+
+            //=========================
+            // TEMPLE BACKGROUND
+            //=========================
+            Positioned(
+              top: 125,
+              left: 0,
+              right: 0,
+              child: ShaderMask(
+                shaderCallback: (rect) => const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black, Colors.transparent],
+                  stops: [0.9, 1.0],
+                ).createShader(rect),
+                blendMode: BlendMode.dstIn,
+                child: Opacity(
+                  opacity: .5,
+                  child: Image.asset(
+                    "assets/images/bg_signup.png",
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 20),
-                  //================
+                  const SizedBox(height: 12),
+
+                  //--------------------------------
                   // BACK BUTTON
-                  //==============
-                  Align(    // Used alignment to keep the container on the left defying the parent(column)'s crossAxisAlignment: CrossAxisAlignment.center,
-                    alignment: Alignment.centerLeft,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(50),
-                      onTap: () {
-                        //Each navigation creates a stack of page.
-                        // The below way of navigation makes Flutter removes the top screen. so it navigates to the page just before
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        width: 35,
-                        height: 35,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(.05),
-                              blurRadius: 12,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
+                  //--------------------------------
+                  InkWell(
+                    onTap: () => Navigator.pop(context),
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      height: 35,
+                      width: 35,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(.05),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 15,
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 25),
-                  SizedBox(
-                    width: 180,
-                    height: 125,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Positioned(
-                          top: -15,
-                          child: Image.asset(
-                            "assets/images/logo_r.png",
-                            height: 100,
-                          ),
-                        ),
+                  const SizedBox(height: 18),
 
-                        Positioned(
-                          bottom: -20,
-                          child: Image.asset(
-                            "assets/images/logo_text_J.png",
-                            height: 130,
-                          ),
-                        ),
-
-                        Positioned(
-                          top: 105,
-                          child: Container(
-                            width: 24,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: AppColors.orange,
-                              borderRadius: BorderRadius.circular(20),
+                  //--------------------------------
+                  // LOGO
+                  //--------------------------------
+                  Center(
+                    child: SizedBox(
+                      width: 180,
+                      height: 125,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned(
+                            top: -20,
+                            child: Image.asset(
+                              "assets/images/logo_r.png",
+                              height: 100,
                             ),
                           ),
-                        ),
-
-                        Positioned(
-                            top:120,
+                          Positioned(
+                            bottom: -20,
                             child: Image.asset(
-                              "assets/images/lock.png",
-                              height: 150,
-                            )
-                        )
+                              "assets/images/logo_text_J.png",
+                              height: 130,
+                            ),
+                          ),
+                          Positioned(
+                            top: 105,
+                            child: Container(
+                              width: 24,
+                              height: 3,
+                              decoration: BoxDecoration(
+                                color: AppColors.orange,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 45),
+
+                  //--------------------------------
+                  // TITLE + ILLUSTRATION
+                  //--------------------------------
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              "Create New Password",
+                              maxLines: 1,
+                              overflow: TextOverflow.visible,
+                              softWrap: false,
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.black,
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              "Your new password must be different "
+                              "from your previous password.",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.grey,
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Same overlap concept as ForgotPasswordEmailScreen and
+                      // OTPScreen: keeps a fixed footprint the title/message
+                      // column is laid out around, while letting the actual
+                      // lock image render larger and overflow past it.
+                      SizedBox(
+                        width: 80,
+                        height: 90,
+                        child: OverflowBox(
+                          maxWidth: 180,
+                          maxHeight: 180,
+                          child: Image.asset(
+                            "assets/images/lock.png",
+                            width: 130,
+                            height: 130,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  //--------------------------------
+                  // WHITE CARD
+                  //--------------------------------
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 35, 20, 26),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          AppColors.background,
+                          Colors.white,
+                          Colors.white,
+                          AppColors.background,
+                        ],
+                        stops: [0.0, 0.08, 0.92, 1.0],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(.04),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
                       ],
                     ),
-                  ),
-
-                  const SizedBox(height: 10),
-                  const Text(
-                    "Create New Password",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.black,
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-                  const Text(
-                    "Your new password must be different\nfrom your previous password.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: AppColors.grey,
-                      height: 1.6,
-                    ),
-                  ),
-
-                  const SizedBox(height: 40),
-                  CustomTextField(
-                    label: "New Password",
-                    hintText: "Enter your new password",
-                    fieldType: FieldType.password,
-                    controller: newPasswordController,
-                    showLabel: true,
-                    errorMsg: newPasswordError,
-                  ),
-
-                  const SizedBox(height: 18),
-                  CustomTextField(
-                    label: "Confirm Password",
-                    hintText: "Re-enter your password",
-                    fieldType: FieldType.password,
-                    controller: confirmPasswordController,
-                    showLabel: true,
-                    errorMsg: confirmPasswordError,
-                  ),
-
-                  const SizedBox(height: 28),
-                  PasswordRequirement(
-                    text: "At least 8 characters",
-                    isValid: hasMinLength,
-                  ),
-
-                  PasswordRequirement(
-                    text: "One uppercase letter",
-                    isValid: hasUppercase,
-                  ),
-
-                  PasswordRequirement(
-                    text: "One lowercase letter",
-                    isValid: hasLowercase,
-                  ),
-
-                  PasswordRequirement(
-                    text: "One number",
-                    isValid: hasNumber,
-                  ),
-
-                  PasswordRequirement(
-                    text: "One special character",
-                    isValid: hasSpecial,
-                  ),
-
-                  const SizedBox(height: 30),
-                  CustomButton(
-                    text: "Reset Password",
-                    onPressed: validateFields,
-                  ),
-
-                  const SizedBox(height: 20),
-                  Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "Remember your password? ",
-                          style: TextStyle(
-                            color: AppColors.grey,
-                            fontSize: 15,
-                          ),
+                        CustomTextField(
+                          label: "New Password",
+                          hintText: "Enter your new password",
+                          fieldType: FieldType.password,
+                          controller: newPasswordController,
+                          showLabel: true,
+                          errorMsg: newPasswordError,
                         ),
 
-                        InkWell(
-                          //This navigation removes all the pages above login from the page stack and navigate directly to login screen
-                          onTap: () {
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => LoginScreen(),
+                        const SizedBox(height: 18),
+                        CustomTextField(
+                          label: "Confirm Password",
+                          hintText: "Re-enter your password",
+                          fieldType: FieldType.password,
+                          controller: confirmPasswordController,
+                          showLabel: true,
+                          errorMsg: confirmPasswordError,
+                        ),
+
+                        const SizedBox(height: 22),
+                        PasswordRequirement(
+                          text: "At least 8 characters",
+                          isValid: hasMinLength,
+                        ),
+                        PasswordRequirement(
+                          text: "One uppercase letter",
+                          isValid: hasUppercase,
+                        ),
+                        PasswordRequirement(
+                          text: "One lowercase letter",
+                          isValid: hasLowercase,
+                        ),
+                        PasswordRequirement(
+                          text: "One number",
+                          isValid: hasNumber,
+                        ),
+                        PasswordRequirement(
+                          text: "One special character",
+                          isValid: hasSpecial,
+                        ),
+
+                        const SizedBox(height: 12),
+                        CustomButton(
+                          text: "Reset Password",
+                          icon: Icons.arrow_forward_rounded,
+                          onPressed: validateFields,
+                        ),
+
+                        const SizedBox(height: 20),
+                        Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                "Remember your password? ",
+                                style: TextStyle(
+                                  color: AppColors.grey,
+                                  fontSize: 13,
+                                ),
                               ),
-                                  (route) => false,
-                            );
-
-                            //This navigation replaces only the current screen(reset_password_screen) with the navigated screen(login_screen).
-                            // Navigator.pushReplacement(
-                            //   context,
-                            //   MaterialPageRoute(
-                            //     builder: (_) => const LoginScreen(),
-                            //   ),
-                            // );
-
-                          },
-
-                          // The following controls the tapable effect of Inkwell
-                          // splashColor: Colors.transparent,
-                          // highlightColor: Colors.transparent,
-                          // hoverColor: Colors.transparent,
-                          // focusColor: Colors.transparent,
-                          // borderRadius: BorderRadius.circular(6),
-                          child: const Padding(//We add padding to increase the clickable area around the text.
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 4,
-                            ),
-                            child: Text(
-                              "Back to Login",
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
+                              InkWell(
+                                // Removes all pages above Login from the
+                                // stack and navigates straight to it.
+                                onTap: () {
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => LoginScreen(),
+                                    ),
+                                    (route) => false,
+                                  );
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 4,
+                                  ),
+                                  child: Text(
+                                    "Back to Login",
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ],
@@ -332,9 +396,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ],
               ),
             ),
-          )
-      ]
-      )
+          ],
+        ),
+      ),
     );
   }
 }

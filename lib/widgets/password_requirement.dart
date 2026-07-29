@@ -24,7 +24,7 @@ class PasswordRequirement extends StatelessWidget {
             height: 15,
             decoration: BoxDecoration(
               color: isValid    //if isValid is true use green color else use light purple color
-                  ? Colors.green
+                  ? AppColors.green
                   : AppColors.lightPurple,
               shape: BoxShape.circle,
             ),
@@ -32,7 +32,7 @@ class PasswordRequirement extends StatelessWidget {
               fit: BoxFit.contain,
               child: Icon(
                 isValid ? Icons.check : Icons.circle_outlined,
-                // color: Colors.white,
+                color: isValid ? Colors.white : AppColors.grey,
               ),
             ),
           ),
@@ -42,7 +42,7 @@ class PasswordRequirement extends StatelessWidget {
             text,
             style: TextStyle(
               color: isValid
-                  ? Colors.green
+                  ? AppColors.green
                   : AppColors.grey,
               fontWeight: FontWeight.w500,
             ),
