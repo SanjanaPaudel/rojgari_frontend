@@ -187,6 +187,7 @@ class ApiService {
     Uint8List? imageBytes,
     String? imageName, {
     String fieldName = 'photo', // field name the server reads from request.FILES
+    String method = 'POST', // some endpoints (e.g. customer profile photo) expect PATCH
   }) async {
     // Infer MIME type from the file extension so the part header is correct.
     // Pillow validates image bytes directly, but a correct Content-Type header
@@ -202,7 +203,7 @@ class ApiService {
     }
 
     http.MultipartRequest request = http.MultipartRequest(
-      "POST",
+      method,
       Uri.parse(url),
     );
 
@@ -235,7 +236,7 @@ class ApiService {
       if (!refreshed) await _logoutUser();
 
       // MultipartRequest cannot be reused after send() — rebuild it.
-      request = http.MultipartRequest("POST", Uri.parse(url));
+      request = http.MultipartRequest(method, Uri.parse(url));
 
       final newToken = await _getValidAccessToken();
       if (newToken != null) {

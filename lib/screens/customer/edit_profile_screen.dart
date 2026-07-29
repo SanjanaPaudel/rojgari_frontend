@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/constants/api_urls.dart';
 import '../../core/constants/colors.dart';
 import '../../services/customer_profile_service.dart';
 
@@ -13,6 +14,7 @@ class EditableCustomerProfile {
     required this.phone,
     required this.email,
     this.localImagePath,
+    this.networkImageUrl,
   });
 
   final String name;
@@ -20,6 +22,7 @@ class EditableCustomerProfile {
   final String phone;
   final String email;
   final String? localImagePath;
+  final String? networkImageUrl;
 }
 
 class EditProfileScreen extends StatefulWidget {
@@ -75,6 +78,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _phoneController;
   late final TextEditingController _emailController;
   String? _selectedImagePath;
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageName;
+  bool _photoChanged = false;
   bool _pickingImage = false;
   bool _saving = false;
 
@@ -149,7 +155,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         imageQuality: 85,
       );
       if (!mounted || image == null) return;
-      setState(() => _selectedImagePath = image.path);
+      // Read bytes up front via XFile (not dart:io File) — on web, .path is
+      // a blob: URL and File() throws UnsupportedError for any operation.
+      final bytes = await image.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _selectedImagePath = image.path;
+        _selectedImageBytes = bytes;
+        _selectedImageName = image.name;
+        _photoChanged = true;
+      });
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -166,6 +181,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     setState(() => _saving = true);
     try {
+      // Upload the photo first (if changed) — it doesn't depend on the
+      // name/phone update, so a failure here leaves nothing half-saved.
+      String? uploadedPhotoUrl;
+      if (_photoChanged && _selectedImageBytes != null) {
+        final rawPhotoPath = await _profileService.uploadProfilePhoto(
+          imageBytes: _selectedImageBytes!,
+          imageName: _selectedImageName ?? 'profile_photo.jpg',
+        );
+        if (rawPhotoPath != null) {
+          uploadedPhotoUrl = ApiUrls.resolveMediaUrl(rawPhotoPath);
+        }
+      }
+
       // Bare 10 digits, no "+977" — signup/login never actually normalize
       // to a "+977"-prefixed value (validate_nepal_phone is wired as a
       // DRF field validator, so its return value is discarded; only the
@@ -178,11 +206,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
       if (!mounted) return;
 
-      // PHOTO UPLOAD TODO: Use the selected image with multipart/form-data
-      // under a field such as `profile_image`. Read the returned URL, save
-      // it in UserModel, and refresh the displayed Image.network. Always
-      // retain assets/images/customer.png plus errorBuilder as the
-      // broken-URL fallback.
       Navigator.pop(
         context,
         EditableCustomerProfile(
@@ -193,7 +216,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           // reflect the server's real value, not whatever was typed here,
           // so the form never claims a change that didn't actually save.
           email: updated.email,
-          localImagePath: _selectedImagePath,
+          // Once the photo is confirmed uploaded, drop the local file path
+          // so the UI displays the persisted server copy instead of a
+          // stale local file — same reasoning as the worker profile photo
+          // upload.
+          localImagePath: uploadedPhotoUrl != null ? null : _selectedImagePath,
+          networkImageUrl: uploadedPhotoUrl ?? widget.networkImageUrl,
         ),
       );
     } catch (e) {
@@ -208,6 +236,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   ImageProvider _photoProvider() {
+    // Prefer in-memory bytes (cross-platform, incl. web) — falls back to
+    // FileImage only for a path carried over from a previous native-only
+    // session where bytes were never cached.
+    if (_selectedImageBytes != null) return MemoryImage(_selectedImageBytes!);
     if (_selectedImagePath != null) return FileImage(File(_selectedImagePath!));
     final url = widget.networkImageUrl?.trim();
     if (url != null && url.isNotEmpty) return NetworkImage(url);
