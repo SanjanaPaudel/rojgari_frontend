@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import '../core/constants/api_urls.dart';
 import '../models/customer_profile_model.dart';
@@ -71,6 +72,53 @@ class CustomerProfileService {
           'Failed to update profile (HTTP ${response.statusCode})';
       try {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['detail'] != null) detail = body['detail'].toString();
+      } catch (_) {
+        // Body is not JSON — keep the generic message.
+      }
+      throw Exception(detail);
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
+    }
+  }
+
+  /// Uploads the currently logged-in customer's profile photo.
+  ///
+  /// Returns the backend's raw `profile_photo` value (may be relative —
+  /// resolve with [ApiUrls.resolveMediaUrl] before displaying), or `null` if
+  /// the response didn't include one.
+  ///
+  /// Throws an [Exception] with a human-readable message on network errors,
+  /// unexpected HTTP status codes, or JSON parsing failures.
+  Future<String?> uploadProfilePhoto({
+    required Uint8List imageBytes,
+    required String imageName,
+  }) async {
+    try {
+      final streamed = await _api.multipartPost(
+        ApiUrls.customerProfilePhoto,
+        {},
+        imageBytes,
+        imageName,
+        fieldName: 'profile_photo',
+        method: 'PATCH',
+      );
+
+      final bodyString = await streamed.stream.bytesToString();
+
+      if (streamed.statusCode == 200) {
+        final Map<String, dynamic> body =
+            jsonDecode(bodyString) as Map<String, dynamic>;
+        return body['profile_photo']?.toString();
+      }
+
+      String detail =
+          'Failed to upload profile photo (HTTP ${streamed.statusCode})';
+      try {
+        final body = jsonDecode(bodyString) as Map<String, dynamic>;
+        if (body['error'] != null) detail = body['error'].toString();
         if (body['detail'] != null) detail = body['detail'].toString();
       } catch (_) {
         // Body is not JSON — keep the generic message.

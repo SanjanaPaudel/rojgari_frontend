@@ -79,6 +79,19 @@ class WorkerInfo {
       ),
     );
   }
+
+  WorkerInfo copyWith({String? fullName, String? profilePhoto}) {
+    return WorkerInfo(
+      fullName: fullName ?? this.fullName,
+      phoneNumber: phoneNumber,
+      profilePhoto: profilePhoto ?? this.profilePhoto,
+      skills: skills,
+      yearsOfExperience: yearsOfExperience,
+      verified: verified,
+      isOnline: isOnline,
+      stats: stats,
+    );
+  }
 }
 
 class WorkerDashboardResponse {

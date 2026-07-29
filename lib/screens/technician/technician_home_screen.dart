@@ -598,7 +598,26 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                           ),
                         );
                     if (!mounted || updatedProfile == null) return;
-                    setState(() => _profile = updatedProfile);
+                    setState(() {
+                      _profile = updatedProfile;
+                      // The dashboard body reads the avatar/name from
+                      // _dashboard.worker, not from _profile, so without this
+                      // the Home screen keeps showing the pre-edit photo and
+                      // name until the dashboard is next reloaded from
+                      // scratch (e.g. app restart).
+                      if (_dashboard != null) {
+                        _dashboard = WorkerDashboardResponse(
+                          worker: _dashboard!.worker.copyWith(
+                            fullName: updatedProfile.fullName,
+                            profilePhoto: updatedProfile.profileImageUrl,
+                          ),
+                          notifications: _dashboard!.notifications,
+                          messages: _dashboard!.messages,
+                          incomingRequestCount:
+                              _dashboard!.incomingRequestCount,
+                        );
+                      }
+                    });
                   },
                   resolvePhotoUrl: _resolvePhotoUrl,
                 ),

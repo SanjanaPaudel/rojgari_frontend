@@ -141,4 +141,11 @@ class ApiUrls {
   //   "phone_number", "email", "profile_photo", "is_verified" } }
   static const String customerProfileUpdate =
       "$baseUrl/auth/customer/profile/update/";
+
+  // PATCH multipart/form-data — field: "profile_photo" → <image file>
+  // Response: { "message": "...", "profile_photo": "<url or null>" } — unlike
+  // workerProfilePhoto, this is the raw (possibly relative) path, so resolve
+  // it with resolveMediaUrl() before displaying.
+  static const String customerProfilePhoto =
+      "$baseUrl/auth/customer/profile-photo/";
 }

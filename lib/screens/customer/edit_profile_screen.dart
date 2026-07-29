@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/constants/api_urls.dart';
 import '../../core/constants/colors.dart';
 import '../../services/customer_profile_service.dart';
 
@@ -13,6 +14,7 @@ class EditableCustomerProfile {
     required this.phone,
     required this.email,
     this.localImagePath,
+    this.networkImageUrl,
   });
 
   final String name;
@@ -20,6 +22,7 @@ class EditableCustomerProfile {
   final String phone;
   final String email;
   final String? localImagePath;
+  final String? networkImageUrl;
 }
 
 class EditProfileScreen extends StatefulWidget {
@@ -75,6 +78,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _phoneController;
   late final TextEditingController _emailController;
   String? _selectedImagePath;
+  bool _photoChanged = false;
   bool _pickingImage = false;
   bool _saving = false;
 
@@ -149,7 +153,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         imageQuality: 85,
       );
       if (!mounted || image == null) return;
-      setState(() => _selectedImagePath = image.path);
+      setState(() {
+        _selectedImagePath = image.path;
+        _photoChanged = true;
+      });
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -166,20 +173,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     setState(() => _saving = true);
     try {
-      // No separator on the phone number — must match the backend's stored
-      // format exactly ("+977" + 10 digits), since phone_number doubles as
-      // the login lookup key (USERNAME_FIELD).
+      // Upload the photo first (if changed) — it doesn't depend on the
+      // name/phone update, so a failure here leaves nothing half-saved.
+      String? uploadedPhotoUrl;
+      if (_photoChanged && _selectedImagePath != null) {
+        final bytes = await File(_selectedImagePath!).readAsBytes();
+        final rawPhotoPath = await _profileService.uploadProfilePhoto(
+          imageBytes: bytes,
+          imageName: File(_selectedImagePath!).uri.pathSegments.last,
+        );
+        if (rawPhotoPath != null) {
+          uploadedPhotoUrl = ApiUrls.resolveMediaUrl(rawPhotoPath);
+        }
+      }
+
+      // Bare 10 digits, no "+977" — signup/login never actually normalize
+      // to a "+977"-prefixed value (validate_nepal_phone is wired as a
+      // DRF field validator, so its return value is discarded; only the
+      // raw submitted string is stored/matched). phone_number doubles as
+      // the login lookup key (USERNAME_FIELD), so this must match that
+      // bare-digit convention or the account becomes unloginable.
       final updated = await _profileService.updateProfile(
         fullName: _nameController.text.trim(),
-        phoneNumber: '${_nepal.dialCode}${_phoneController.text.trim()}',
+        phoneNumber: _phoneController.text.trim(),
       );
       if (!mounted) return;
 
-      // PHOTO UPLOAD TODO: Use the selected image with multipart/form-data
-      // under a field such as `profile_image`. Read the returned URL, save
-      // it in UserModel, and refresh the displayed Image.network. Always
-      // retain assets/images/customer.png plus errorBuilder as the
-      // broken-URL fallback.
       Navigator.pop(
         context,
         EditableCustomerProfile(
@@ -190,7 +209,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           // reflect the server's real value, not whatever was typed here,
           // so the form never claims a change that didn't actually save.
           email: updated.email,
-          localImagePath: _selectedImagePath,
+          // Once the photo is confirmed uploaded, drop the local file path
+          // so the UI displays the persisted server copy instead of a
+          // stale local file — same reasoning as the worker profile photo
+          // upload.
+          localImagePath: uploadedPhotoUrl != null ? null : _selectedImagePath,
+          networkImageUrl: uploadedPhotoUrl ?? widget.networkImageUrl,
         ),
       );
     } catch (e) {
