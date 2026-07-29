@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/colors.dart';
+import '../../services/customer_profile_service.dart';
 
 class EditableCustomerProfile {
   const EditableCustomerProfile({
@@ -57,33 +58,32 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  static const _countries = <_CountryCode>[
-    _CountryCode(name: 'Nepal', flag: '🇳🇵', dialCode: '+977', digits: 10),
-    _CountryCode(name: 'India', flag: '🇮🇳', dialCode: '+91', digits: 10),
-    _CountryCode(name: 'USA/Canada', flag: '🇺🇸', dialCode: '+1', digits: 10),
-    _CountryCode(
-      name: 'United Kingdom',
-      flag: '🇬🇧',
-      dialCode: '+44',
-      digits: 10,
-    ),
-  ];
+  // The backend only validates/stores Nepal-format numbers (see
+  // validate_nepal_phone: "+977" + 10 digits, no separator) — the login
+  // lookup itself depends on that exact format, so this is no longer a
+  // user-selectable option.
+  static const _nepal = _CountryCode(
+    name: 'Nepal',
+    flag: '🇳🇵',
+    dialCode: '+977',
+    digits: 10,
+  );
 
   final _formKey = GlobalKey<FormState>();
+  final CustomerProfileService _profileService = CustomerProfileService();
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   late final TextEditingController _emailController;
-  late _CountryCode _selectedCountry;
   String? _selectedImagePath;
   bool _pickingImage = false;
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.profile.name);
-    _selectedCountry = _countryFromPhone(widget.profile.phone);
     _phoneController = TextEditingController(
-      text: _localNumber(widget.profile.phone, _selectedCountry),
+      text: _localNumber(widget.profile.phone, _nepal),
     );
     _emailController = TextEditingController(text: widget.profile.email);
     _selectedImagePath = widget.profile.localImagePath;
@@ -121,25 +121,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (requiredError != null) return requiredError;
 
     final digits = value!.replaceAll(RegExp(r'\D'), '');
-    if (digits.length != _selectedCountry.digits) {
-      return 'Enter a valid ${_selectedCountry.digits}-digit number';
+    if (digits.length != _nepal.digits) {
+      return 'Enter a valid ${_nepal.digits}-digit number';
     }
-    if (_selectedCountry.dialCode == '+977' && !digits.startsWith('9')) {
+    if (!digits.startsWith('9')) {
       return 'Nepal mobile numbers must start with 9';
     }
-    if (_selectedCountry.dialCode == '+91' &&
-        !RegExp(r'^[6-9]').hasMatch(digits)) {
-      return 'Enter a valid Indian mobile number';
-    }
     return null;
-  }
-
-  _CountryCode _countryFromPhone(String phone) {
-    final compact = phone.replaceAll(RegExp(r'[\s-]'), '');
-    for (final country in _countries) {
-      if (compact.startsWith(country.dialCode)) return country;
-    }
-    return _countries.first;
   }
 
   String _localNumber(String phone, _CountryCode country) {
@@ -172,33 +160,48 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  void _save() {
+  Future<void> _save() async {
+    if (_saving) return;
     if (!_formKey.currentState!.validate()) return;
 
-    // BACKEND TODO: PATCH /customer/profile (or the backend endpoint provided)
-    // with {name, phone, email}; address is managed by CustomerAddressSheet.
-    // Read the access token from
-    // StorageService, send Authorization: Bearer <accessToken>, and only return
-    // updated data to the profile after a successful response. Show an error
-    // message and retain the form when the request fails.
-    // Send phone as the selected dial code plus local number (E.164-style,
-    // for example +9779841234567). If the backend expects separate fields,
-    // send country_code and phone_number separately and map both in UserModel.
-    //
-    // PHOTO UPLOAD TODO: Use the selected image with multipart/form-data under
-    // a field such as `profile_image`. Read the returned URL, save it in
-    // UserModel, and refresh the displayed Image.network. Always retain
-    // assets/images/customer.png plus errorBuilder as the broken-URL fallback.
-    Navigator.pop(
-      context,
-      EditableCustomerProfile(
-        name: _nameController.text.trim(),
-        address: widget.profile.address,
-        phone: '${_selectedCountry.dialCode} ${_phoneController.text.trim()}',
-        email: _emailController.text.trim(),
-        localImagePath: _selectedImagePath,
-      ),
-    );
+    setState(() => _saving = true);
+    try {
+      // No separator on the phone number — must match the backend's stored
+      // format exactly ("+977" + 10 digits), since phone_number doubles as
+      // the login lookup key (USERNAME_FIELD).
+      final updated = await _profileService.updateProfile(
+        fullName: _nameController.text.trim(),
+        phoneNumber: '${_nepal.dialCode}${_phoneController.text.trim()}',
+      );
+      if (!mounted) return;
+
+      // PHOTO UPLOAD TODO: Use the selected image with multipart/form-data
+      // under a field such as `profile_image`. Read the returned URL, save
+      // it in UserModel, and refresh the displayed Image.network. Always
+      // retain assets/images/customer.png plus errorBuilder as the
+      // broken-URL fallback.
+      Navigator.pop(
+        context,
+        EditableCustomerProfile(
+          name: updated.fullName,
+          address: widget.profile.address,
+          phone: updated.phoneNumber,
+          // The backend doesn't accept email updates on this endpoint —
+          // reflect the server's real value, not whatever was typed here,
+          // so the form never claims a change that didn't actually save.
+          email: updated.email,
+          localImagePath: _selectedImagePath,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    }
   }
 
   ImageProvider _photoProvider() {
@@ -305,18 +308,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Static display only — no dropdown, since
+                              // Nepal is the only supported country. Uses
+                              // InputDecorator (the same decoration chrome
+                              // TextFormField uses internally) so the
+                              // "Country" label/border matches the phone
+                              // field beside it.
                               SizedBox(
-                                width: 122,
-                                child: DropdownButtonFormField<_CountryCode>(
-                                  initialValue: _selectedCountry,
-                                  isExpanded: true,
+                                width: 108,
+                                child: InputDecorator(
                                   decoration: InputDecoration(
                                     labelText: 'Country',
                                     filled: true,
                                     fillColor: const Color(0xFFFAF9FD),
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 12,
-                                      vertical: 16,
+                                      vertical: 18,
                                     ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(14),
@@ -328,22 +335,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       ),
                                     ),
                                   ),
-                                  items: _countries
-                                      .map(
-                                        (country) => DropdownMenuItem(
-                                          value: country,
-                                          child: Text(
-                                            '${country.flag} ${country.dialCode}',
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (country) {
-                                    if (country == null) return;
-                                    setState(() => _selectedCountry = country);
-                                    _formKey.currentState?.validate();
-                                  },
+                                  child: Text(
+                                    '${_nepal.flag} ${_nepal.dialCode}',
+                                    style: const TextStyle(
+                                      color: AppColors.black,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -374,7 +372,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                           const SizedBox(height: 24),
                           FilledButton(
-                            onPressed: _save,
+                            onPressed: _saving ? null : _save,
                             style: FilledButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               minimumSize: const Size.fromHeight(54),
@@ -382,7 +380,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            child: const Text('Save Changes'),
+                            child: _saving
+                                ? const SizedBox.square(
+                                    dimension: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Save Changes'),
                           ),
                           const SizedBox(height: 8),
                           TextButton(

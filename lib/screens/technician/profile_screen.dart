@@ -139,7 +139,8 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
           selectedSkills: List<String>.from(d.worker.skills),
           verificationStatus: d.worker.verified
               ? TechnicianVerificationStatus.verified
-              : TechnicianVerificationStatus.incomplete, // overwritten by _loadProfile below
+              : TechnicianVerificationStatus
+                    .incomplete, // overwritten by _loadProfile below
         );
       } else {
         // Fallback to an empty placeholder when no API data is available yet.
@@ -317,18 +318,39 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
     if (!mounted || result == null) return;
     _updateTechnician(
       _technician.copyWith(
-        hasLocalCitizenshipFront: result.citizenshipFrontUrl == null ? result.hasCitizenshipFront : false,
-        hasLocalCitizenshipBack: result.citizenshipBackUrl == null ? result.hasCitizenshipBack : false,
-        localCitizenshipFrontBytes: result.citizenshipFrontUrl == null ? result.citizenshipFrontBytes : null,
-        localCitizenshipFrontName: result.citizenshipFrontUrl == null ? result.citizenshipFrontName : null,
-        localCitizenshipBackBytes: result.citizenshipBackUrl == null ? result.citizenshipBackBytes : null,
-        localCitizenshipBackName: result.citizenshipBackUrl == null ? result.citizenshipBackName : null,
-        localExperienceCertificateBytes: result.experienceCertificateUrl == null ? result.experienceCertificateBytes : null,
-        localExperienceCertificateName: result.experienceCertificateUrl == null ? result.experienceCertificateName : null,
-        citizenshipFrontUrl: result.citizenshipFrontUrl ?? _technician.citizenshipFrontUrl,
-        citizenshipBackUrl: result.citizenshipBackUrl ?? _technician.citizenshipBackUrl,
-        experienceCertificateUrl: result.experienceCertificateUrl ?? _technician.experienceCertificateUrl,
-        verificationStatus: result.verificationStatus ?? _technician.verificationStatus,
+        hasLocalCitizenshipFront: result.citizenshipFrontUrl == null
+            ? result.hasCitizenshipFront
+            : false,
+        hasLocalCitizenshipBack: result.citizenshipBackUrl == null
+            ? result.hasCitizenshipBack
+            : false,
+        localCitizenshipFrontBytes: result.citizenshipFrontUrl == null
+            ? result.citizenshipFrontBytes
+            : null,
+        localCitizenshipFrontName: result.citizenshipFrontUrl == null
+            ? result.citizenshipFrontName
+            : null,
+        localCitizenshipBackBytes: result.citizenshipBackUrl == null
+            ? result.citizenshipBackBytes
+            : null,
+        localCitizenshipBackName: result.citizenshipBackUrl == null
+            ? result.citizenshipBackName
+            : null,
+        localExperienceCertificateBytes: result.experienceCertificateUrl == null
+            ? result.experienceCertificateBytes
+            : null,
+        localExperienceCertificateName: result.experienceCertificateUrl == null
+            ? result.experienceCertificateName
+            : null,
+        citizenshipFrontUrl:
+            result.citizenshipFrontUrl ?? _technician.citizenshipFrontUrl,
+        citizenshipBackUrl:
+            result.citizenshipBackUrl ?? _technician.citizenshipBackUrl,
+        experienceCertificateUrl:
+            result.experienceCertificateUrl ??
+            _technician.experienceCertificateUrl,
+        verificationStatus:
+            result.verificationStatus ?? _technician.verificationStatus,
       ),
     );
   }
@@ -375,110 +397,129 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFBFF),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final padding = constraints.maxWidth < 380 ? 14.0 : 20.0;
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(padding, 4, padding, 28),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 760),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _ProfileAppBar(onBack: _backToDashboard),
-                      if (_isLoadingProfile)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 4),
-                          child: LinearProgressIndicator(
-                            color: AppColors.primary,
-                            backgroundColor: Color(0xFFF5F0FF),
+    return PopScope<TechnicianModel>(
+      // Blocks the automatic pop from the system back button/gesture so it
+      // funnels through the exact same _backToDashboard() logic the
+      // on-screen back arrow already uses — otherwise a system-back pop
+      // returns null (no data), and the dashboard silently never learns
+      // about a profile edit that actually saved successfully.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _backToDashboard();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFCFBFF),
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final padding = constraints.maxWidth < 380 ? 14.0 : 20.0;
+              return SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(padding, 4, padding, 28),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 760),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _ProfileAppBar(onBack: _backToDashboard),
+                        if (_isLoadingProfile)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: LinearProgressIndicator(
+                              color: AppColors.primary,
+                              backgroundColor: Color(0xFFF5F0FF),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        _TechnicianProfileHeader(
+                          technician: _technician,
+                          avatarAsset: _avatarAsset,
+                          onEdit: _editProfile,
+                          onViewPhoto: _viewProfilePhoto,
+                        ),
+                        if (_technician.verificationStatus !=
+                            TechnicianVerificationStatus.verified) ...[
+                          const SizedBox(height: 14),
+                          _CompletionWarning(
+                            verificationStatus: _technician.verificationStatus,
+                            onComplete: _completeProfile,
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        _SectionCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'About Me',
+                                style: _Styles.sectionTitle,
+                              ),
+                              const SizedBox(height: 7),
+                              Text(
+                                _technician.about.isEmpty
+                                    ? 'No about information specified'
+                                    : _technician.about,
+                                style: _Styles.body,
+                              ),
+                            ],
                           ),
                         ),
-                      const SizedBox(height: 8),
-                      _TechnicianProfileHeader(
-                        technician: _technician,
-                        avatarAsset: _avatarAsset,
-                        onEdit: _editProfile,
-                        onViewPhoto: _viewProfilePhoto,
-                      ),
-                      if (_technician.verificationStatus != TechnicianVerificationStatus.verified) ...[
                         const SizedBox(height: 14),
-                        _CompletionWarning(
-                          verificationStatus: _technician.verificationStatus,
-                          onComplete: _completeProfile,
+                        _SectionCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Service Area',
+                                style: _Styles.sectionTitle,
+                              ),
+                              const SizedBox(height: 7),
+                              Text(
+                                _technician.serviceAreas.isEmpty
+                                    ? 'No service areas specified'
+                                    : _technician.serviceAreas.join(', '),
+                                style: _Styles.body,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _SkillsCard(
+                          skills: _technician.selectedSkills,
+                          onAdd: _editSkills,
+                        ),
+                        const SizedBox(height: 14),
+                        _menuCard(),
+                        const SizedBox(height: 20),
+                        OutlinedButton.icon(
+                          onPressed: _loggingOut ? null : _logout,
+                          icon: _loggingOut
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.logout),
+                          label: const Text('Log Out'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.red,
+                            backgroundColor: const Color(0xFFFFF7F6),
+                            side: const BorderSide(color: Color(0xFFFFD2CE)),
+                            minimumSize: const Size.fromHeight(58),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(17),
+                            ),
+                          ),
                         ),
                       ],
-                      const SizedBox(height: 16),
-                      _SectionCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('About Me', style: _Styles.sectionTitle),
-                            const SizedBox(height: 7),
-                            Text(
-                              _technician.about.isEmpty
-                                  ? 'No about information specified'
-                                  : _technician.about,
-                              style: _Styles.body,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      _SectionCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Service Area', style: _Styles.sectionTitle),
-                            const SizedBox(height: 7),
-                            Text(
-                              _technician.serviceAreas.isEmpty
-                                  ? 'No service areas specified'
-                                  : _technician.serviceAreas.join(', '),
-                              style: _Styles.body,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      _SkillsCard(
-                        skills: _technician.selectedSkills,
-                        onAdd: _editSkills,
-                      ),
-                      const SizedBox(height: 14),
-                      _menuCard(),
-                      const SizedBox(height: 20),
-                      OutlinedButton.icon(
-                        onPressed: _loggingOut ? null : _logout,
-                        icon: _loggingOut
-                            ? const SizedBox.square(
-                                dimension: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.logout),
-                        label: const Text('Log Out'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.red,
-                          backgroundColor: const Color(0xFFFFF7F6),
-                          side: const BorderSide(color: Color(0xFFFFD2CE)),
-                          minimumSize: const Size.fromHeight(58),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(17),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -800,7 +841,8 @@ class _CompletionWarning extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPending = verificationStatus == TechnicianVerificationStatus.pending;
+    final isPending =
+        verificationStatus == TechnicianVerificationStatus.pending;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(

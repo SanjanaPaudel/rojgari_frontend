@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/api_urls.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/models/category_model.dart';
+import 'package:rojgari_frontend_one/models/customer_profile_model.dart';
 import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
 import 'package:rojgari_frontend_one/services/api_service.dart';
+import 'package:rojgari_frontend_one/services/customer_profile_service.dart';
 import 'package:rojgari_frontend_one/widgets/category_card.dart';
 import 'package:rojgari_frontend_one/screens/customer/service_request/service_request_screen.dart';
 import '../../models/service_request/service_category.dart';
@@ -22,15 +24,14 @@ String _temporaryCategorySlug(String title) => title
     .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
     .replaceAll(RegExp(r'^-|-$'), '');
 
-class CustomerHomeScreen extends StatelessWidget {
+class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
 
-  // BACKEND TODO:
-  // Replace _userName with response.userName from GET /customer/dashboard.
-  // Example:
-  // final dashboard = await customerDashboardService.getDashboard();
-  // userName: dashboard.userName
-  static const String _userName = 'Sunita';
+  @override
+  State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
+}
+
+class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   // BACKEND TODO:
   // Replace _notificationCount with response.notificationCount from:
   // GET /customer/dashboard
@@ -92,6 +93,42 @@ class CustomerHomeScreen extends StatelessWidget {
     ),
   ];
 
+  final CustomerProfileService _profileService = CustomerProfileService();
+  CustomerProfileModel? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final profile = await _profileService.getProfile();
+      if (!mounted) return;
+      setState(() => _profile = profile);
+    } catch (_) {
+      // This is just the header greeting, not a page that should block on
+      // a network error — it silently falls back to a nameless "Hello 👋"
+      // (see _ProfileHeader) and the profile screen itself already shows
+      // its own real error/retry state if something's actually wrong.
+    }
+  }
+
+  /// Pushes the profile screen and applies whatever it pops with — mirrors
+  /// TechnicianHomeScreen's onMenuTap: CustomerProfileScreen only pops with
+  /// non-null data once it actually has a server-confirmed profile (see
+  /// CustomerProfileScreen._openCustomerDashboard), so no extra fetch is
+  /// needed here — just applying data that already came from the network.
+  Future<void> _openProfile() async {
+    final updated = await Navigator.push<CustomerProfileModel>(
+      context,
+      MaterialPageRoute(builder: (_) => const CustomerProfileScreen()),
+    );
+    if (!mounted || updated == null) return;
+    setState(() => _profile = updated);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,10 +140,13 @@ class CustomerHomeScreen extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                child: _TopBar(notificationCount: _notificationCount),
+                child: _TopBar(
+                  notificationCount: _notificationCount,
+                  onMenuTap: _openProfile,
+                ),
               ),
               const SizedBox(height: 4),
-              const _ProfileHeader(userName: _userName),
+              _ProfileHeader(userName: _profile?.fullName),
               const SizedBox(height: 22),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
@@ -160,9 +200,10 @@ class CustomerHomeScreen extends StatelessWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.notificationCount});
+  const _TopBar({required this.notificationCount, required this.onMenuTap});
 
   final int notificationCount;
+  final VoidCallback onMenuTap;
 
   @override
   Widget build(BuildContext context) {
@@ -178,14 +219,7 @@ class _TopBar extends StatelessWidget {
               backgroundColor: Colors.transparent,
               borderColor: Colors.transparent,
               iconSize: 30,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => const CustomerProfileScreen(),
-                  ),
-                );
-              },
+              onTap: onMenuTap,
             ),
           ),
           Center(
@@ -246,10 +280,17 @@ class _TopBar extends StatelessWidget {
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({required this.userName});
 
-  final String userName;
+  /// Null while the initial fetch (owned by _CustomerHomeScreenState) is
+  /// still in flight or failed — falls back to a nameless greeting rather
+  /// than blocking this header on a network error.
+  final String? userName;
 
   @override
   Widget build(BuildContext context) {
+    final name = userName?.trim();
+    final greeting = (name == null || name.isEmpty)
+        ? 'Hello 👋'
+        : 'Hello, $name 👋';
     return SizedBox(
       width: double.infinity,
       height: 132,
@@ -289,7 +330,7 @@ class _ProfileHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Hello, $userName 👋',
+                  greeting,
                   style: const TextStyle(
                     color: AppColors.black,
                     fontSize: 27,

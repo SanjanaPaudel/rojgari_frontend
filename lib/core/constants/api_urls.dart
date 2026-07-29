@@ -127,4 +127,18 @@ class ApiUrls {
   // requesting customer.
   static String bookingStatus(String bookingId) =>
       "$baseUrl/services/bookings/$bookingId/status/";
+
+  // GET — the logged-in customer's profile.
+  // Response: { "id": <int>, "full_name": "...", "phone_number": "...",
+  //   "email": "...", "profile_photo": "<url or null>", "is_verified": bool }
+  static const String customerProfile = "$baseUrl/auth/customer/profile/";
+
+  // PATCH — update the logged-in customer's full_name and/or phone_number.
+  // email is NOT accepted by this endpoint — only full_name/phone_number are
+  // read from the request body.
+  // Request: { "full_name"?: "...", "phone_number"?: "..." }
+  // Response: { "message": "...", "customer": { "id", "full_name",
+  //   "phone_number", "email", "profile_photo", "is_verified" } }
+  static const String customerProfileUpdate =
+      "$baseUrl/auth/customer/profile/update/";
 }
