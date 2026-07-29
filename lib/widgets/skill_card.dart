@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
+import '../core/utils/service_category_icon_resolver.dart';
 import '../models/skill_model.dart';
 
 /// Controls which visual theme the card renders in.
@@ -138,7 +139,10 @@ class _SignupCard extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            Icons.handyman,
+                            ServiceCategoryIconResolver.resolve(
+                              slug: skill.icon ?? '',
+                              name: skill.name,
+                            ),
                             size: iconSize,
                             color: const Color(0xFF6A5AE0),
                           ),

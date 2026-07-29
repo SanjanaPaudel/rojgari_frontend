@@ -1,35 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/colors.dart';
+import '../../core/utils/service_category_icon_resolver.dart';
 import '../../models/skill_model.dart';
 import '../../services/skill_service.dart';
 import '../../widgets/skill_card.dart';
-
-// ---------------------------------------------------------------------------
-// Icon resolver — maps the backend's icon-path string to a Flutter IconData.
-// Backend sends paths like "/media/Icons.plumbing"; we parse the filename part.
-// Any unknown / null value falls back to Icons.handyman.
-// ---------------------------------------------------------------------------
-
-const _kIconMap = <String, IconData>{
-  'Icons.plumbing': Icons.plumbing,
-  'Icons.electric_bolt': Icons.electric_bolt,
-  'Icons.local_florist_outlined': Icons.local_florist_outlined,
-  'Icons.format_paint_outlined': Icons.format_paint_outlined,
-  'Icons.handyman_outlined': Icons.handyman_outlined,
-  'Icons.cleaning_services_outlined': Icons.cleaning_services_outlined,
-  'Icons.build_outlined': Icons.build_outlined,
-  'Icons.tv_outlined': Icons.tv_outlined,
-  'Icons.ac_unit_outlined': Icons.ac_unit_outlined,
-  'Icons.computer_outlined': Icons.computer_outlined,
-  'Icons.eco_outlined': Icons.eco_outlined,
-};
-
-IconData _resolveIcon(String? iconPath) {
-  if (iconPath == null || iconPath.trim().isEmpty) return Icons.handyman;
-  final name = iconPath.split('/').last.trim(); // e.g. "Icons.plumbing"
-  return _kIconMap[name] ?? Icons.handyman;
-}
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -311,7 +286,10 @@ class _TechnicianSkillSelectionScreenState
               isDisabled: isDisabled,
               onTap: () => _toggle(skill.id),
               style: SkillCardStyle.technician,
-              icon: _resolveIcon(skill.icon),
+              icon: ServiceCategoryIconResolver.resolve(
+                slug: skill.icon ?? '',
+                name: skill.name,
+              ),
             );
           },
         );

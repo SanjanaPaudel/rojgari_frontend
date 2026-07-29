@@ -94,6 +94,25 @@ class _OTPScreenState extends State<OTPScreen> { //Everything that changes while
     return controllers.map((controller) => controller.text).join(); // collects value inside six controllers.
   }
 
+  // Masks everything but the first 2 characters of the local part, e.g.
+  // "johndoe@gmail.com" -> "jo*****@gmail.com". Domain stays visible, same
+  // as the masking shown on real signup flows.
+  String _maskEmail(String email) {
+    final atIndex = email.indexOf('@');
+    if (atIndex <= 0) return email;
+
+    final local = email.substring(0, atIndex);
+    final domain = email.substring(atIndex);
+
+    if (local.length <= 2) {
+      return '${local[0]}*$domain';
+    }
+
+    final visible = local.substring(0, 2);
+    final masked = '*' * (local.length - 2);
+    return '$visible$masked$domain';
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -295,7 +314,7 @@ class _OTPScreenState extends State<OTPScreen> { //Everything that changes while
                                         ),
 
                                         TextSpan(
-                                          text: widget.email,
+                                          text: _maskEmail(widget.email),
                                           style: const TextStyle(
                                             fontSize: 17,
                                             fontWeight: FontWeight.bold,
@@ -511,40 +530,57 @@ class _OTPScreenState extends State<OTPScreen> { //Everything that changes while
                                 isLoading = true; // Shows loading indicator
                               });
 
-                              final response = await _authService.verifyOTP(
-                                phone: widget.phone,
-                                otp: otp,
-                              );
+                              try {
+                                final response = await _authService.verifyOTP(
+                                  phone: widget.phone,
+                                  otp: otp,
+                                );
 
-                              setState(() {
-                                isLoading = false; // hides loading indicator
-                              });
-
-                              if (response["success"] == false) {
+                                if (!mounted) return;
                                 setState(() {
-                                  showOtpError = true;
-                                  otpErrorMessage = response["message"];
+                                  isLoading = false; // hides loading indicator
                                 });
-                                return;
+
+                                if (response["success"] == false) {
+                                  setState(() {
+                                    showOtpError = true;
+                                    otpErrorMessage = response["message"];
+                                  });
+                                  return;
+                                }
+
+                                setState(() {
+                                  showOtpError = false;
+                                  otpErrorMessage = null;
+                                });
+
+                                // Send the user to the right dashboard based on
+                                // the role they picked during signup, and wipe
+                                // out the signup/otp screens from the back stack
+                                // so they can't navigate back into them.
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => LoginScreen(),
+                                  ),
+                                  (route) => false,
+
+                                );
+                              } catch (e) {
+                                // Covers network failures and non-JSON error
+                                // responses (e.g. a backend 500 whose body is
+                                // an HTML traceback, not JSON) — without this,
+                                // isLoading would stay true forever with no
+                                // visible error, even though the account may
+                                // already have been created server-side.
+                                if (!mounted) return;
+                                setState(() {
+                                  isLoading = false;
+                                  showOtpError = true;
+                                  otpErrorMessage =
+                                      "Something went wrong. Please try again.";
+                                });
                               }
-
-                              setState(() {
-                                showOtpError = false;
-                                otpErrorMessage = null;
-                              });
-
-                              // Send the user to the right dashboard based on
-                              // the role they picked during signup, and wipe
-                              // out the signup/otp screens from the back stack
-                              // so they can't navigate back into them.
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => LoginScreen(),
-                                ),
-                                (route) => false,
-
-                              );
                             },
                           ),
                           const SizedBox(height: 25),
