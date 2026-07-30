@@ -189,4 +189,13 @@ class ApiUrls {
   // Message: { booking_id, customer_name, service, address, description }
   static String workerOffersSocket(String accessToken) =>
       '$_wsBaseUrl/ws/worker/offers/?token=$accessToken';
+
+  // WS — live status/progress/location updates for one booking. Works for
+  // both the customer who created it and the worker assigned to it.
+  // Messages, distinguished by which keys are present:
+  //   {status, worker_name} | {job_progress} |
+  //   {status: "completed", job_progress: "completed"} |
+  //   {latitude, longitude}  (both arrive as STRINGS, not numbers)
+  static String bookingSocket(String bookingId, String accessToken) =>
+      '$_wsBaseUrl/ws/bookings/$bookingId/?token=$accessToken';
 }
