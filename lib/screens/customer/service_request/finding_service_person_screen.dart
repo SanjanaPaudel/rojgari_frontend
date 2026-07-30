@@ -4,12 +4,14 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../core/constants/api_urls.dart';
+import '../../../services/app_web_socket.dart';
+import '../../../services/storage_service.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../dev_testing/fake_worker_movement.dart';
 import '../../../models/service_request/accepted_worker_ui_model.dart';
-import '../../../models/service_request/booking_status_response.dart';
 import '../../../models/service_request/request_search_status.dart';
 import '../../../models/service_request/selected_service_location.dart';
 import '../../../models/service_request/service_booking_demo_config.dart';
@@ -44,8 +46,6 @@ class FindingServicePersonScreen extends StatefulWidget {
     this.acceptedDisplayDuration =
         ServiceBookingDemoConfig.acceptedDisplayDuration,
     this.enableStatusPolling = true,
-    this.statusPollInterval = const Duration(seconds: 5),
-    this.debugMockWorkerAssignment = false,
     super.key,
   });
 
@@ -74,34 +74,11 @@ class FindingServicePersonScreen extends StatefulWidget {
   final Duration demoSearchDuration;
   final Duration acceptedDisplayDuration;
 
-  /// Whether to poll `GET /api/services/bookings/<id>/status/` for real
-  /// worker assignment. Defaults to true for production use; the debug-only
+  /// Whether to connect to `ws/bookings/<id>/` for real worker assignment.
+  /// Defaults to true for production use; the debug-only
   /// [FindingServicePersonPreview] route sets this to false so it never hits
   /// the network with its fake preview request id.
   final bool enableStatusPolling;
-
-  /// How often to poll while [enableStatusPolling] is true and no
-  /// [statusListenable] is supplied.
-  final Duration statusPollInterval;
-
-  /// TEMP DEBUG ONLY — backend for `GET /api/services/bookings/{id}/status/`
-  /// is not deployed yet. While true (and [enableStatusPolling] is true),
-  /// every poll skips the real network call and feeds a canned "worker
-  /// assigned" response through the exact same parsing + navigation path a
-  /// real assignment would use: `BookingStatusResponse.fromJson` ->
-  /// `hasAssignedWorker` -> `AcceptedWorkerUiModel.fromAssignedWorker` ->
-  /// `pushReplacement` to [ServiceOnTheWayScreen]. Only the HTTP call itself
-  /// is skipped, so this is proof the real contract works end to end.
-  ///
-  /// >>> WHEN THE BACKEND IS READY, set this default to false (or delete
-  /// this field and `_buildDebugWorkerAssignedResponse`, and the branch that
-  /// uses them inside `_pollBookingStatusOnce`). Nothing else needs to
-  /// change — the real call is already wired to the documented contract. <<<
-  ///
-  /// Callers that need deterministic "still searching" behavior (tests,
-  /// the cancellation flow) pass false explicitly, the same way they
-  /// already override [enableStatusPolling].
-  final bool debugMockWorkerAssignment;
 
   @override
   State<FindingServicePersonScreen> createState() =>
@@ -110,43 +87,16 @@ class FindingServicePersonScreen extends StatefulWidget {
 
 class _FindingServicePersonScreenState
     extends State<FindingServicePersonScreen> {
-  /// Consecutive failed polls (network hiccups, unexpected response shapes)
-  /// tolerated before giving up and showing the error state. A 404 (booking
-  /// not found / not yours) is terminal immediately and doesn't count here.
-  static const int _maxStatusPollFailures = 5;
-
   late RequestSearchStatus _status;
   bool _workerFoundNavigationTriggered = false;
   bool _cancellationInFlight = false;
   bool _dialogOpen = false;
   Timer? _demoAcceptedTimer;
   Timer? _acceptedNavigationTimer;
-  Timer? _statusPollTimer;
-  int _statusPollFailureCount = 0;
+  AppWebSocket? _socket;
+  StreamSubscription<Map<String, dynamic>>? _socketSubscription;
   AcceptedWorkerUiModel? _polledWorker;
   final BookingStatusService _statusService = BookingStatusService();
-
-  /// TEMP DEBUG ONLY — see [FindingServicePersonScreen.debugMockWorkerAssignment].
-  /// Matches the documented "worker assigned" success response exactly,
-  /// offset near the real service location so ServiceOnTheWayScreen's map
-  /// draws a sensible route instead of a marker on the other side of the
-  /// world.
-  BookingStatusResponse _buildDebugWorkerAssignedResponse() {
-    return BookingStatusResponse.fromJson({
-      'id': int.tryParse(widget.requestId) ?? 12,
-      'status': 'active',
-      'worker': {
-        'id': 5,
-        'full_name': 'Rajan Sharma',
-        'phone_number': '+9779800000010',
-        'average_rating': 4.7,
-        'completed_jobs': 8,
-        'profile_photo': 'http://127.0.0.1:8000/media/technician_avatar.png',
-        'current_latitude': widget.serviceLocation.latitude + 0.006,
-        'current_longitude': widget.serviceLocation.longitude - 0.004,
-      },
-    });
-  }
 
   @override
   void initState() {
@@ -156,7 +106,7 @@ class _FindingServicePersonScreenState
 
     if (_status.isFound) _scheduleAcceptedNavigation();
     _startDemoSearchIfNeeded();
-    _startStatusPolling();
+    unawaited(_startStatusSocket());
   }
 
   @override
@@ -178,7 +128,7 @@ class _FindingServicePersonScreenState
   void dispose() {
     _demoAcceptedTimer?.cancel();
     _acceptedNavigationTimer?.cancel();
-    _statusPollTimer?.cancel();
+    _disconnectSocket();
     widget.statusListenable?.removeListener(_handleStatusListenableChanged);
     super.dispose();
   }
@@ -193,11 +143,11 @@ class _FindingServicePersonScreenState
     setState(() => _status = nextStatus);
     if (nextStatus.isFound) {
       _demoAcceptedTimer?.cancel();
-      _statusPollTimer?.cancel();
+      _disconnectSocket();
       _scheduleAcceptedNavigation();
     } else if (!nextStatus.isSearching) {
-      // cancelled / error: nothing left to poll for.
-      _statusPollTimer?.cancel();
+      // cancelled / error: nothing left to watch for.
+      _disconnectSocket();
     }
   }
 
@@ -218,60 +168,77 @@ class _FindingServicePersonScreenState
     });
   }
 
-  /// Polls `GET /api/services/bookings/<id>/status/` for real worker
-  /// assignment. Skipped when an external [statusListenable] drives status
-  /// instead (e.g. tests), when [FindingServicePersonScreen.enableStatusPolling]
-  /// is false (the debug preview route), or once no longer searching.
-  void _startStatusPolling() {
+  /// Connects to `ws/bookings/<id>/` for real worker assignment. Skipped
+  /// when an external [statusListenable] drives status instead (e.g.
+  /// tests), when [FindingServicePersonScreen.enableStatusPolling] is false
+  /// (the debug preview route), or once no longer searching.
+  Future<void> _startStatusSocket() async {
     if (!widget.enableStatusPolling ||
         widget.statusListenable != null ||
         !_status.isSearching) {
       return;
     }
 
-    unawaited(_pollBookingStatusOnce()); // Immediately calls _poolBookingStatusOnce
-    _statusPollTimer = Timer.periodic(
-      widget.statusPollInterval,
-      (_) => unawaited(_pollBookingStatusOnce()),
-    );
+    // Immediate read in case a worker was already assigned before this
+    // socket connects (e.g. reopening this screen after backgrounding).
+    unawaited(_checkStatusOnce());
+
+    final token = await StorageService.getAccessToken();
+    if (token == null || !mounted || !_status.isSearching) return;
+
+    final socket = AppWebSocket(ApiUrls.bookingSocket(widget.requestId, token));
+    _socket = socket;
+    _socketSubscription = socket.connect().listen(_handleSocketMessage);
+
+    // Second read, now that we're actually subscribed — closes the gap
+    // between the first read above and the socket finishing its handshake
+    // (token fetch + connect + the backend joining the group all take real
+    // time). Anything accepted during that window would otherwise be lost,
+    // since a socket push isn't queued for someone who wasn't listening yet.
+    unawaited(_checkStatusOnce());
   }
 
-  Future<void> _pollBookingStatusOnce() async {
+  void _handleSocketMessage(Map<String, dynamic> message) {
+    if (!mounted || !_status.isSearching) return;
+    if (message['status'] == 'assigned') {
+      unawaited(_checkStatusOnce());
+    }
+  }
+
+  /// Fetches full booking status over REST — used for the initial read and
+  /// whenever the socket signals "assigned", since the socket's
+  /// {status, worker_name} message is missing the full worker details
+  /// (id, phone, rating, photo, coordinates) AcceptedWorkerUiModel needs.
+  Future<void> _checkStatusOnce() async {
     if (!mounted || !_status.isSearching) return;
     try {
-      // TEMP DEBUG ONLY — see FindingServicePersonScreen.debugMockWorkerAssignment.
-      // Delete this branch when the backend is ready; the real call in the
-      // else branch already matches the documented contract and needs no
-      // changes.
-      final result = (kDebugMode && widget.debugMockWorkerAssignment)
-          ? _buildDebugWorkerAssignedResponse()
-          : await _statusService.fetchStatus(widget.requestId);
+      final result = await _statusService.fetchStatus(widget.requestId);
       if (!mounted) return;
-      _statusPollFailureCount = 0;
 
       if (result.hasAssignedWorker) {
-        _statusPollTimer?.cancel();
+        _disconnectSocket();
         _polledWorker = AcceptedWorkerUiModel.fromAssignedWorker(
           result.worker!,
         );
         _applyStatus(RequestSearchStatus.accepted);
       }
       // worker == null: still searching — nothing to change, wait for the
-      // next tick.
+      // socket's next message.
     } on BookingNotFoundException {
       if (!mounted) return;
-      _statusPollTimer?.cancel();
+      _disconnectSocket();
       _applyStatus(RequestSearchStatus.error);
     } catch (_) {
-      // Transient failure (network hiccup, unexpected response shape, or a
-      // non-2xx/non-404 status). Keep polling; only give up after repeated
-      // failures so a single blip doesn't interrupt the search.
-      _statusPollFailureCount++;
-      if (_statusPollFailureCount >= _maxStatusPollFailures) {
-        _statusPollTimer?.cancel();
-        if (mounted) _applyStatus(RequestSearchStatus.error);
-      }
+      // A single failed check is fine — the socket tells us the next time
+      // something actually changes, no timer to retry against here.
     }
+  }
+
+  void _disconnectSocket() {
+    _socketSubscription?.cancel();
+    _socket?.disconnect();
+    _socket = null;
+    _socketSubscription = null;
   }
 
   void _scheduleAcceptedNavigation() {
@@ -413,7 +380,7 @@ class _FindingServicePersonScreenState
       final cancelled = await cancellationHandler();
       if (!mounted) return;
       if (!cancelled) {
-        _statusPollTimer?.cancel();
+        _disconnectSocket();
         setState(() {
           _cancellationInFlight = false;
           _status = RequestSearchStatus.error;
@@ -421,12 +388,12 @@ class _FindingServicePersonScreenState
         _showCancellationError();
         return;
       }
-      _statusPollTimer?.cancel();
+      _disconnectSocket();
       setState(() => _status = RequestSearchStatus.cancelled);
       Navigator.pop(context);
     } catch (_) {
       if (!mounted) return;
-      _statusPollTimer?.cancel();
+      _disconnectSocket();
       setState(() {
         _cancellationInFlight = false;
         _status = RequestSearchStatus.error;

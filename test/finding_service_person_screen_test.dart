@@ -193,7 +193,6 @@ void main() {
           demoSearchDuration: const Duration(milliseconds: 100),
           acceptedDisplayDuration: const Duration(milliseconds: 100),
           onWorkerFound: () => callbackCount++,
-          debugMockWorkerAssignment: false,
         ),
       ),
     );
@@ -220,7 +219,6 @@ void main() {
           requestedAt: DateTime.now(),
           demoSearchDuration: const Duration(milliseconds: 100),
           acceptedDisplayDuration: const Duration(milliseconds: 100),
-          debugMockWorkerAssignment: false,
         ),
       ),
     );
@@ -262,7 +260,6 @@ void main() {
                         cancellationCalls++;
                         return true;
                       },
-                      debugMockWorkerAssignment: false,
                     ),
                   ),
                 ),
