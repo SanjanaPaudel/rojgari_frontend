@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/colors.dart';
 import '../models/notification_model.dart';
+import '../services/notification_service.dart';
 import '../widgets/notification_card.dart';
 
 /// Shared notifications screen for both the customer and technician home
-/// screens' bell icon.
+/// screens' bell icon. Backed by GET /api/notifications/ for the list.
 ///
-/// UI-only for now — the list below is placeholder content standing in for
-/// the FCM-backed feed (register device token -> backend push on
-/// booking_accepted/booking_rejected -> stored/fetched list). Wiring that up
-/// is a separate pass. "Mark all as read" and per-card read state are local
-/// UI state only, not persisted anywhere yet.
+/// "Mark all as read" and per-card read state are still local UI state only
+/// — not yet persisted via the PATCH mark-read endpoint (separate pass).
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -22,8 +20,40 @@ class NotificationsScreen extends StatefulWidget {
 enum _NotificationFilter { all, updates }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<NotificationItem> _notifications = _placeholderNotifications;
+  final NotificationService _service = NotificationService();
+
+  List<NotificationItem> _notifications = [];
   _NotificationFilter _filter = _NotificationFilter.all;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final notifications = await _service.fetchNotifications();
+      if (!mounted) return;
+      setState(() {
+        _notifications = notifications;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
 
   List<NotificationItem> get _visible => switch (_filter) {
     _NotificationFilter.all => _notifications,
@@ -58,8 +88,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final visible = _visible;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -72,21 +100,88 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               onChanged: (filter) => setState(() => _filter = filter),
             ),
             const SizedBox(height: 12),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                children: [
-                  for (final notification in visible) ...[
-                    NotificationCard(
-                      notification: notification,
-                      onTap: () => _markRead(notification),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  const SizedBox(height: 24),
-                  const _AllCaughtUpFooter(),
-                ],
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    }
+
+    if (_error != null) {
+      return _ErrorState(message: _error!, onRetry: _loadNotifications);
+    }
+
+    final visible = _visible;
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _loadNotifications,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        children: [
+          for (final notification in visible) ...[
+            NotificationCard(
+              notification: notification,
+              onTap: () => _markRead(notification),
+            ),
+            const SizedBox(height: 12),
+          ],
+          const SizedBox(height: 24),
+          const _AllCaughtUpFooter(),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.cloud_off_outlined,
+              size: 46,
+              color: Color(0xffBFC4D2),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xff6E7191),
+                fontWeight: FontWeight.w500,
               ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton(
+              onPressed: onRetry,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: Color(0xffD8CCFB)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Try again'),
             ),
           ],
         ),
@@ -309,25 +404,3 @@ class _AllCaughtUpFooter extends StatelessWidget {
     );
   }
 }
-
-// Titles/bodies match the exact wording from the backend's FCM integration
-// note for the two notification types it actually sends today.
-final _placeholderNotifications = <NotificationItem>[
-  NotificationItem(
-    id: '1',
-    type: NotificationType.bookingAccepted,
-    title: 'Booking Accepted',
-    message: 'Dinesh Adhikari accepted your booking request.',
-    timestamp: DateTime.now().subtract(const Duration(minutes: 12)),
-    bookingId: '3',
-  ),
-  NotificationItem(
-    id: '2',
-    type: NotificationType.bookingRejected,
-    title: 'Booking Declined',
-    message: 'Sabin Karki declined your booking request.',
-    timestamp: DateTime.now().subtract(const Duration(hours: 3)),
-    isRead: true,
-    bookingId: '7',
-  ),
-];

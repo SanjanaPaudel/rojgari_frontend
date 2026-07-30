@@ -14,6 +14,19 @@ class NotificationItem {
     this.bookingId,
   });
 
+  factory NotificationItem.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>?;
+    return NotificationItem(
+      id: json['id'].toString(),
+      type: _typeFromString(json['notification_type'] as String),
+      title: json['title'] as String,
+      message: json['body'] as String,
+      timestamp: DateTime.parse(json['created_at'] as String),
+      isRead: json['is_read'] as bool,
+      bookingId: data?['booking_id'] as String?,
+    );
+  }
+
   final String id;
   final NotificationType type;
   final String title;
@@ -36,4 +49,12 @@ class NotificationItem {
       bookingId: bookingId,
     );
   }
+}
+
+NotificationType _typeFromString(String value) {
+  return switch (value) {
+    'booking_accepted' => NotificationType.bookingAccepted,
+    'booking_rejected' => NotificationType.bookingRejected,
+    _ => throw ArgumentError('Unknown notification_type: $value'),
+  };
 }

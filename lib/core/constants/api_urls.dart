@@ -1,5 +1,3 @@
-
-
 // class ApiUrls {
 //   // Android Emulator
 //   static const String baseUrl = "http://10.0.2.2:8000/api/auth";
@@ -35,10 +33,12 @@ class ApiUrls {
 
   static const String workerProfile = "$baseUrl/auth/worker/profile/";
   static const String workerSkills = "$baseUrl/auth/worker/skills/";
-  static const String selectWorkerSkills = "$baseUrl/auth/worker/select-skills/";
+  static const String selectWorkerSkills =
+      "$baseUrl/auth/worker/select-skills/";
   static const String workerStatus = "$baseUrl/auth/worker/status/";
   static const String workerLocation = "$baseUrl/auth/worker/location/";
-  static const String updateWorkerSkills = "$baseUrl/auth/worker/update-skills/";
+  static const String updateWorkerSkills =
+      "$baseUrl/auth/worker/update-skills/";
 
   // GET — returns the pending booking offers for the logged-in worker.
   // Response: { "count": <int>, "requests": [ { offer_id, customer_name,
@@ -101,10 +101,10 @@ class ApiUrls {
     return '${Uri.parse(baseUrl).origin}$path';
   }
 
-
   // POST multipart/form-data — field: "profile_photo" → <image file>
   // Response: { "message": "...", "profile_photo": "<absolute URL>" }
-  static const String workerProfilePhoto = "$baseUrl/auth/worker/profile/photo/";
+  static const String workerProfilePhoto =
+      "$baseUrl/auth/worker/profile/photo/";
 
   // POST multipart/form-data
   // Fields: citizenship_front (File, required), citizenship_back (File, required),
@@ -154,4 +154,14 @@ class ApiUrls {
   // Request: { "device_token": "<fcm token>", "device_type": "android" }
   // Response: { "message": "Device registered successfully." }
   static const String deviceToken = "$baseUrl/auth/device-token/";
+
+  // GET — the logged-in user's notification history (both types the
+  // backend currently sends: booking_accepted, booking_rejected).
+  // Response: [ { id, title, body, notification_type, is_read, data:
+  //   { booking_id }, created_at } ]
+  //
+  // Mounted at "api/notifications/" (not under "api/auth/") because the
+  // list view's own route is "" (empty) — under the "api/auth/" mount that
+  // resolves to the bare "/api/auth/" path, not "/api/auth/notifications/".
+  static const String notifications = "$baseUrl/notifications/";
 }
