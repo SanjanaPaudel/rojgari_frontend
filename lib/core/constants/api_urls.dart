@@ -169,4 +169,9 @@ class ApiUrls {
   // Response: { "unread_count": <int> }
   static const String unreadNotificationCount =
       "$baseUrl/notifications/unread-count/";
+
+  // PATCH — marks one notification as read. No request body.
+  // Response: the updated notification object (same shape as the list).
+  static String markNotificationRead(String notificationId) =>
+      "$baseUrl/notifications/$notificationId/read/";
 }

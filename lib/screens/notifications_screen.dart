@@ -6,10 +6,8 @@ import '../services/notification_service.dart';
 import '../widgets/notification_card.dart';
 
 /// Shared notifications screen for both the customer and technician home
-/// screens' bell icon. Backed by GET /api/notifications/ for the list.
-///
-/// "Mark all as read" and per-card read state are still local UI state only
-/// — not yet persisted via the PATCH mark-read endpoint (separate pass).
+/// screens' bell icon. Backed by GET /api/notifications/ for the list and
+/// PATCH /api/notifications/{id}/read/ for marking items read.
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -64,18 +62,40 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   // Acts on whichever tab is active — "Mark all as read" on the Updates tab
   // only marks Updates items read, leaving All's other items untouched.
-  void _markAllRead() {
-    final visibleIds = _visible.map((n) => n.id).toSet();
+  //
+  // No bulk "mark all" endpoint exists on the backend — only a
+  // single-notification one — so this loops and calls it once per unread
+  // item.
+  Future<void> _markAllRead() async {
+    final unread = _visible.where((n) => !n.isRead).toList();
+    if (unread.isEmpty) return;
+
+    for (final n in unread) {
+      try {
+        await _service.markAsRead(n.id);
+      } catch (_) {
+        // Skip this one, keep going with the rest.
+      }
+    }
+
+    if (!mounted) return;
+    final markedIds = unread.map((n) => n.id).toSet();
     setState(() {
       _notifications = [
         for (final n in _notifications)
-          if (visibleIds.contains(n.id)) n.copyWith(isRead: true) else n,
+          if (markedIds.contains(n.id)) n.copyWith(isRead: true) else n,
       ];
     });
   }
 
-  void _markRead(NotificationItem tapped) {
+  Future<void> _markRead(NotificationItem tapped) async {
     if (tapped.isRead) return;
+    try {
+      await _service.markAsRead(tapped.id);
+    } catch (_) {
+      return; // Leave it unread locally if the backend call failed.
+    }
+    if (!mounted) return;
     setState(() {
       _notifications = [
         for (final n in _notifications)

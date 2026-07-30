@@ -120,6 +120,18 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     }
   }
 
+  // Re-fetches the unread count once the user comes back from the
+  // notifications screen — NotificationsScreen is pushed on top of this one
+  // rather than replacing it, so this screen's initState() (where the count
+  // is normally loaded) never runs again on its own when popping back.
+  Future<void> _openNotifications() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+    );
+    _loadUnreadNotificationCount();
+  }
+
   /// Opens the detail page for a pending offer. It pops `true` after a
   /// successful accept, which makes the shared list stale until refreshed.
   Future<void> _openRequestDetails(IncomingRequest request) async {
@@ -647,6 +659,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                       }
                     });
                   },
+                  onNotificationTap: _openNotifications,
                   resolvePhotoUrl: _resolvePhotoUrl,
                 ),
               ),
@@ -671,6 +684,7 @@ class _DashboardBody extends StatelessWidget {
     required this.onStatusChanged,
     required this.onProfileUpdated,
     required this.onMenuTap,
+    required this.onNotificationTap,
     required this.resolvePhotoUrl,
     required this.isTogglingStatus,
   });
@@ -685,6 +699,7 @@ class _DashboardBody extends StatelessWidget {
   final ValueChanged<bool> onStatusChanged;
   final ValueChanged<TechnicianModel> onProfileUpdated;
   final VoidCallback onMenuTap;
+  final VoidCallback onNotificationTap;
   final String? Function(String?) resolvePhotoUrl;
   final bool isTogglingStatus;
 
@@ -705,14 +720,7 @@ class _DashboardBody extends StatelessWidget {
             child: DashboardAppbar(
               notificationCount: unreadNotificationCount,
               onMenuTap: onMenuTap,
-              onNotificationTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const NotificationsScreen(),
-                  ),
-                );
-              },
+              onNotificationTap: onNotificationTap,
             ),
           ),
 

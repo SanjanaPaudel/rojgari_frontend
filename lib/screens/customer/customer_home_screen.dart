@@ -130,6 +130,18 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     }
   }
 
+  // Re-fetches the unread count once the user comes back from the
+  // notifications screen — NotificationsScreen is pushed on top of this one
+  // rather than replacing it, so this screen's initState() (where the count
+  // is normally loaded) never runs again on its own when popping back.
+  Future<void> _openNotifications() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+    );
+    _loadUnreadCount();
+  }
+
   /// Pushes the profile screen and applies whatever it pops with — mirrors
   /// TechnicianHomeScreen's onMenuTap: CustomerProfileScreen only pops with
   /// non-null data once it actually has a server-confirmed profile (see
@@ -158,6 +170,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 child: _TopBar(
                   notificationCount: _notificationCount,
                   onMenuTap: _openProfile,
+                  onNotificationTap: _openNotifications,
                 ),
               ),
               const SizedBox(height: 4),
@@ -215,10 +228,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.notificationCount, required this.onMenuTap});
+  const _TopBar({
+    required this.notificationCount,
+    required this.onMenuTap,
+    required this.onNotificationTap,
+  });
 
   final int notificationCount;
   final VoidCallback onMenuTap;
+  final VoidCallback onNotificationTap;
 
   @override
   Widget build(BuildContext context) {
@@ -254,14 +272,7 @@ class _TopBar extends StatelessWidget {
                   backgroundColor: Colors.transparent,
                   borderColor: Colors.transparent,
                   iconSize: 30,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationsScreen(),
-                      ),
-                    );
-                  },
+                  onTap: onNotificationTap,
                 ),
                 if (notificationCount > 0)
                   Positioned(

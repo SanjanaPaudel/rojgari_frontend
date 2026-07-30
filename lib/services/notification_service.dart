@@ -63,4 +63,17 @@ class NotificationService {
       'Unable to load the unread count (${response.statusCode}).',
     );
   }
+
+  Future<void> markAsRead(String notificationId) async {
+    final response = await _api.patch(
+      ApiUrls.markNotificationRead(notificationId),
+      {},
+    );
+
+    if (response.statusCode != 200) {
+      throw NotificationServiceException(
+        'Unable to mark notification as read (${response.statusCode}).',
+      );
+    }
+  }
 }
