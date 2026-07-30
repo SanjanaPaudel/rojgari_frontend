@@ -404,6 +404,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             keyboardType: TextInputType.emailAddress,
                             validator: _validateEmail,
                             textInputAction: TextInputAction.done,
+                            enabled: false,
+                            helperText: "Email address can't be changed",
                           ),
                           const SizedBox(height: 24),
                           FilledButton(
@@ -453,6 +455,8 @@ class _ProfileField extends StatelessWidget {
     required this.textInputAction,
     this.keyboardType,
     this.inputFormatters,
+    this.enabled = true,
+    this.helperText,
   });
 
   final TextEditingController controller;
@@ -462,6 +466,8 @@ class _ProfileField extends StatelessWidget {
   final TextInputAction textInputAction;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
+  final bool enabled;
+  final String? helperText;
 
   @override
   Widget build(BuildContext context) {
@@ -472,13 +478,19 @@ class _ProfileField extends StatelessWidget {
       inputFormatters: inputFormatters,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       textInputAction: textInputAction,
+      enabled: enabled,
       decoration: InputDecoration(
         labelText: label,
+        helperText: helperText,
         prefixIcon: Icon(icon),
         filled: true,
-        fillColor: const Color(0xFFFAF9FD),
+        fillColor: enabled ? const Color(0xFFFAF9FD) : const Color(0xFFF0EFF4),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.border),
         ),

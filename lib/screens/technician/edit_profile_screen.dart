@@ -415,6 +415,8 @@ class _TechnicianEditProfileScreenState
                   'Email',
                   validator: _validateEmail,
                   keyboardType: TextInputType.emailAddress,
+                  enabled: false,
+                  helperText: "Email address can't be changed",
                 ),
                 _field(_about, 'About Me', validator: _required, maxLines: 4),
                 _field(_serviceArea, 'Service areas (optional)', maxLines: 2),
@@ -452,6 +454,8 @@ class _TechnicianEditProfileScreenState
     TextInputType? keyboardType,
     int maxLines = 1,
     List<TextInputFormatter>? inputFormatters,
+    bool enabled = true,
+    String? helperText,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -461,11 +465,16 @@ class _TechnicianEditProfileScreenState
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
         maxLines: maxLines,
+        enabled: enabled,
         decoration: InputDecoration(
           labelText: label,
+          helperText: helperText,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: enabled ? Colors.white : const Color(0xFFF0EFF4),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
     );
