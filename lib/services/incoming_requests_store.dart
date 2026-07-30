@@ -1,9 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
+import '../core/constants/api_urls.dart';
 import '../models/incoming_request_model.dart';
 import '../screens/technician/debug_incoming_request_fixtures.dart';
+import 'api_service.dart';
+import 'app_web_socket.dart';
 import 'incoming_request_service.dart';
 import 'storage_service.dart';
 
@@ -23,12 +27,10 @@ import 'storage_service.dart';
 ///   how it gets kept fresh. Today that's [_fetch] on a timer; later, a
 ///   socket listener can update the same [requests] value on a push event
 ///   instead, with zero changes required in any screen.
-class IncomingRequestsStore {
+class IncomingRequestsStore with WidgetsBindingObserver {
   IncomingRequestsStore._();
 
   static final IncomingRequestsStore instance = IncomingRequestsStore._();
-
-  static const Duration pollInterval = Duration(seconds: 15);
 
   final IncomingRequestService _service = IncomingRequestService();
 
@@ -37,7 +39,8 @@ class IncomingRequestsStore {
   final ValueNotifier<List<IncomingRequest>> requests =
       ValueNotifier<List<IncomingRequest>>(const []);
 
-  Timer? _timer;
+  AppWebSocket? _socket;
+  StreamSubscription<Map<String, dynamic>>? _socketSubscription;
   int _listenerCount = 0;
 
   /// Offer IDs the worker has opened, cached in memory after the first
@@ -53,17 +56,73 @@ class IncomingRequestsStore {
   /// loading UI isn't fighting an implicit fetch happening at the same time.
   void attach() {
     _listenerCount++;
-    _timer ??= Timer.periodic(pollInterval, (_) => _fetch());
+    if (_listenerCount == 1) WidgetsBinding.instance.addObserver(this);
+    if (_socket == null) _connectSocket();
   }
 
   /// Call when a screen no longer needs live updates (e.g. in dispose).
-  /// Stops the shared timer only once nothing is listening anymore.
+  /// Closes the shared socket only once nothing is listening anymore.
   void detach() {
     if (_listenerCount > 0) _listenerCount--;
     if (_listenerCount == 0) {
-      _timer?.cancel();
-      _timer = null;
+      WidgetsBinding.instance.removeObserver(this);
+      _socketSubscription?.cancel();
+      _socket?.disconnect();
+      _socket = null;
+      _socketSubscription = null;
     }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Safety net alongside _handleSocketClosed — covers cases where the
+    // socket was never cleanly closed (e.g. the OS just suspended the app)
+    // so no onDone ever fired.
+    if (state == AppLifecycleState.resumed &&
+        _listenerCount > 0 &&
+        _socket == null) {
+      _connectSocket();
+      refreshNow();
+    }
+  }
+
+  Future<void> _connectSocket() async {
+    final token = await StorageService.getAccessToken();
+    if (token == null) return; // not logged in — nothing to connect for
+    // Everyone may have detached again while we were awaiting the token.
+    if (_listenerCount == 0) return;
+
+    final socket = AppWebSocket(ApiUrls.workerOffersSocket(token));
+    _socket = socket;
+    _socketSubscription = socket.connect().listen((_) {
+      // Payload is a single new/backfilled offer, but it's missing fields
+      // the list needs (offer id, distance, icon, created_at) — treat it
+      // as a "something changed" signal and re-fetch the real list, same
+      // as the old poll tick did.
+      refreshNow();
+    }, onDone: () => _handleSocketClosed(socket));
+  }
+
+  Future<void> _handleSocketClosed(AppWebSocket closedSocket) async {
+    if (_socket != closedSocket) return; // already superseded — ignore
+    _socket = null;
+    _socketSubscription = null;
+    if (_listenerCount == 0) return;
+
+    // 4003: authenticated but not authorized — retrying won't help.
+    if (closedSocket.closeCode == 4003) return;
+
+    // 4001: missing/expired token — refresh the session before retrying,
+    // otherwise we'd just get rejected the same way immediately again.
+    if (closedSocket.closeCode == 4001) {
+      final refreshed = await ApiService().checkAndRefreshSession();
+      if (!refreshed || _listenerCount == 0) return;
+    }
+
+    await _connectSocket();
+    // Catch up on anything that happened while disconnected — the socket
+    // only tells us about changes from here on, not what we missed.
+    refreshNow();
   }
 
   /// Forces an immediate refresh outside the normal poll cadence — e.g.
@@ -134,6 +193,4 @@ class IncomingRequestsStore {
     }
     return fresh;
   }
-
-  Future<void> _fetch() => refreshNow();
 }

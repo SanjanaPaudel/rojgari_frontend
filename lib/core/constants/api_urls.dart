@@ -174,4 +174,19 @@ class ApiUrls {
   // Response: the updated notification object (same shape as the list).
   static String markNotificationRead(String notificationId) =>
       "$baseUrl/notifications/$notificationId/read/";
+
+  // WebSocket base — same host as the REST API, but ws:// (wss:// once
+  // TLS is in place) instead of http(s)://, and no "/api" prefix — the
+  // WebSocket routes are mounted at the ASGI root, not under Django's
+  // normal urlpatterns.
+  static String get _wsBaseUrl {
+    final uri = Uri.parse(baseUrl);
+    final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
+    return '$scheme://${uri.authority}';
+  }
+
+  // WS — receive-only channel for a worker's new/backfilled offers.
+  // Message: { booking_id, customer_name, service, address, description }
+  static String workerOffersSocket(String accessToken) =>
+      '$_wsBaseUrl/ws/worker/offers/?token=$accessToken';
 }
