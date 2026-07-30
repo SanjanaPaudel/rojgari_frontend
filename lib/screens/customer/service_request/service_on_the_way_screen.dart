@@ -17,6 +17,7 @@ import '../../../models/service_request/service_category.dart';
 import '../../../models/service_request/service_category_presentation.dart';
 import '../../../models/service_request/worker_tracking_ui_state.dart';
 import '../../../core/constants/api_urls.dart';
+import '../../../services/api_service.dart';
 import '../../../services/app_web_socket.dart';
 import '../../../services/storage_service.dart';
 import '../../../widgets/customer/service_request/horizontal_service_status_tracker.dart';
@@ -361,14 +362,20 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
   /// job-progress updates. One socket replaces what used to be two separate
   /// timers polling the same REST endpoint for different fields —
   /// [_handleSocketMessage] dispatches on whichever keys each message
-  /// carries. Skipped when an external tracking/status source is supplied
-  /// (tests, preview routes), when
-  /// [ServiceOnTheWayScreen.enableLocationPolling] is false, or once already
-  /// completed.
+  /// carries. Skipped when [ServiceOnTheWayScreen.enableLocationPolling] is
+  /// false or once already completed.
+  ///
+  /// Deliberately NOT skipped when an external tracking source is supplied
+  /// (e.g. FindingServicePersonScreen's TEMP TEST-ONLY fake-walk stub) —
+  /// [_handleSocketMessage] itself ignores location-only messages in that
+  /// case, but job_progress/status messages still need to get through, since
+  /// this socket is the only way this screen learns the worker tapped Start
+  /// or Complete on their own screen. The old polling implementation ran
+  /// job-progress checks on a separate timer specifically so a fake/external
+  /// location source couldn't block real status updates too — collapsing
+  /// both into one socket connection must not lose that distinction.
   Future<void> _startTrackingSocket() async {
-    if (!widget.enableLocationPolling ||
-        _usesExternalStatusSource ||
-        _status.isCompleted) {
+    if (!widget.enableLocationPolling || _status.isCompleted) {
       return;
     }
 
@@ -377,7 +384,35 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
 
     final socket = AppWebSocket(ApiUrls.bookingSocket(widget.requestId, token));
     _socket = socket;
-    _socketSubscription = socket.connect().listen(_handleSocketMessage);
+    _socketSubscription = socket.connect().listen(
+      _handleSocketMessage,
+      onDone: () => _handleSocketClosed(socket),
+    );
+  }
+
+  /// Reconnects after the socket closes, mirroring IncomingRequestsStore's
+  /// pattern: refresh the session first on an expired token (4001) before
+  /// retrying, give up entirely on "not authorized" (4003), otherwise just
+  /// reconnect.
+  ///
+  /// Unlike FindingServicePersonScreen, this doesn't also re-fetch status
+  /// over REST on reconnect — there's no catch-up read wired in here yet, so
+  /// a job-progress/location change that happened entirely during the
+  /// disconnected gap won't be seen until the next push after reconnecting.
+  Future<void> _handleSocketClosed(AppWebSocket closedSocket) async {
+    if (_socket != closedSocket) return; // already superseded — ignore
+    _socket = null;
+    _socketSubscription = null;
+    if (!mounted || _status.isCompleted) return;
+
+    if (closedSocket.closeCode == 4003) return;
+
+    if (closedSocket.closeCode == 4001) {
+      final refreshed = await ApiService().checkAndRefreshSession();
+      if (!refreshed || !mounted || _status.isCompleted) return;
+    }
+
+    await _startTrackingSocket();
   }
 
   void _handleSocketMessage(Map<String, dynamic> message) {
@@ -398,6 +433,10 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
     }
 
     // Otherwise, a location update: {latitude, longitude}, both strings.
+    // Skip it when an external source (fake-walk stub, tests) is already
+    // driving location instead — only job_progress/status above should
+    // still get through in that case.
+    if (_usesExternalStatusSource) return;
     if (_hasReachedService) return; // Nothing left to track once arrived.
     final latitude = double.tryParse('${message['latitude']}');
     final longitude = double.tryParse('${message['longitude']}');

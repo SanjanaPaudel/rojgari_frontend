@@ -6,9 +6,11 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/constants/colors.dart';
 import '../../dev_testing/fake_worker_movement.dart';
+import '../../models/service_request/service_booking_demo_config.dart';
 import '../../models/technician/incoming_service_request_details.dart';
 import '../../repositories/technician_job/technician_job_repository_provider.dart';
 import '../../services/incoming_request_service.dart';
+import '../../services/location/location_service.dart';
 import 'incoming_request_details_screen.dart';
 import 'incoming_requests_screen.dart';
 import 'technician_active_job_screen.dart';
@@ -217,22 +219,29 @@ class _IncomingRequestDetailsLoaderState
               // (permission check, live GPS stream, PATCH .../location/
               // publishing, arrival detection).
               enableDeviceLocation: true,
-              // TEMP TEST-ONLY (remove before shipping): swaps in a fake
-              // coordinate source instead of the real device/browser GPS,
-              // walking from this job's starting position to the real
-              // customer coordinates. Everything downstream of it (arrival
-              // detection, status persistence) is the real, unmodified code
-              // path — see dev_testing/fake_worker_movement.dart.
-              locationService: FakeWorkerLocationService(
-                start: LatLng(
-                  activeJob.technicianLatitude,
-                  activeJob.technicianLongitude,
-                ),
-                destination: LatLng(
-                  activeJob.customerLatitude,
-                  activeJob.customerLongitude,
-                ),
-              ),
+              // TEMP TEST-ONLY (remove before shipping): when
+              // ServiceBookingDemoConfig.useFakeWorkerMovement is true, swaps
+              // in a fake coordinate source instead of the real
+              // device/browser GPS, walking from this job's starting
+              // position to the real customer coordinates. Everything
+              // downstream of it (arrival detection, status persistence) is
+              // the real, unmodified code path — see
+              // dev_testing/fake_worker_movement.dart. When the flag is
+              // false, omitting this parameter falls back to
+              // TechnicianActiveJobScreen's own default — the real
+              // LocationService reading actual device GPS.
+              locationService: ServiceBookingDemoConfig.useFakeWorkerMovement
+                  ? FakeWorkerLocationService(
+                      start: LatLng(
+                        activeJob.technicianLatitude,
+                        activeJob.technicianLongitude,
+                      ),
+                      destination: LatLng(
+                        activeJob.customerLatitude,
+                        activeJob.customerLongitude,
+                      ),
+                    )
+                  : const LocationService(),
             ),
           ),
         );

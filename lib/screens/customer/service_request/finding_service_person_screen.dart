@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/constants/api_urls.dart';
+import '../../../services/api_service.dart';
 import '../../../services/app_web_socket.dart';
 import '../../../services/storage_service.dart';
 
@@ -188,7 +189,10 @@ class _FindingServicePersonScreenState
 
     final socket = AppWebSocket(ApiUrls.bookingSocket(widget.requestId, token));
     _socket = socket;
-    _socketSubscription = socket.connect().listen(_handleSocketMessage);
+    _socketSubscription = socket.connect().listen(
+      _handleSocketMessage,
+      onDone: () => _handleSocketClosed(socket),
+    );
 
     // Second read, now that we're actually subscribed — closes the gap
     // between the first read above and the socket finishing its handshake
@@ -203,6 +207,28 @@ class _FindingServicePersonScreenState
     if (message['status'] == 'assigned') {
       unawaited(_checkStatusOnce());
     }
+  }
+
+  /// Reconnects after the socket closes, mirroring IncomingRequestsStore's
+  /// pattern: refresh the session first on an expired token (4001) before
+  /// retrying, give up entirely on "not authorized" (4003), otherwise just
+  /// reconnect. [_startStatusSocket] already does a status check both
+  /// before and after connecting, so reconnecting through it also covers
+  /// catching up on anything missed while disconnected.
+  Future<void> _handleSocketClosed(AppWebSocket closedSocket) async {
+    if (_socket != closedSocket) return; // already superseded — ignore
+    _socket = null;
+    _socketSubscription = null;
+    if (!mounted || !_status.isSearching) return;
+
+    if (closedSocket.closeCode == 4003) return;
+
+    if (closedSocket.closeCode == 4001) {
+      final refreshed = await ApiService().checkAndRefreshSession();
+      if (!refreshed || !mounted || !_status.isSearching) return;
+    }
+
+    await _startStatusSocket();
   }
 
   /// Fetches full booking status over REST — used for the initial read and
@@ -276,18 +302,23 @@ class _FindingServicePersonScreenState
       // TEMP TEST-ONLY (remove before shipping): drives the tracking screen's
       // marker with a fake coordinate walk from the worker's accepted
       // position to this real service location, since manually moving a
-      // real device there isn't practical for this test — see
+      // real device there isn't always practical for testing — see
       // dev_testing/fake_worker_movement.dart. Supplying trackingListenable
-      // below is what makes ServiceOnTheWayScreen disable its own real
-      // location polling and demo timers, so nothing auto-advances past
-      // "arrived" (no working/completed/rate navigation).
-      final fakeTracking = FakeWorkerTrackingController(
-        start: worker.coordinate,
-        destination: LatLng(
-          widget.serviceLocation.latitude,
-          widget.serviceLocation.longitude,
-        ),
-      );
+      // is what makes ServiceOnTheWayScreen skip real location updates (it
+      // still processes real job_progress/status pushes regardless — see
+      // that screen's _handleSocketMessage). Gated by
+      // ServiceBookingDemoConfig.useFakeWorkerMovement so flipping that one
+      // flag switches both this screen and the worker's active-job screen to
+      // real GPS together.
+      final fakeTracking = ServiceBookingDemoConfig.useFakeWorkerMovement
+          ? FakeWorkerTrackingController(
+              start: worker.coordinate,
+              destination: LatLng(
+                widget.serviceLocation.latitude,
+                widget.serviceLocation.longitude,
+              ),
+            )
+          : null;
       Navigator.pushReplacement<void, void>(
         context,
         MaterialPageRoute(
@@ -300,7 +331,7 @@ class _FindingServicePersonScreenState
             worker: worker,
             onSubmitReview: widget.onSubmitReview,
             onBackToHome: widget.onBackToHome,
-            trackingListenable: fakeTracking.notifier,
+            trackingListenable: fakeTracking?.notifier,
             onCancelRequested: () async {
               await _statusService.cancelBooking(widget.requestId);
               return true;
