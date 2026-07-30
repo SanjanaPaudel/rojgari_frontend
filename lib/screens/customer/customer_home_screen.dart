@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/api_urls.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/models/category_model.dart';
+import 'package:rojgari_frontend_one/models/customer/booking_history_item.dart';
 import 'package:rojgari_frontend_one/models/customer_profile_model.dart';
+import 'package:rojgari_frontend_one/screens/customer/customer_bookings_history_screen.dart';
 import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
 import 'package:rojgari_frontend_one/screens/notifications_screen.dart';
 import 'package:rojgari_frontend_one/services/api_service.dart';
 import 'package:rojgari_frontend_one/services/customer_profile_service.dart';
 import 'package:rojgari_frontend_one/services/fcm_service.dart';
 import 'package:rojgari_frontend_one/widgets/category_card.dart';
+import 'package:rojgari_frontend_one/widgets/customer/booking_history_card.dart';
 import 'package:rojgari_frontend_one/screens/customer/service_request/service_request_screen.dart';
 import '../../models/service_request/service_category.dart';
 import 'package:rojgari_frontend_one/services/notification_service.dart';
@@ -38,39 +41,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   final NotificationService _notificationService = NotificationService();
   int _notificationCount = 0;
 
-  // BACKEND TODO:
-  // Replace _recentJobs with response.recentJobs from GET /customer/dashboard.
-  // Backend fields should replace these values:
-  // bookingId -> bookingId, serviceName -> title, issueDescription -> issue,
-  // bookingStatus -> status, updatedAt/createdAt label -> timeLabel,
-  // categoryIcon/imageUrl -> iconPath.
-  // Keep status values close to: completed, in_progress, booked, pending, cancelled.
-  static const List<_RecentJob> _recentJobs = [
-    _RecentJob(
-      bookingId: 'booking_001',
-      title: 'Plumbing Service',
-      issue: 'Leakage in bathroom pipe',
-      status: 'Completed',
-      timeLabel: '2 days ago',
-      iconPath: 'assets/images/plumbing_icon.png',
-    ),
-    _RecentJob(
-      bookingId: 'booking_002',
-      title: 'Electrician Service',
-      issue: 'Switch board not working',
-      status: 'In Progress',
-      timeLabel: 'Yesterday',
-      iconPath: 'assets/images/electrician_icon.png',
-    ),
-    _RecentJob(
-      bookingId: 'booking_003',
-      title: 'AC Repair',
-      issue: 'Cooling service check',
-      status: 'Booked',
-      timeLabel: 'Today, 4 PM',
-      iconPath: 'assets/images/ac_repair_icon.png',
-    ),
-  ];
+  // The 3 most recent entries of the shared booking-history source — the
+  // same list CustomerBookingsHistoryScreen ("View All") shows in full, so
+  // this preview can never drift out of sync with it.
+  static final List<BookingHistoryItem> _recentJobs = sampleBookingHistory
+      .take(3)
+      .toList();
 
   // BACKEND TODO:
   // Replace _infoCards with response.verificationInfo and response.supportInfo.
@@ -197,10 +173,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   title: 'Bookings',
                   trailing: _ViewAllButton(
                     onTap: () {
-                      // NAVIGATION TODO:
-                      // Replace with all-bookings screen route when ready.
-                      // Example:
-                      // Navigator.push(context, MaterialPageRoute(builder: (_) => CustomerBookingsScreen()));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CustomerBookingsHistoryScreen(),
+                        ),
+                      );
                     },
                   ),
                 ),
@@ -213,7 +191,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       .map(
                         (job) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: _RecentJobCard(job: job),
+                          child: BookingHistoryCard(booking: job),
                         ),
                       )
                       .toList(),
@@ -765,137 +743,6 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-class _RecentJobCard extends StatelessWidget {
-  const _RecentJobCard({required this.job});
-
-  final _RecentJob job;
-
-  @override
-  Widget build(BuildContext context) {
-    final statusStyle = _BookingStatusStyle.fromBackend(job.status);
-
-    return Material(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          // NAVIGATION TODO:
-          // Replace with booking details screen later.
-          // Pass job.bookingId to the details page:
-          // Navigator.push(context, MaterialPageRoute(builder: (_) => BookingDetailsScreen(bookingId: job.bookingId)));
-        },
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFEFE9FF)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F7FF),
-                  shape: BoxShape.circle,
-                ),
-                child: Image.asset(job.iconPath, fit: BoxFit.contain),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            job.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.black,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          job.timeLabel,
-                          style: const TextStyle(
-                            color: AppColors.grey,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      job.issue,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.grey,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusStyle.backgroundColor,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        statusStyle.label,
-                        style: TextStyle(
-                          color: statusStyle.textColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Material(
-                color: AppColors.lightPurple,
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    // NAVIGATION TODO:
-                    // Replace with booking details screen later.
-                    // Pass job.bookingId to the details page:
-                    // Navigator.push(context, MaterialPageRoute(builder: (_) => BookingDetailsScreen(bookingId: job.bookingId)));
-                  },
-                  child: const SizedBox(
-                    width: 42,
-                    height: 42,
-                    child: Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      color: AppColors.primary,
-                      size: 17,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title, this.trailing});
 
@@ -996,75 +843,6 @@ class _CircleIconButton extends StatelessWidget {
   }
 }
 
-class _RecentJob {
-  final String bookingId;
-  final String title;
-  final String issue;
-  final String status;
-  final String timeLabel;
-  final String iconPath;
-
-  const _RecentJob({
-    required this.bookingId,
-    required this.title,
-    required this.issue,
-    required this.status,
-    required this.timeLabel,
-    required this.iconPath,
-  });
-}
-
-class _BookingStatusStyle {
-  final String label;
-  final Color textColor;
-  final Color backgroundColor;
-
-  const _BookingStatusStyle({
-    required this.label,
-    required this.textColor,
-    required this.backgroundColor,
-  });
-
-  // BACKEND TODO:
-  // Keep backend bookingStatus values simple and consistent:
-  // completed, in_progress, booked, pending, cancelled.
-  // If backend sends a new status, add one case here only; the booking card UI
-  // will update automatically without changing the widget layout.
-  factory _BookingStatusStyle.fromBackend(String status) {
-    switch (status.trim().toLowerCase().replaceAll(' ', '_')) {
-      case 'completed':
-        return _BookingStatusStyle(
-          label: 'Completed',
-          textColor: AppColors.green,
-          backgroundColor: AppColors.green.withValues(alpha: .12),
-        );
-      case 'in_progress':
-        return const _BookingStatusStyle(
-          label: 'In Progress',
-          textColor: Color(0xFF1877F2),
-          backgroundColor: Color(0xFFEAF2FF),
-        );
-      case 'booked':
-        return const _BookingStatusStyle(
-          label: 'Booked',
-          textColor: AppColors.primary,
-          backgroundColor: AppColors.lightPurple,
-        );
-      case 'cancelled':
-        return const _BookingStatusStyle(
-          label: 'Cancelled',
-          textColor: AppColors.red,
-          backgroundColor: Color(0xFFFFECEC),
-        );
-      default:
-        return const _BookingStatusStyle(
-          label: 'Pending',
-          textColor: Color(0xFF8A5A00),
-          backgroundColor: Color(0xFFFFF3D6),
-        );
-    }
-  }
-}
 
 class _InfoCardData {
   final String title;
