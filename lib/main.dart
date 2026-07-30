@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
+import 'package:rojgari_frontend_one/screens/notifications_screen.dart';
 import 'package:rojgari_frontend_one/services/navigation_service.dart';
 // import 'package:rojgari_frontend_one/screens/auth/logIn_screen.dart';
 // import 'screens/auth/signup_screen.dart';
@@ -18,6 +19,7 @@ import 'screens/splash/splash_screen.dart';
 // import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
 // import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
 // import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
+// import 'package:rojgari_frontend_one/screens/notifications_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -50,6 +52,7 @@ class MyApp extends StatelessWidget {
       // home: ForgotPasswordEmailScreen(),
       // home: SkillSelectionScreen()
       home: SplashScreen(),
+      // home: NotificationsScreen(),
 
       // The Incoming Request Details page is reached by tapping a request on
       // the technician home screen or the All Incoming Requests screen. It is

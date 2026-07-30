@@ -17,6 +17,7 @@ import '../../widgets/technician/incoming_request_card.dart';
 import '../../widgets/technician/profile_header.dart';
 import '../../widgets/technician/stat_card.dart';
 import '../../widgets/technician/pro_tip_card.dart';
+import '../notifications_screen.dart';
 import 'incoming_request_details_loader.dart';
 import 'incoming_requests_screen.dart';
 import 'profile_screen.dart';
@@ -683,10 +684,10 @@ class _DashboardBody extends StatelessWidget {
                 debugPrint('Messages clicked');
               },
               onNotificationTap: () {
-                // NAVIGATION PLACE:
-                // Later create notifications page and use:
-                // Navigator.pushNamed(context, AppRoutes.notifications);
-                debugPrint('Notifications clicked');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                );
               },
             ),
           ),

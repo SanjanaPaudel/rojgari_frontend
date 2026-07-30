@@ -5,6 +5,7 @@ import 'package:rojgari_frontend_one/core/constants/colors.dart';
 import 'package:rojgari_frontend_one/models/category_model.dart';
 import 'package:rojgari_frontend_one/models/customer_profile_model.dart';
 import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
+import 'package:rojgari_frontend_one/screens/notifications_screen.dart';
 import 'package:rojgari_frontend_one/services/api_service.dart';
 import 'package:rojgari_frontend_one/services/customer_profile_service.dart';
 import 'package:rojgari_frontend_one/widgets/category_card.dart';
@@ -240,10 +241,12 @@ class _TopBar extends StatelessWidget {
                   borderColor: Colors.transparent,
                   iconSize: 30,
                   onTap: () {
-                    // NAVIGATION TODO:
-                    // Replace with notifications screen route when ready.
-                    // Example:
-                    // Navigator.push(context, MaterialPageRoute(builder: (_) => CustomerNotificationsScreen()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationsScreen(),
+                      ),
+                    );
                   },
                 ),
                 if (notificationCount > 0)
