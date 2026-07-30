@@ -12,6 +12,7 @@ import 'package:rojgari_frontend_one/services/fcm_service.dart';
 import 'package:rojgari_frontend_one/widgets/category_card.dart';
 import 'package:rojgari_frontend_one/screens/customer/service_request/service_request_screen.dart';
 import '../../models/service_request/service_category.dart';
+import 'package:rojgari_frontend_one/services/notification_service.dart';
 
 void openServiceRequestPage(BuildContext context, ServiceCategory category) {
   Navigator.push(
@@ -34,13 +35,8 @@ class CustomerHomeScreen extends StatefulWidget {
 }
 
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
-  // BACKEND TODO:
-  // Replace _notificationCount with response.notificationCount from:
-  // GET /customer/dashboard
-  // Example:
-  // final dashboard = await customerDashboardService.getDashboard();
-  // notificationCount: dashboard.notificationCount
-  static const int _notificationCount = 2;
+  final NotificationService _notificationService = NotificationService();
+  int _notificationCount = 0;
 
   // BACKEND TODO:
   // Replace _recentJobs with response.recentJobs from GET /customer/dashboard.
@@ -102,6 +98,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+    _loadUnreadCount();
     // Fire-and-forget: shows the OS/browser notification permission prompt
     // after this screen has rendered, rather than blocking login/splash
     // navigation on it. See FcmService for why failures here are swallowed.
@@ -118,6 +115,18 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       // a network error — it silently falls back to a nameless "Hello 👋"
       // (see _ProfileHeader) and the profile screen itself already shows
       // its own real error/retry state if something's actually wrong.
+    }
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await _notificationService.fetchUnreadCount();
+      if (!mounted) return;
+      setState(() => _notificationCount = count);
+    } catch (_) {
+      // Same reasoning as _loadProfile(): this is just a badge, not a
+      // page that should block or show an error — it silently stays at
+      // its last known value (0 on first load) if the fetch fails.
     }
   }
 

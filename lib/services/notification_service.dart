@@ -45,4 +45,22 @@ class NotificationService {
       'Unable to load notifications (${response.statusCode}).',
     );
   }
+
+  Future<int> fetchUnreadCount() async {
+    final response = await _api.get(ApiUrls.unreadNotificationCount);
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic> && decoded['unread_count'] is int) {
+        return decoded['unread_count'] as int;
+      }
+      throw const NotificationServiceException(
+        'Unexpected response while loading the unread count.',
+      );
+    }
+
+    throw NotificationServiceException(
+      'Unable to load the unread count (${response.statusCode}).',
+    );
+  }
 }

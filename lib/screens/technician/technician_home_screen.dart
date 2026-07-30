@@ -11,6 +11,7 @@ import '../../models/worker_dashboard_response.dart';
 import '../../services/fcm_service.dart';
 import '../../services/location/location_service.dart';
 import '../../services/incoming_requests_store.dart';
+import '../../services/notification_service.dart';
 import '../../services/worker_dashboard_service.dart';
 
 import '../../widgets/technician/dashboard_appbar.dart';
@@ -40,6 +41,9 @@ class TechnicianHomeScreen extends StatefulWidget {
 class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   final WorkerDashboardService _dashboardService = WorkerDashboardService();
   final LocationService _locationService = const LocationService();
+  final NotificationService _notificationService = NotificationService();
+
+  int _unreadNotificationCount = 0;
 
   WorkerDashboardResponse? _dashboard;
   bool _isLoading = true;
@@ -83,6 +87,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     // after this screen has rendered, rather than blocking login/splash
     // navigation on it. See FcmService for why failures here are swallowed.
     FcmService.initialize();
+    _loadUnreadNotificationCount();
     // Set safe defaults before the API responds.
     isOnline = false;
     _profile =
@@ -103,6 +108,16 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkLocationOnStartup();
     });
+  }
+
+  Future<void> _loadUnreadNotificationCount() async {
+    try {
+      final count = await _notificationService.fetchUnreadCount();
+      if (!mounted) return;
+      setState(() => _unreadNotificationCount = count);
+    } catch (_) {
+      // Just a badge — stays at its last known value on failure.
+    }
   }
 
   /// Opens the detail page for a pending offer. It pops `true` after a
@@ -580,6 +595,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                 valueListenable: IncomingRequestsStore.instance.requests,
                 builder: (context, requests, _) => _DashboardBody(
                   dashboard: _dashboard!,
+                  unreadNotificationCount: _unreadNotificationCount,
                   profile: _profile,
                   isOnline: isOnline,
                   requests: requests,
@@ -646,6 +662,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
 class _DashboardBody extends StatelessWidget {
   const _DashboardBody({
     required this.dashboard,
+    required this.unreadNotificationCount,
     required this.profile,
     required this.isOnline,
     required this.requests,
@@ -659,6 +676,7 @@ class _DashboardBody extends StatelessWidget {
   });
 
   final WorkerDashboardResponse dashboard;
+  final int unreadNotificationCount;
   final TechnicianModel profile;
   final bool isOnline;
   final List<IncomingRequest> requests;
@@ -685,7 +703,7 @@ class _DashboardBody extends StatelessWidget {
           Transform.translate(
             offset: const Offset(0, -3),
             child: DashboardAppbar(
-              notificationCount: dashboard.notifications,
+              notificationCount: unreadNotificationCount,
               onMenuTap: onMenuTap,
               onNotificationTap: () {
                 Navigator.push(

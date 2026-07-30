@@ -164,4 +164,9 @@ class ApiUrls {
   // list view's own route is "" (empty) — under the "api/auth/" mount that
   // resolves to the bare "/api/auth/" path, not "/api/auth/notifications/".
   static const String notifications = "$baseUrl/notifications/";
+
+  // GET — how many of the logged-in user's notifications are unread.
+  // Response: { "unread_count": <int> }
+  static const String unreadNotificationCount =
+      "$baseUrl/notifications/unread-count/";
 }
