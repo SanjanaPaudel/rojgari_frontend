@@ -148,4 +148,10 @@ class ApiUrls {
   // it with resolveMediaUrl() before displaying.
   static const String customerProfilePhoto =
       "$baseUrl/auth/customer/profile-photo/";
+
+  // POST — registers this device's FCM token so the backend can push
+  // notifications to it (booking_accepted / booking_rejected today).
+  // Request: { "device_token": "<fcm token>", "device_type": "android" }
+  // Response: { "message": "Device registered successfully." }
+  static const String deviceToken = "$baseUrl/auth/device-token/";
 }

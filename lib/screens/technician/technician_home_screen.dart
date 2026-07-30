@@ -8,6 +8,7 @@ import '../../core/constants/colors.dart';
 import '../../models/incoming_request_model.dart';
 import '../../models/technician_model.dart';
 import '../../models/worker_dashboard_response.dart';
+import '../../services/fcm_service.dart';
 import '../../services/location/location_service.dart';
 import '../../services/incoming_requests_store.dart';
 import '../../services/worker_dashboard_service.dart';
@@ -78,6 +79,10 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Fire-and-forget: shows the OS/browser notification permission prompt
+    // after this screen has rendered, rather than blocking login/splash
+    // navigation on it. See FcmService for why failures here are swallowed.
+    FcmService.initialize();
     // Set safe defaults before the API responds.
     isOnline = false;
     _profile =
@@ -151,7 +156,8 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
           selectedSkills: List<String>.from(dashboard.worker.skills),
           verificationStatus: dashboard.worker.verified
               ? TechnicianVerificationStatus.verified
-              : profile.verificationStatus, // pending or incomplete from getProfile()
+              : profile
+                    .verificationStatus, // pending or incomplete from getProfile()
         );
       });
 
@@ -159,7 +165,8 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
       // periodic location updates after verifying permission is still granted.
       if (dashboard.worker.isOnline) {
         final permission = await _locationService.checkPermission();
-        final serviceEnabled = await _locationService.isLocationServiceEnabled();
+        final serviceEnabled = await _locationService
+            .isLocationServiceEnabled();
         if (permission == AppLocationPermission.granted && serviceEnabled) {
           _startLocationUpdates();
         } else {
@@ -241,7 +248,8 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
       if (!mounted) return false;
 
       if (permission == AppLocationPermission.granted) {
-        final serviceEnabled = await _locationService.isLocationServiceEnabled();
+        final serviceEnabled = await _locationService
+            .isLocationServiceEnabled();
         if (!serviceEnabled) {
           _showServiceDisabledSnackbar();
           return false;
@@ -290,7 +298,9 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text(
             'Location Permission Blocked',
             style: TextStyle(fontWeight: FontWeight.bold),
@@ -301,7 +311,10 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.grey)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppColors.grey),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -411,10 +424,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(reason),
-        backgroundColor: AppColors.orange,
-      ),
+      SnackBar(content: Text(reason), backgroundColor: AppColors.orange),
     );
   }
 
@@ -465,7 +475,8 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
         // is permanent — location switched off or permission revoked — so a
         // transient GPS failure just waits for the next tick.
         debugPrint('[Location] ✗ Could not get a fix: $e');
-        final serviceEnabled = await _locationService.isLocationServiceEnabled();
+        final serviceEnabled = await _locationService
+            .isLocationServiceEnabled();
         final permission = await _locationService.checkPermission();
         if ((!serviceEnabled || permission != AppLocationPermission.granted) &&
             mounted) {
@@ -674,19 +685,14 @@ class _DashboardBody extends StatelessWidget {
           Transform.translate(
             offset: const Offset(0, -3),
             child: DashboardAppbar(
-              messageCount: dashboard.messages,
               notificationCount: dashboard.notifications,
               onMenuTap: onMenuTap,
-              onMessageTap: () {
-                // NAVIGATION PLACE:
-                // Later create messages page and use:
-                // Navigator.pushNamed(context, AppRoutes.messages);
-                debugPrint('Messages clicked');
-              },
               onNotificationTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationsScreen(),
+                  ),
                 );
               },
             ),

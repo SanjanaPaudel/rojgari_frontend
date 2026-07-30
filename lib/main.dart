@@ -1,6 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
-import 'package:rojgari_frontend_one/screens/notifications_screen.dart';
+import 'package:rojgari_frontend_one/firebase_options.dart';
+import 'package:rojgari_frontend_one/services/fcm_service.dart';
 import 'package:rojgari_frontend_one/services/navigation_service.dart';
 // import 'package:rojgari_frontend_one/screens/auth/logIn_screen.dart';
 // import 'screens/auth/signup_screen.dart';
@@ -21,7 +25,17 @@ import 'screens/splash/splash_screen.dart';
 // import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
 // import 'package:rojgari_frontend_one/screens/notifications_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // On web, background messages are handled entirely by
+  // web/firebase-messaging-sw.js (a separate JS service worker, not this
+  // Dart isolate), so registering the Dart-side handler there is redundant.
+  if (!kIsWeb) {
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  }
+
   runApp(const MyApp());
 }
 

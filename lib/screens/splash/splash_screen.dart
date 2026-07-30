@@ -7,10 +7,6 @@ import 'package:rojgari_frontend_one/screens/auth/skill_selection_screen.dart';
 import 'package:rojgari_frontend_one/services/storage_service.dart';
 import 'package:rojgari_frontend_one/services/api_service.dart';
 
-
-
-
-
 /*
   import '../../services/storage_service.dart';
   import '../auth/login_screen.dart';
@@ -61,9 +57,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!isSessionValid) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => LoginScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => LoginScreen()),
       );
       return;
     }
@@ -85,9 +79,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) => destination,
-      ),
+      MaterialPageRoute(builder: (context) => destination),
     );
   }
 
@@ -116,11 +108,7 @@ class _SplashScreenState extends State<SplashScreen>
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const Positioned(
-                    top: 130,
-                    left: 35,
-                    child: _DotDecoration(),
-                  ),
+                  const Positioned(top: 130, left: 35, child: _DotDecoration()),
 
                   const Positioned(
                     top: 210,
@@ -134,10 +122,7 @@ class _SplashScreenState extends State<SplashScreen>
                     right: 0,
                     child: Column(
                       children: [
-                        Image.asset(
-                          "assets/images/logo_r.png",
-                          height: 78,
-                        ),
+                        Image.asset("assets/images/logo_r.png", height: 78),
 
                         Transform.translate(
                           offset: const Offset(0, -24),
@@ -191,9 +176,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                   Positioned.fill(
                     top: cardTop,
-                    child: _WelcomeCard(
-                      letterAnimation: _letterController,
-                    ),
+                    child: _WelcomeCard(letterAnimation: _letterController),
                   ),
                 ],
               ),
@@ -212,9 +195,7 @@ class _SplashScreenState extends State<SplashScreen>
 class _WelcomeCard extends StatelessWidget {
   final Animation<double> letterAnimation;
 
-  const _WelcomeCard({
-    required this.letterAnimation,
-  });
+  const _WelcomeCard({required this.letterAnimation});
 
   @override
   Widget build(BuildContext context) {
@@ -229,96 +210,88 @@ class _WelcomeCard extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Positioned(
-            left: -18,
-            bottom: -18,
-            child: _BottomLeafDecoration(),
-          ),
+          Positioned(left: -18, bottom: -18, child: _BottomLeafDecoration()),
 
-          Column(
-            children: [
-              const _WelcomeTitle(),
+          SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const _WelcomeTitle(),
 
-              const SizedBox(height: 4),
+                const SizedBox(height: 4),
 
-              _AnimatedRojgariLogo(
-                animation: letterAnimation,
-              ),
+                _AnimatedRojgariLogo(animation: letterAnimation),
 
-              const SizedBox(height: 6),
+                const SizedBox(height: 6),
 
-              const Text(
-                "Your trusted home service partner",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 17,
-                  color: Color(0xff77738A),
+                const Text(
+                  "Your trusted home service partner",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 17, color: Color(0xff77738A)),
                 ),
-              ),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              const Row(
-                children: [
-                  Expanded(
-                    child: _FeatureBox(
-                      icon: Icons.verified_user_outlined,
-                      title: "Verified",
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: _FeatureBox(
-                      icon: Icons.calendar_month_outlined,
-                      title: "Fast",
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: _FeatureBox(
-                      icon: Icons.security_outlined,
-                      title: "Safe",
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 25),
-
-              TweenAnimationBuilder<double>(
-                tween: Tween<double>(
-                  begin: 0,
-                  end: 1,
-                ),
-                // To change purple line time.
-                // Better later: use splashDurationSeconds here too.
-                duration: const Duration(seconds: 8),
-                builder: (context, value, child) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: LinearProgressIndicator(
-                      value: value,
-                      minHeight: 8,
-                      backgroundColor: const Color(0xffE8DDFF),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        Color(0xff6E4AE3),
+                const Row(
+                  children: [
+                    Expanded(
+                      child: _FeatureBox(
+                        icon: Icons.verified_user_outlined,
+                        title: "Verified",
                       ),
                     ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 18),
-
-              const Text(
-                "Preparing your experience...",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xff77738A),
-                  fontWeight: FontWeight.w500,
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: _FeatureBox(
+                        icon: Icons.calendar_month_outlined,
+                        title: "Fast",
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: _FeatureBox(
+                        icon: Icons.security_outlined,
+                        title: "Safe",
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 25),
+
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: 1),
+                  // To change purple line time.
+                  // Better later: use splashDurationSeconds here too.
+                  duration: const Duration(seconds: 8),
+                  builder: (context, value, child) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: LinearProgressIndicator(
+                        value: value,
+                        minHeight: 8,
+                        backgroundColor: const Color(0xffE8DDFF),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xff6E4AE3),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 18),
+
+                const Text(
+                  "Preparing your experience...",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xff77738A),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -349,12 +322,17 @@ class _WelcomeTitle extends StatelessWidget {
 
         const SizedBox(width: 14),
 
-        const Text(
-          "Welcome to",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: Color(0xff171633),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              "Welcome to",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: Color(0xff171633),
+              ),
+            ),
           ),
         ),
 
@@ -380,9 +358,7 @@ class _WelcomeTitle extends StatelessWidget {
 class _AnimatedRojgariLogo extends StatelessWidget {
   final Animation<double> animation;
 
-  const _AnimatedRojgariLogo({
-    required this.animation,
-  });
+  const _AnimatedRojgariLogo({required this.animation});
 
   @override
   Widget build(BuildContext context) {
@@ -394,22 +370,12 @@ class _AnimatedRojgariLogo extends StatelessWidget {
     final Animation<Offset> slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.25),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutBack,
-      ),
-    );
+    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutBack));
 
     final Animation<double> scaleAnimation = Tween<double>(
       begin: 0.85,
       end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutBack,
-      ),
-    );
+    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutBack));
 
     return FadeTransition(
       opacity: fadeAnimation,
@@ -436,10 +402,7 @@ class _FeatureBox extends StatelessWidget {
   final IconData icon;
   final String title;
 
-  const _FeatureBox({
-    required this.icon,
-    required this.title,
-  });
+  const _FeatureBox({required this.icon, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -449,19 +412,12 @@ class _FeatureBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: const Color(0xffDCCFFF),
-          width: 1.3,
-        ),
+        border: Border.all(color: const Color(0xffDCCFFF), width: 1.3),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            color: const Color(0xff5C31D6),
-            size: 30,
-          ),
+          Icon(icon, color: const Color(0xff5C31D6), size: 30),
 
           const SizedBox(width: 8),
 
@@ -498,7 +454,7 @@ class _DotDecoration extends StatelessWidget {
         runSpacing: 10,
         children: List.generate(
           12,
-              (index) => Container(
+          (index) => Container(
             width: 5,
             height: 5,
             decoration: const BoxDecoration(
@@ -522,10 +478,7 @@ class _CircleDecoration extends StatelessWidget {
       height: 120,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(
-          color: const Color(0xffDCCFFF),
-          width: 1.5,
-        ),
+        border: Border.all(color: const Color(0xffDCCFFF), width: 1.5),
       ),
     );
   }

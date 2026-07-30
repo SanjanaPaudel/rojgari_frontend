@@ -8,6 +8,7 @@ import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
 import 'package:rojgari_frontend_one/screens/notifications_screen.dart';
 import 'package:rojgari_frontend_one/services/api_service.dart';
 import 'package:rojgari_frontend_one/services/customer_profile_service.dart';
+import 'package:rojgari_frontend_one/services/fcm_service.dart';
 import 'package:rojgari_frontend_one/widgets/category_card.dart';
 import 'package:rojgari_frontend_one/screens/customer/service_request/service_request_screen.dart';
 import '../../models/service_request/service_category.dart';
@@ -101,6 +102,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+    // Fire-and-forget: shows the OS/browser notification permission prompt
+    // after this screen has rendered, rather than blocking login/splash
+    // navigation on it. See FcmService for why failures here are swallowed.
+    FcmService.initialize();
   }
 
   Future<void> _loadProfile() async {

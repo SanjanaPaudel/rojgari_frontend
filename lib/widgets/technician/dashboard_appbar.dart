@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 
 class DashboardAppbar extends StatelessWidget {
-  final int messageCount;
   final int notificationCount;
   final VoidCallback? onMenuTap;
-  final VoidCallback? onMessageTap;
   final VoidCallback? onNotificationTap;
 
   const DashboardAppbar({
     super.key,
-    required this.messageCount,
     required this.notificationCount,
     this.onMenuTap,
-    this.onMessageTap,
     this.onNotificationTap,
   });
 
@@ -43,20 +39,10 @@ class DashboardAppbar extends StatelessWidget {
             ),
             Align(
               alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _TopIconWithBadge(
-                    icon: Icons.chat_bubble_outline,
-                    count: messageCount,
-                    onTap: onMessageTap,
-                  ),
-                  _TopIconWithBadge(
-                    icon: Icons.notifications_none,
-                    count: notificationCount,
-                    onTap: onNotificationTap,
-                  ),
-                ],
+              child: _TopIconWithBadge(
+                icon: Icons.notifications_none,
+                count: notificationCount,
+                onTap: onNotificationTap,
               ),
             ),
           ],
