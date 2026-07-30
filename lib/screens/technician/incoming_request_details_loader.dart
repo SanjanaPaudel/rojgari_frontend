@@ -10,17 +10,11 @@ import '../../models/service_request/service_booking_demo_config.dart';
 import '../../models/technician/incoming_service_request_details.dart';
 import '../../repositories/technician_job/technician_job_repository_provider.dart';
 import '../../services/incoming_request_service.dart';
+import '../../services/incoming_requests_store.dart';
 import '../../services/location/location_service.dart';
 import 'incoming_request_details_screen.dart';
 import 'incoming_requests_screen.dart';
 import 'technician_active_job_screen.dart';
-
-/// How often to quietly re-check the offer's status while the worker is
-/// sitting on this screen, so an expiry or another worker taking it is
-/// noticed without waiting for the worker to tap Accept/Decline. The offer
-/// window itself is 120 seconds server-side, so this gives several checks
-/// within that time.
-const Duration _staleCheckInterval = Duration(seconds: 12);
 
 /// Fetches one incoming request and hands it to [IncomingRequestDetailsScreen].
 ///
@@ -49,17 +43,25 @@ class _IncomingRequestDetailsLoaderState
   IncomingServiceRequestDetails? _request;
   bool _isLoading = true;
   String? _error;
-  Timer? _staleCheckTimer;
+  bool _staleCheckInFlight = false;
 
   @override
   void initState() {
     super.initState();
+    // Reference-counted — safe alongside whichever screen underneath (home
+    // preview or the full list) already attached; the socket itself is
+    // shared, not duplicated per screen.
+    IncomingRequestsStore.instance.attach();
+    IncomingRequestsStore.instance.requests.addListener(_handleOffersChanged);
     _load();
   }
 
   @override
   void dispose() {
-    _staleCheckTimer?.cancel();
+    IncomingRequestsStore.instance.requests.removeListener(
+      _handleOffersChanged,
+    );
+    IncomingRequestsStore.instance.detach();
     super.dispose();
   }
 
@@ -76,7 +78,6 @@ class _IncomingRequestDetailsLoaderState
         _request = request;
         _isLoading = false;
       });
-      _startStaleCheck();
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -86,31 +87,38 @@ class _IncomingRequestDetailsLoaderState
     }
   }
 
-  /// Quietly re-fetches this offer on a timer so an expiry or another
-  /// worker accepting it first is noticed while the worker is just looking
-  /// at the screen, not only when they tap Accept/Decline. Uses the exact
-  /// same detail endpoint the initial load already uses — no new endpoint,
-  /// no visible loading state.
-  void _startStaleCheck() {
-    _staleCheckTimer?.cancel();
-    _staleCheckTimer = Timer.periodic(_staleCheckInterval, (_) async {
+  /// Fires on every change to IncomingRequestsStore's shared pending-offers
+  /// list — kept fresh by IncomingRequestsStore's own socket (new offers,
+  /// backfills, offer_cancelled pushes), not a poll of our own. If this
+  /// screen's offer is no longer in that list, it's no longer pending —
+  /// expired, accepted by someone else, or cancelled — so do one REST fetch
+  /// to find out which, for the differentiated message below.
+  void _handleOffersChanged() {
+    if (!mounted || _isLoading || _error != null) return;
+    final stillPending = IncomingRequestsStore.instance.requests.value.any(
+      (request) => request.id == widget.offerId,
+    );
+    if (!stillPending) unawaited(_checkOfferStillAvailable());
+  }
+
+  Future<void> _checkOfferStillAvailable() async {
+    if (_staleCheckInFlight) return;
+    _staleCheckInFlight = true;
+    try {
+      final latest = await _service.fetchRequestDetail(widget.offerId);
       if (!mounted) return;
-      try {
-        final latest = await _service.fetchRequestDetail(widget.offerId);
-        if (!mounted) return;
-        if (latest.status != null && latest.status != 'pending') {
-          _handleOfferNoLongerAvailable(latest.status!);
-        }
-      } catch (_) {
-        // A single failed check is likely a transient network issue — leave
-        // the timer running and try again next tick rather than disturbing
-        // the worker over something that might not even be real.
+      if (latest.status != null && latest.status != 'pending') {
+        _handleOfferNoLongerAvailable(latest.status!);
       }
-    });
+    } catch (_) {
+      // Transient failure — if this offer genuinely went away, the store
+      // will still reflect that and nothing here needs to retry on its own.
+    } finally {
+      _staleCheckInFlight = false;
+    }
   }
 
   void _handleOfferNoLongerAvailable(String status) {
-    _staleCheckTimer?.cancel();
     final message = switch (status) {
       'expired' => 'This request has expired and is no longer available.',
       'accepted' ||
@@ -127,7 +135,6 @@ class _IncomingRequestDetailsLoaderState
   /// show fresh data since that screen re-fetches every time it opens.
   Future<void> _showOfferGoneDialogThenGoToList(String message) async {
     if (!mounted) return;
-    _staleCheckTimer?.cancel();
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
