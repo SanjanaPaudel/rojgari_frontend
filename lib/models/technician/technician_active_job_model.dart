@@ -4,6 +4,7 @@ import 'technician_job_status.dart';
 class TechnicianActiveJobModel {
   const TechnicianActiveJobModel({
     required this.requestId,
+    this.bookingId = '',
     required this.categoryId,
     required this.categoryName,
     required this.categorySlug,
@@ -28,6 +29,13 @@ class TechnicianActiveJobModel {
   });
 
   final String requestId;
+
+  /// The underlying Booking's id — distinct from [requestId] (the
+  /// BookingOffer id start/complete use). Needed for `ws/bookings/<id>/`, the
+  /// same booking-status socket the customer's screens use, to detect a
+  /// customer-initiated cancellation. Empty when unavailable (the
+  /// fromIncomingRequest path has no booking id to hand it).
+  final String bookingId;
   final String categoryId;
   final String categoryName;
   final String categorySlug;
@@ -93,6 +101,7 @@ class TechnicianActiveJobModel {
   factory TechnicianActiveJobModel.fromJson(Map<String, dynamic> json) {
     return TechnicianActiveJobModel(
       requestId: _string(json['request_id'] ?? json['id']),
+      bookingId: _string(json['booking_id']),
       categoryId: _string(json['category_id']),
       categoryName: _string(json['category_name'] ?? json['service']),
       categorySlug: _string(json['category_slug']),
@@ -126,6 +135,7 @@ class TechnicianActiveJobModel {
 
   Map<String, dynamic> toJson() => {
     'request_id': requestId,
+    'booking_id': bookingId,
     'category_id': categoryId,
     'category_name': categoryName,
     'category_slug': categorySlug,
@@ -158,6 +168,7 @@ class TechnicianActiveJobModel {
   }) {
     return TechnicianActiveJobModel(
       requestId: requestId,
+      bookingId: bookingId,
       categoryId: categoryId,
       categoryName: categoryName,
       categorySlug: categorySlug,

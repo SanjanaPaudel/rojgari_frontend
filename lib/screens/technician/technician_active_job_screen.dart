@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../core/constants/api_urls.dart';
 import '../../core/constants/colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/service_category_icon_resolver.dart';
@@ -13,9 +14,12 @@ import '../../models/technician/technician_active_job_model.dart';
 import '../../models/technician/technician_job_status.dart';
 import '../../repositories/technician_job/technician_job_repository.dart';
 import '../../repositories/technician_job/technician_job_repository_provider.dart';
+import '../../services/app_web_socket.dart';
 import '../../services/location/location_service.dart';
+import '../../services/storage_service.dart';
 import '../../services/technician_job/technician_route_service.dart';
 import '../../widgets/technician/technician_route_map.dart';
+import 'incoming_requests_screen.dart';
 import 'technician_home_screen.dart';
 import 'technician_work_completed_screen.dart';
 
@@ -116,6 +120,9 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
   bool _mapFullScreen = false;
   LatLng? _lastRouteOrigin;
   DateTime? _lastRouteAt;
+  AppWebSocket? _bookingSocket;
+  StreamSubscription<Map<String, dynamic>>? _bookingSocketSubscription;
+  bool _bookingCancelledDialogShown = false;
 
   @override
   void initState() {
@@ -143,6 +150,7 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
     if (locationService is FakeWorkerLocationService) {
       ActiveFakeWorkerSession.current = locationService;
     }
+    unawaited(_startBookingStatusSocket());
     if (widget.enableDeviceLocation) {
       unawaited(_initializeDeviceLocation());
     } else {
@@ -177,6 +185,8 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
     _workingTimer?.cancel();
     _locationPollTimer?.cancel();
     _arrivedIntroTimer?.cancel();
+    _bookingSocketSubscription?.cancel();
+    _bookingSocket?.disconnect();
     widget.statusListenable?.removeListener(_handleExternalStatusChanged);
     _routeService.dispose();
     // Only clear if this screen instance is still the registered one — a
@@ -186,6 +196,63 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
       ActiveFakeWorkerSession.current = null;
     }
     super.dispose();
+  }
+
+  /// Connects to `ws/bookings/<id>/` — the same booking-status socket the
+  /// customer's screens use — purely to detect a customer-initiated
+  /// cancellation (the only backend push this screen currently reacts to).
+  /// Skipped when an external statusListenable drives status instead (tests,
+  /// mock flows), or when bookingId is unavailable (only the
+  /// fromIncomingRequest UI-model path lacks it — see
+  /// TechnicianActiveJobModel.bookingId).
+  Future<void> _startBookingStatusSocket() async {
+    if (widget.statusListenable != null || _job.bookingId.isEmpty) return;
+
+    final token = await StorageService.getAccessToken();
+    if (token == null || !mounted) return;
+
+    final socket = AppWebSocket(ApiUrls.bookingSocket(_job.bookingId, token));
+    _bookingSocket = socket;
+    _bookingSocketSubscription = socket.connect().listen(
+      _handleBookingSocketMessage,
+    );
+  }
+
+  void _handleBookingSocketMessage(Map<String, dynamic> message) {
+    if (!mounted || _bookingCancelledDialogShown) return;
+    if (message['status'] == 'cancelled') {
+      unawaited(_handleBookingCancelled());
+    }
+  }
+
+  /// Shows a popup the worker must dismiss with "OK", then clears back to
+  /// the incoming-requests list — mirrors
+  /// IncomingRequestDetailsLoader._showOfferGoneDialogThenGoToList, the same
+  /// pattern used when a pending offer goes stale before it's even accepted.
+  Future<void> _handleBookingCancelled() async {
+    if (!mounted || _bookingCancelledDialogShown) return;
+    _bookingCancelledDialogShown = true;
+    _bookingSocketSubscription?.cancel();
+    _bookingSocket?.disconnect();
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Booking cancelled'),
+        content: const Text('The customer has cancelled this request.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const IncomingRequestsScreen()),
+      (route) => route.isFirst,
+    );
   }
 
   void _startLifecycleForCurrentStatus() {

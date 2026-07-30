@@ -170,6 +170,7 @@ class ApiTechnicianJobRepository implements TechnicianJobRepository {
 
     return TechnicianActiveJobModel(
       requestId: offerId,
+      bookingId: json['booking_id']?.toString() ?? '',
       categoryId: '',
       categoryName: json['category']?.toString() ?? '',
       categorySlug: '',
