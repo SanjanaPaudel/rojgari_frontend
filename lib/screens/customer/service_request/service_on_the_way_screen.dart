@@ -16,7 +16,9 @@ import '../../../models/service_request/service_booking_demo_config.dart';
 import '../../../models/service_request/service_category.dart';
 import '../../../models/service_request/service_category_presentation.dart';
 import '../../../models/service_request/worker_tracking_ui_state.dart';
-import '../../../services/service_request/booking_status_service.dart';
+import '../../../core/constants/api_urls.dart';
+import '../../../services/app_web_socket.dart';
+import '../../../services/storage_service.dart';
 import '../../../widgets/customer/service_request/horizontal_service_status_tracker.dart';
 import '../../../widgets/customer/service_request/service_search_map.dart';
 import 'rate_your_experience_screen.dart';
@@ -46,7 +48,6 @@ class ServiceOnTheWayScreen extends StatefulWidget {
     this.completedDisplayDuration =
         ServiceBookingDemoConfig.completedDisplayDuration,
     this.enableLocationPolling = true,
-    this.locationPollInterval = const Duration(seconds: 30),
     this.onCancelRequested,
     this.onChat,
     this.onCall,
@@ -73,17 +74,12 @@ class ServiceOnTheWayScreen extends StatefulWidget {
   final Duration workingPreviewDuration;
   final Duration completedDisplayDuration;
 
-  /// Whether to poll `GET /api/services/bookings/<id>/status/` for the
-  /// worker's live `current_latitude`/`current_longitude` while en route.
-  /// Defaults to true for production use. Ignored when [trackingListenable]
-  /// or [statusListenable] is supplied (an external source already drives
-  /// tracking — tests and preview routes use this) or once the worker has
-  /// arrived.
+  /// Whether to connect to `ws/bookings/<id>/` for the worker's live
+  /// location and job-progress updates while en route. Defaults to true for
+  /// production use. Ignored when [trackingListenable] or [statusListenable]
+  /// is supplied (an external source already drives tracking — tests and
+  /// preview routes use this).
   final bool enableLocationPolling;
-
-  /// How often to poll while [enableLocationPolling] is true and no
-  /// [trackingListenable] is supplied.
-  final Duration locationPollInterval;
 
   final TrackingCancelCallback? onCancelRequested;
   final VoidCallback? onChat;
@@ -112,9 +108,8 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
   Timer? _workingTransitionTimer;
   Timer? _completionDemoTimer;
   Timer? _ratingNavigationTimer;
-  Timer? _locationPollTimer;
-  Timer? _jobProgressPollTimer;
-  final BookingStatusService _statusService = BookingStatusService();
+  AppWebSocket? _socket;
+  StreamSubscription<Map<String, dynamic>>? _socketSubscription;
   int _trackingDemoStep = 0;
   bool _cancellationInFlight = false;
   bool _dialogOpen = false;
@@ -160,8 +155,7 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
       _arrivalReported = true;
     }
     _startArrivalDemoIfNeeded();
-    _startLocationPollingIfNeeded();
-    _startJobProgressPollingIfNeeded();
+    unawaited(_startTrackingSocket());
     _handleLifecycleStatus(_status);
   }
 
@@ -194,8 +188,7 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
     _workingTransitionTimer?.cancel();
     _completionDemoTimer?.cancel();
     _ratingNavigationTimer?.cancel();
-    _locationPollTimer?.cancel();
-    _jobProgressPollTimer?.cancel();
+    _disconnectSocket();
     widget.statusListenable?.removeListener(_handleExternalStatusChanged);
     widget.trackingListenable?.removeListener(_handleExternalTrackingChanged);
     _trackingNotifier.dispose();
@@ -364,116 +357,87 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
     });
   }
 
-  /// Polls `GET /api/services/bookings/<id>/status/` every
-  /// [ServiceOnTheWayScreen.locationPollInterval] for the worker's live
-  /// `current_latitude`/`current_longitude`, feeding each snapshot through
-  /// [_interpolateToTrackingSnapshot] — the same smoothing path
-  /// [trackingListenable] updates already use — so the marker eases between
-  /// polls instead of jumping. Skipped when an external tracking/status
-  /// source is supplied (tests, preview routes), when
-  /// [ServiceOnTheWayScreen.enableLocationPolling] is false, or once the
-  /// worker has already arrived.
-  void _startLocationPollingIfNeeded() {
+  /// Connects to `ws/bookings/<id>/` for the worker's live location and
+  /// job-progress updates. One socket replaces what used to be two separate
+  /// timers polling the same REST endpoint for different fields —
+  /// [_handleSocketMessage] dispatches on whichever keys each message
+  /// carries. Skipped when an external tracking/status source is supplied
+  /// (tests, preview routes), when
+  /// [ServiceOnTheWayScreen.enableLocationPolling] is false, or once already
+  /// completed.
+  Future<void> _startTrackingSocket() async {
     if (!widget.enableLocationPolling ||
         _usesExternalStatusSource ||
-        _hasReachedService) {
+        _status.isCompleted) {
       return;
     }
 
-    _locationPollTimer?.cancel();
-    unawaited(_pollWorkerLocationOnce());
-    _locationPollTimer = Timer.periodic(
-      widget.locationPollInterval,
-      (_) => unawaited(_pollWorkerLocationOnce()),
-    );
+    final token = await StorageService.getAccessToken();
+    if (token == null || !mounted || _status.isCompleted) return;
+
+    final socket = AppWebSocket(ApiUrls.bookingSocket(widget.requestId, token));
+    _socket = socket;
+    _socketSubscription = socket.connect().listen(_handleSocketMessage);
   }
 
-  Future<void> _pollWorkerLocationOnce() async {
-    if (!mounted || _hasReachedService) {
-      _locationPollTimer?.cancel();
-      return;
-    }
-    try {
-      final result = await _statusService.fetchStatus(widget.requestId);
-      if (!mounted || _hasReachedService) return;
+  void _handleSocketMessage(Map<String, dynamic> message) {
+    if (!mounted || _status.isCompleted) return;
 
-      final latitude = result.worker?.currentLatitude;
-      final longitude = result.worker?.currentLongitude;
-      // No coordinate in this poll (worker object absent, or the backend
-      // hasn't reported a fix yet) — nothing to update, wait for the next tick.
-      if (latitude == null || longitude == null) return;
-
-      final coordinate = LatLng(latitude, longitude);
-      final customer = LatLng(
-        widget.serviceLocation.latitude,
-        widget.serviceLocation.longitude,
-      );
-      final distanceKm = const Distance().as(
-        LengthUnit.Kilometer,
-        coordinate,
-        customer,
-      );
-
-      if (distanceKm <= _arrivalDistanceThresholdKm) {
-        await _reportArrivalIfNeeded(coordinate);
-        return;
-      }
-
-      _interpolateToTrackingSnapshot(
-        WorkerTrackingUiState(
-          coordinate: coordinate,
-          distanceKm: distanceKm,
-          estimatedArrivalMinutes: _trackingState.estimatedArrivalMinutes,
-          status: _status,
-          updatedAt: DateTime.now(),
-          routeProgress: _trackingState.routeProgress,
-        ),
-      );
-    } catch (e) {
-      // Transient failure (network hiccup, unexpected response shape). Keep
-      // polling — a single blip shouldn't interrupt live tracking, and the
-      // marker simply stays at its last known position until the next tick.
-      debugPrint('[Tracking] Failed to poll worker location: $e');
-    }
-  }
-
-  /// Independently polls `GET /api/services/bookings/<id>/status/` purely to
-  /// detect the worker-side job_progress flipping to "working" (set for real
-  /// when the worker taps Start on their own screen) and mirror it into this
-  /// screen's status/progress tracker. Deliberately decoupled from
-  /// _startLocationPollingIfNeeded, which stops once an external tracking
-  /// source is supplied or arrival is reached — job-progress detection needs
-  /// to keep running in exactly those situations, since it's the only way
-  /// this screen can learn the worker started working.
-  void _startJobProgressPollingIfNeeded() {
-    if (!widget.enableLocationPolling || _status.isCompleted) return;
-    _jobProgressPollTimer?.cancel();
-    unawaited(_pollJobProgressOnce());
-    _jobProgressPollTimer = Timer.periodic(
-      widget.locationPollInterval,
-      (_) => unawaited(_pollJobProgressOnce()),
-    );
-  }
-
-  Future<void> _pollJobProgressOnce() async {
-    if (!mounted || _status.isCompleted) {
-      _jobProgressPollTimer?.cancel();
-      return;
-    }
-    try {
-      final result = await _statusService.fetchStatus(widget.requestId);
-      if (!mounted || _status.isCompleted) return;
-      if (result.jobProgress == RequestSearchStatus.completed &&
-          !_status.isCompleted) {
+    if (message['job_progress'] == 'completed' ||
+        message['status'] == 'completed') {
+      if (!_status.isCompleted) {
         _setTrackingStatus(RequestSearchStatus.completed);
-      } else if (result.jobProgress == RequestSearchStatus.working &&
-          !_status.isWorking) {
-        _setTrackingStatus(RequestSearchStatus.working);
       }
-    } catch (e) {
-      // Transient failure — keep polling, same tolerance as location polling.
-      debugPrint('[Tracking] Failed to poll job progress: $e');
+      _disconnectSocket();
+      return;
     }
+
+    if (message['job_progress'] == 'working') {
+      if (!_status.isWorking) _setTrackingStatus(RequestSearchStatus.working);
+      return; // Keep listening — still want the eventual "completed".
+    }
+
+    // Otherwise, a location update: {latitude, longitude}, both strings.
+    if (_hasReachedService) return; // Nothing left to track once arrived.
+    final latitude = double.tryParse('${message['latitude']}');
+    final longitude = double.tryParse('${message['longitude']}');
+    if (latitude == null || longitude == null) return;
+    _handleWorkerLocation(LatLng(latitude, longitude));
+  }
+
+  void _handleWorkerLocation(LatLng coordinate) {
+    final customer = LatLng(
+      widget.serviceLocation.latitude,
+      widget.serviceLocation.longitude,
+    );
+    final distanceKm = const Distance().as(
+      LengthUnit.Kilometer,
+      coordinate,
+      customer,
+    );
+
+    if (distanceKm <= _arrivalDistanceThresholdKm) {
+      unawaited(_reportArrivalIfNeeded(coordinate));
+      return;
+    }
+
+    _interpolateToTrackingSnapshot(
+      WorkerTrackingUiState(
+        coordinate: coordinate,
+        distanceKm: distanceKm,
+        estimatedArrivalMinutes: _trackingState.estimatedArrivalMinutes,
+        status: _status,
+        updatedAt: DateTime.now(),
+        routeProgress: _trackingState.routeProgress,
+      ),
+    );
+  }
+
+  void _disconnectSocket() {
+    _socketSubscription?.cancel();
+    _socket?.disconnect();
+    _socket = null;
+    _socketSubscription = null;
   }
 
   /// Distance at which the worker is considered to have physically reached
@@ -718,15 +682,13 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
     if (!_canCancel || _cancellationInFlight) return;
     setState(() => _cancellationInFlight = true);
     try {
-      // BACKEND INTEGRATION:
-      // Cancellation is allowed only while the backend status permits it.
-      // Call the cancel-request API using requestId. After the backend reports
-      // arrived or started, keep this action disabled.
+      // Cancellation is allowed only while the backend status permits it
+      // (see _canCancel — locked out again once arrived/working/completed).
+      // widget.onCancelRequested is wired to the real cancel-booking endpoint
+      // by FindingServicePersonScreen when it constructs this screen; the
+      // `true` fallback below only matters for tests/preview routes that
+      // construct this screen directly without a handler.
       final handler = widget.onCancelRequested;
-      // FRONTEND DEMO ONLY:
-      // Until the cancel API handler is connected, confirmation succeeds so
-      // this UI flow remains testable. Replace this `true` fallback with the
-      // real repository/API response by providing onCancelRequested.
       final cancelled = handler == null ? true : await handler();
       if (!mounted) return;
       if (!cancelled) {
