@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/constants/colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/service_category_icon_resolver.dart';
+import '../../dev_testing/fake_worker_movement.dart';
 import '../../models/technician/technician_active_job_model.dart';
 import '../../models/technician/technician_job_status.dart';
 import '../../repositories/technician_job/technician_job_repository.dart';
@@ -135,6 +136,13 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
       });
     }
     unawaited(_loadRoute());
+    // TEMP TEST-ONLY: registers this screen's fake coordinate source (if
+    // any) so TechnicianHomeScreen's background PATCH timer publishes the
+    // same walk instead of real GPS — see ActiveFakeWorkerSession.
+    final locationService = widget.locationService;
+    if (locationService is FakeWorkerLocationService) {
+      ActiveFakeWorkerSession.current = locationService;
+    }
     if (widget.enableDeviceLocation) {
       unawaited(_initializeDeviceLocation());
     } else {
@@ -171,6 +179,12 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
     _arrivedIntroTimer?.cancel();
     widget.statusListenable?.removeListener(_handleExternalStatusChanged);
     _routeService.dispose();
+    // Only clear if this screen instance is still the registered one — a
+    // newer TechnicianActiveJobScreen instance (didUpdateWidget with a
+    // different job, or a fresh push) may have already superseded it.
+    if (identical(ActiveFakeWorkerSession.current, widget.locationService)) {
+      ActiveFakeWorkerSession.current = null;
+    }
     super.dispose();
   }
 

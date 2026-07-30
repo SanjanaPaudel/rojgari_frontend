@@ -157,3 +157,29 @@ class FakeWorkerTrackingController {
     notifier.dispose();
   }
 }
+
+/// Shared handoff point so TechnicianHomeScreen's always-on background
+/// location timer can publish the SAME coordinate TechnicianActiveJobScreen's
+/// map is showing, instead of the real device GPS, whenever a fake-walk test
+/// session is active.
+///
+/// WHY this exists: TechnicianHomeScreen's location timer keeps running the
+/// entire time the worker is online, completely independent of whichever
+/// screen is on top — including TechnicianActiveJobScreen showing a fake
+/// walk. Without this, the worker's own map shows a simulated journey while
+/// the customer's map (fed by that always-real timer) shows wherever the
+/// test device actually physically is — two unrelated data sources that
+/// were never going to match.
+///
+/// TechnicianActiveJobScreen sets [current] in initState — only when it was
+/// actually handed a [FakeWorkerLocationService] — and clears it in
+/// dispose. TechnicianHomeScreen's timer checks this FIRST; when it's null
+/// (the common case, and always true once
+/// ServiceBookingDemoConfig.useFakeWorkerMovement is false, since that's the
+/// only thing that ever causes a FakeWorkerLocationService to be created),
+/// it falls through to real GPS, completely unaffected by any of this.
+class ActiveFakeWorkerSession {
+  ActiveFakeWorkerSession._();
+
+  static FakeWorkerLocationService? current;
+}

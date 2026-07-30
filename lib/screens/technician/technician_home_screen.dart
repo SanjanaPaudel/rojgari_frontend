@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../core/constants/api_urls.dart';
 import '../../core/constants/colors.dart';
+import '../../dev_testing/fake_worker_movement.dart';
 import '../../models/incoming_request_model.dart';
 import '../../models/technician_model.dart';
 import '../../models/worker_dashboard_response.dart';
@@ -496,7 +497,16 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     try {
       final CurrentDeviceLocation location;
       try {
-        location = await _locationService.getCurrentLocation();
+        // TEMP TEST-ONLY: when a TechnicianActiveJobScreen is showing a
+        // fake walk (ServiceBookingDemoConfig.useFakeWorkerMovement), publish
+        // that same coordinate instead of real GPS, so the customer's map
+        // matches what the worker's own screen is showing. Null in every
+        // other case, which is the unconditional real-GPS path below,
+        // unchanged from before this existed.
+        final fakeSession = ActiveFakeWorkerSession.current;
+        location = fakeSession != null
+            ? await fakeSession.getCurrentLocation()
+            : await _locationService.getCurrentLocation();
       } catch (e) {
         // Could not obtain a fix. Only force the worker offline when the cause
         // is permanent — location switched off or permission revoked — so a
