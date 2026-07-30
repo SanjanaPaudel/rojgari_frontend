@@ -54,4 +54,31 @@ class BookingStatusService {
       'Unable to check the request status (${response.statusCode}).',
     );
   }
+
+  /// Cancels a booking. Returns normally on success; throws on failure so
+  /// callers can distinguish "backend rejected it" from a raw network error
+  /// only by the message, same as [fetchStatus].
+  Future<void> cancelBooking(String bookingId) async {
+    final response = await _api.post(ApiUrls.cancelBooking(bookingId), {});
+
+    if (response.statusCode == 200) return;
+
+    if (response.statusCode == 404) {
+      throw const BookingNotFoundException();
+    }
+
+    if (response.statusCode == 400) {
+      final decoded = jsonDecode(response.body);
+      final detail = decoded is Map<String, dynamic>
+          ? decoded['detail'] as String?
+          : null;
+      throw BookingStatusException(
+        detail ?? 'This request can no longer be cancelled.',
+      );
+    }
+
+    throw BookingStatusException(
+      'Unable to cancel the request (${response.statusCode}).',
+    );
+  }
 }

@@ -301,6 +301,10 @@ class _FindingServicePersonScreenState
             onSubmitReview: widget.onSubmitReview,
             onBackToHome: widget.onBackToHome,
             trackingListenable: fakeTracking.notifier,
+            onCancelRequested: () async {
+              await _statusService.cancelBooking(widget.requestId);
+              return true;
+            },
           ),
         ),
       );
@@ -348,36 +352,20 @@ class _FindingServicePersonScreenState
     });
 
     try {
-      // BACKEND INTEGRATION:
-      // Call the real cancel-request endpoint with widget.requestId and wait
-      // for a successful response. Only then pop this route. If it fails,
-      // return false so the user stays here and sees an error. Until a handler
-      // is connected, confirmation intentionally does not navigate.
+      // widget.onCancelRequested is a test/preview seam — production calls
+      // the real cancel-booking endpoint below when it's not supplied.
       final cancellationHandler = widget.onCancelRequested;
-      if (cancellationHandler == null) {
-        if (!mounted) return;
-        if (widget.enableDemoFlow && Navigator.canPop(context)) {
-          Navigator.pop(context);
-          return;
-        }
-        setState(() {
-          _cancellationInFlight = false;
-          _status = RequestSearchStatus.searching;
-        });
-
-        // TODO(CANCEL-REQUEST BACKEND INTEGRATION):
-        // final cancelled = await repository.cancelRequest(widget.requestId);
-        // if (cancelled && mounted) Navigator.pop(context);
-        // If it fails, keep this screen open and show the backend error.
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cancellation is waiting for backend integration.'),
-          ),
-        );
-        return;
+      final bool cancelled;
+      if (cancellationHandler != null) {
+        cancelled = await cancellationHandler();
+      } else if (widget.enableDemoFlow) {
+        // Demo/preview routes have no real backend booking to cancel.
+        cancelled = true;
+      } else {
+        await _statusService.cancelBooking(widget.requestId);
+        cancelled = true;
       }
 
-      final cancelled = await cancellationHandler();
       if (!mounted) return;
       if (!cancelled) {
         _disconnectSocket();
@@ -391,21 +379,23 @@ class _FindingServicePersonScreenState
       _disconnectSocket();
       setState(() => _status = RequestSearchStatus.cancelled);
       Navigator.pop(context);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       _disconnectSocket();
       setState(() {
         _cancellationInFlight = false;
         _status = RequestSearchStatus.error;
       });
-      _showCancellationError();
+      _showCancellationError(e is BookingStatusException ? e.toString() : null);
     }
   }
 
-  void _showCancellationError() {
+  void _showCancellationError([String? message]) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Could not cancel the request. Please try again.'),
+      SnackBar(
+        content: Text(
+          message ?? 'Could not cancel the request. Please try again.',
+        ),
       ),
     );
   }

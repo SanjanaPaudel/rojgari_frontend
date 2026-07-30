@@ -128,6 +128,15 @@ class ApiUrls {
   static String bookingStatus(String bookingId) =>
       "$baseUrl/services/bookings/$bookingId/status/";
 
+  // POST — cancels a booking while it's still cancellable (not completed or
+  // already cancelled). Cancels any pending/accepted offers on it too.
+  // Response 200: { "details": "Booking cancelled successfully." }
+  // Response 400 — booking can no longer be cancelled.
+  // Response 404 — booking doesn't exist, or doesn't belong to the
+  // requesting customer.
+  static String cancelBooking(String bookingId) =>
+      "$baseUrl/services/bookings/$bookingId/cancel/";
+
   // GET — the logged-in customer's profile.
   // Response: { "id": <int>, "full_name": "...", "phone_number": "...",
   //   "email": "...", "profile_photo": "<url or null>", "is_verified": bool }
