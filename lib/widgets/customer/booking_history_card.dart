@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/colors.dart';
+import '../../core/utils/category_icon_registry.dart';
 import '../../models/customer/booking_history_item.dart';
 
 /// The single reusable card for rendering a [BookingHistoryItem] — used by
@@ -16,6 +17,10 @@ class BookingHistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusStyle = BookingHistoryStatusStyle.fromBackend(booking.status);
+    final iconData = CategoryIconRegistry.resolve(
+      icon: booking.icon,
+      name: booking.title,
+    );
 
     return Material(
       color: AppColors.white,
@@ -39,7 +44,10 @@ class BookingHistoryCard extends StatelessWidget {
                   color: Color(0xFFF0F7FF),
                   shape: BoxShape.circle,
                 ),
-                child: Image.asset(booking.iconPath, fit: BoxFit.contain),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Icon(iconData, color: AppColors.primary, size: 32),
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(

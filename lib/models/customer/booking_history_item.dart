@@ -7,7 +7,7 @@ class BookingHistoryItem {
   final String issue;
   final String status;
   final String timeLabel;
-  final String iconPath;
+  final String icon;
   final String? visitCharge;
 
   const BookingHistoryItem({
@@ -16,7 +16,7 @@ class BookingHistoryItem {
     required this.issue,
     required this.status,
     required this.timeLabel,
-    required this.iconPath,
+    required this.icon,
     this.visitCharge,
   });
 }
@@ -25,8 +25,10 @@ class BookingHistoryItem {
 // Replace with response.bookings from GET /customer/bookings. Field mapping:
 // bookingId -> bookingId, serviceName -> title, issueDescription -> issue,
 // bookingStatus -> status, updatedAt/createdAt label -> timeLabel,
-// categoryIcon/imageUrl -> iconPath, visitCharge -> visitCharge (null until
-// the worker has been assigned a charge for this booking).
+// categoryIcon -> icon (same backend key style as GET /api/services/categories/,
+// resolved via CategoryIconRegistry — see booking_history_card.dart),
+// visitCharge -> visitCharge (null until the worker has been assigned a
+// charge for this booking).
 //
 // Ordered newest-first. The home screen preview takes the first few entries;
 // CustomerBookingsHistoryScreen shows the full list — both read from this
@@ -35,10 +37,10 @@ const List<BookingHistoryItem> sampleBookingHistory = [
   BookingHistoryItem(
     bookingId: 'booking_003',
     title: 'AC Repair',
-    issue: 'Cooling service check',
+    issue: 'Cooling service check. The service was very nice and helpful',
     status: 'Booked',
     timeLabel: 'Today, 4 PM',
-    iconPath: 'assets/images/ac_repair_icon.png',
+    icon: 'ac_repair',
     visitCharge: 'Rs 150',
   ),
   BookingHistoryItem(
@@ -47,7 +49,7 @@ const List<BookingHistoryItem> sampleBookingHistory = [
     issue: 'Switch board not working',
     status: 'In Progress',
     timeLabel: 'Yesterday',
-    iconPath: 'assets/images/electrician_icon.png',
+    icon: 'electrical',
     visitCharge: 'Rs 120',
   ),
   BookingHistoryItem(
@@ -56,7 +58,7 @@ const List<BookingHistoryItem> sampleBookingHistory = [
     issue: 'Leakage in bathroom pipe',
     status: 'Completed',
     timeLabel: '2 days ago',
-    iconPath: 'assets/images/plumbing_icon.png',
+    icon: 'plumbing',
     visitCharge: 'Rs 100',
   ),
   BookingHistoryItem(
@@ -65,7 +67,7 @@ const List<BookingHistoryItem> sampleBookingHistory = [
     issue: 'Lawn mowing and trimming',
     status: 'Completed',
     timeLabel: '4 days ago',
-    iconPath: 'assets/images/gardner_icon.png',
+    icon: 'gardening',
     visitCharge: 'Rs 90',
   ),
   BookingHistoryItem(
@@ -74,7 +76,7 @@ const List<BookingHistoryItem> sampleBookingHistory = [
     issue: 'Deep cleaning, 2BHK',
     status: 'Cancelled',
     timeLabel: '5 days ago',
-    iconPath: 'assets/images/maid_icon.png',
+    icon: 'cleaning',
     visitCharge: 'Rs 130',
   ),
   BookingHistoryItem(
@@ -83,7 +85,7 @@ const List<BookingHistoryItem> sampleBookingHistory = [
     issue: 'Living room wall touch-up',
     status: 'Completed',
     timeLabel: '1 week ago',
-    iconPath: 'assets/images/painter_icon.png',
+    icon: 'painting',
     visitCharge: 'Rs 110',
   ),
   BookingHistoryItem(
@@ -92,7 +94,7 @@ const List<BookingHistoryItem> sampleBookingHistory = [
     issue: 'Engine noise inspection',
     status: 'Completed',
     timeLabel: '2 weeks ago',
-    iconPath: 'assets/images/mechanic_icon.png',
+    icon: 'mechanic',
     visitCharge: 'Rs 200',
   ),
   BookingHistoryItem(
@@ -101,7 +103,7 @@ const List<BookingHistoryItem> sampleBookingHistory = [
     issue: 'No display, power light on',
     status: 'Cancelled',
     timeLabel: '3 weeks ago',
-    iconPath: 'assets/images/tv_repair_icon.png',
+    icon: 'tv_repair',
     visitCharge: 'Rs 140',
   ),
   BookingHistoryItem(
@@ -110,7 +112,7 @@ const List<BookingHistoryItem> sampleBookingHistory = [
     issue: 'Laptop not booting',
     status: 'Completed',
     timeLabel: '3 weeks ago',
-    iconPath: 'assets/images/computer_repair_icon.png',
+    icon: 'computer_repair',
     visitCharge: 'Rs 160',
   ),
 ];
