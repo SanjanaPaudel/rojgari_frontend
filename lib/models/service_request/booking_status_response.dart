@@ -62,6 +62,12 @@ class BookingStatusResponse {
     required this.status,
     required this.jobProgress,
     this.worker,
+    this.categoryName,
+    this.description,
+    this.addressText,
+    this.latitude,
+    this.longitude,
+    this.createdAt,
   });
 
   final String id;
@@ -73,6 +79,15 @@ class BookingStatusResponse {
   /// lifecycle ("active" / "assigned" / etc), not the in-progress job stage.
   final RequestSearchStatus jobProgress;
   final AssignedWorkerInfo? worker;
+
+  /// BookingDetailSerializer's `category` field — already just the category
+  /// name (a CharField sourced from `category.name`), not an id/slug object.
+  final String? categoryName;
+  final String? description;
+  final String? addressText;
+  final double? latitude;
+  final double? longitude;
+  final DateTime? createdAt;
 
   bool get hasAssignedWorker => worker != null;
 
@@ -87,6 +102,12 @@ class BookingStatusResponse {
       worker: workerJson is Map<String, dynamic>
           ? AssignedWorkerInfo.fromJson(workerJson)
           : null,
+      categoryName: json['category']?.toString(),
+      description: json['description']?.toString(),
+      addressText: json['address_text']?.toString(),
+      latitude: AssignedWorkerInfo._toDouble(json['latitude']),
+      longitude: AssignedWorkerInfo._toDouble(json['longitude']),
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? ''),
     );
   }
 }

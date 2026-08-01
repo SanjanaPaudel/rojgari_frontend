@@ -19,6 +19,12 @@ class BookingHistoryItem {
     required this.icon,
     this.visitCharge,
   });
+
+  /// Same normalization BookingHistoryStatusStyle.fromBackend uses — single
+  /// source of truth for "is this the one status that should navigate to
+  /// live tracking when tapped."
+  bool get isInProgress =>
+      status.trim().toLowerCase().replaceAll(' ', '_') == 'in_progress';
 }
 
 // BACKEND TODO:
@@ -38,7 +44,7 @@ const List<BookingHistoryItem> sampleBookingHistory = [
     bookingId: 'booking_003',
     title: 'AC Repair',
     issue: 'Cooling service check. The service was very nice and helpful',
-    status: 'Booked',
+    status: 'In Progress',
     timeLabel: 'Today, 4 PM',
     icon: 'ac_repair',
     visitCharge: 'Rs 150',

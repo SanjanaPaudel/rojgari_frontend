@@ -58,8 +58,11 @@ class _CustomerBookingsHistoryScreenState
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                       itemCount: visible.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) =>
-                          BookingHistoryCard(booking: visible[index]),
+                      itemBuilder: (context, index) => BookingHistoryCard(
+                        booking: visible[index],
+                        onTap: () =>
+                            openBookingHistoryDetail(context, visible[index]),
+                      ),
                     ),
             ),
           ],

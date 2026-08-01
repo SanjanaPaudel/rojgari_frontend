@@ -167,7 +167,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       .map(
                         (job) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: BookingHistoryCard(booking: job),
+                          child: BookingHistoryCard(
+                            booking: job,
+                            onTap: () => openBookingHistoryDetail(context, job),
+                          ),
                         ),
                       )
                       .toList(),

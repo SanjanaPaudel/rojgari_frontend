@@ -3,6 +3,21 @@ import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../core/utils/category_icon_registry.dart';
 import '../../models/customer/booking_history_item.dart';
+import '../../screens/customer/service_request/customer_booking_tracking_loader.dart';
+
+/// Default tap behavior for a booking history entry — navigates to live
+/// tracking when the booking is in progress, does nothing otherwise (there's
+/// no detail screen yet for completed/cancelled entries).
+void openBookingHistoryDetail(BuildContext context, BookingHistoryItem booking) {
+  if (!booking.isInProgress) return;
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) =>
+          CustomerBookingTrackingLoader(bookingId: booking.bookingId),
+    ),
+  );
+}
 
 /// The single reusable card for rendering a [BookingHistoryItem] — used by
 /// both the customer home screen's Bookings preview and the full
@@ -165,7 +180,7 @@ class BookingHistoryStatusStyle {
 
   // BACKEND TODO:
   // Keep backend bookingStatus values simple and consistent:
-  // completed, in_progress, booked, pending, cancelled.
+  // completed, in_progress, cancelled.
   // If backend sends a new status, add one case here only; the card UI will
   // update automatically without changing the widget layout.
   factory BookingHistoryStatusStyle.fromBackend(String status) {
@@ -181,12 +196,6 @@ class BookingHistoryStatusStyle {
           label: 'In Progress',
           textColor: Color(0xFF1877F2),
           backgroundColor: Color(0xFFEAF2FF),
-        );
-      case 'booked':
-        return const BookingHistoryStatusStyle(
-          label: 'Booked',
-          textColor: AppColors.primary,
-          backgroundColor: AppColors.lightPurple,
         );
       case 'cancelled':
         return const BookingHistoryStatusStyle(
