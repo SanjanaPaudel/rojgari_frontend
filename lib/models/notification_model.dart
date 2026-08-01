@@ -1,7 +1,7 @@
 /// Notification categories the backend currently sends, per its FCM
 /// integration note. Chat/bidding/system types are documented as coming
 /// later — add them here once the backend actually emits them.
-enum NotificationType { bookingAccepted, bookingRejected }
+enum NotificationType { bookingAccepted, bookingRejected, general }
 
 class NotificationItem {
   const NotificationItem({
@@ -55,6 +55,8 @@ NotificationType _typeFromString(String value) {
   return switch (value) {
     'booking_accepted' => NotificationType.bookingAccepted,
     'booking_rejected' => NotificationType.bookingRejected,
-    _ => throw ArgumentError('Unknown notification_type: $value'),
+    'general' => NotificationType.general,
+    // Safe fallback to prevent crashes if the backend adds new types in the future
+    _ => NotificationType.general,
   };
 }

@@ -54,7 +54,9 @@ class NotificationCard extends StatelessWidget {
                   child: Icon(
                     visual.icon,
                     size: 21,
-                    color: isUnread ? visual.color : visual.color.withValues(alpha: 0.55),
+                    color: isUnread
+                        ? visual.color
+                        : visual.color.withValues(alpha: 0.55),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -160,6 +162,12 @@ _NotificationVisual _visualFor(NotificationType type) {
         Icons.cancel_outlined,
         AppColors.red,
         Color(0xffFFE9E7),
+      );
+    case NotificationType.general:
+      return const _NotificationVisual(
+        Icons.notifications_none_rounded,
+        AppColors.primary,
+        Color(0xffEDE7FF),
       );
   }
 }

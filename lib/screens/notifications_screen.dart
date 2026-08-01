@@ -55,9 +55,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   List<NotificationItem> get _visible => switch (_filter) {
     _NotificationFilter.all => _notifications,
-    // No "system/announcement" notification type exists on the backend yet
-    // (see NotificationType) — Updates has nothing to show until it does.
-    _NotificationFilter.updates => const [],
+    _NotificationFilter.updates => _notifications
+        .where((n) => n.type == NotificationType.general)
+        .toList(),
   };
 
   // Acts on whichever tab is active — "Mark all as read" on the Updates tab
