@@ -48,25 +48,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       .take(3)
       .toList();
 
-  // BACKEND TODO:
-  // Replace _infoCards with response.verificationInfo and response.supportInfo.
-  // verificationInfo.title/subtitle/imageUrl/actionLabel replace first card.
-  // supportInfo.title/subtitle/imageUrl/actionLabel replace second card.
-  static const List<_InfoCardData> _infoCards = [
-    _InfoCardData(
-      title: 'Verified & Trusted Professionals',
-      subtitle: 'Verified Professionals.',
-      buttonText: 'Learn More',
-      imagePath: 'assets/images/verified_and__trusted_professional.png',
-    ),
-    _InfoCardData(
-      title: 'Need help?',
-      subtitle: 'We are here to help you 24/7.',
-      buttonText: 'Contact Support',
-      imagePath: 'assets/images/need_help.png',
-    ),
-  ];
-
   final CustomerProfileService _profileService = CustomerProfileService();
   CustomerProfileModel? _profile;
 
@@ -160,11 +141,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: _CategoryCarousel(),
-              ),
-              const SizedBox(height: 22),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _InfoCardsRow(infoCards: _infoCards),
               ),
               const SizedBox(height: 24),
               Padding(
@@ -599,150 +575,6 @@ class _CategoryDots extends StatelessWidget {
   }
 }
 
-class _InfoCardsRow extends StatelessWidget {
-  const _InfoCardsRow({required this.infoCards});
-
-  final List<_InfoCardData> infoCards;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: _InfoCard(data: infoCards.first)),
-        const SizedBox(width: 14),
-        Expanded(child: _InfoCard(data: infoCards.last)),
-      ],
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.data});
-
-  final _InfoCardData data;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          if (data.buttonText == 'Learn More') {
-            // NAVIGATION TODO:
-            // Replace with verification information screen later.
-            // Use response.verificationInfo.actionRoute/actionUrl when backend sends it.
-          } else {
-            // NAVIGATION TODO:
-            // Replace with support screen or phone/chat action later.
-            // Use response.supportInfo.actionRoute/actionUrl when backend sends it.
-          }
-        },
-        child: Container(
-          height: 210,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE9DFFF)),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: data.buttonText == 'Learn More'
-                  ? const [Color(0xFFFBF8FF), Color(0xFFFFFFFF)]
-                  : const [Color(0xFFFFFFFF), Color(0xFFFBF9FF)],
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                padding: EdgeInsets.all(
-                  data.buttonText == 'Contact Support' ? 8 : 2,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: ColoredBox(
-                    color: AppColors.white,
-                    child: Image.asset(data.imagePath, fit: BoxFit.contain),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      data.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 15,
-                        height: 1.2,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      data.subtitle,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.grey,
-                        fontSize: 12,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    if (data.buttonText == 'Learn More') {
-                      // NAVIGATION TODO:
-                      // Replace with verification information screen later.
-                    } else {
-                      // NAVIGATION TODO:
-                      // Replace with support screen or phone/chat action later.
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    data.buttonText,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title, this.trailing});
 
@@ -841,19 +673,4 @@ class _CircleIconButton extends StatelessWidget {
       ),
     );
   }
-}
-
-
-class _InfoCardData {
-  final String title;
-  final String subtitle;
-  final String buttonText;
-  final String imagePath;
-
-  const _InfoCardData({
-    required this.title,
-    required this.subtitle,
-    required this.buttonText,
-    required this.imagePath,
-  });
 }

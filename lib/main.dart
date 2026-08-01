@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
 import 'package:rojgari_frontend_one/firebase_options.dart';
+import 'package:rojgari_frontend_one/screens/technician/incoming_request_details_screen.dart';
 import 'package:rojgari_frontend_one/services/fcm_service.dart';
 import 'package:rojgari_frontend_one/services/navigation_service.dart';
 // import 'package:rojgari_frontend_one/screens/auth/logIn_screen.dart';
@@ -16,14 +17,15 @@ import 'package:rojgari_frontend_one/services/navigation_service.dart';
 // import 'package:rojgari_frontend_one/screens/auth/reset_passord_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/forget_password_email_screen.dart';
 // import 'package:rojgari_frontend_one/screens/auth/skill_selection_screen.dart';
-import 'screens/splash/splash_screen.dart';
+// import 'screens/splash/splash_screen.dart';
 // import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
 // import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
 // import 'core/theme/app_theme.dart';
 // import 'package:rojgari_frontend_one/core/theme/app_theme.dart';
-// import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
+import 'package:rojgari_frontend_one/screens/customer/customer_home_screen.dart';
 // import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
 // import 'package:rojgari_frontend_one/screens/notifications_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,7 +67,7 @@ class MyApp extends StatelessWidget {
       // home: ResetPasswordScreen(),
       // home: ForgotPasswordEmailScreen(),
       // home: SkillSelectionScreen()
-      home: SplashScreen(),
+      // home: SplashScreen(),
       // home: NotificationsScreen(),
 
       // The Incoming Request Details page is reached by tapping a request on
@@ -75,7 +77,7 @@ class MyApp extends StatelessWidget {
       // at IncomingRequestDetailsScreen with hardcoded preview data again, as
       // that bypasses login and the API.
 
-      // home: const CustomerHomeScreen(),
+      home: const CustomerHomeScreen(),
       // home: const CustomerProfileScreen(),
       // home: const TechnicianHomeScreen(),
       //home: const TechnicianProfileScreen(),
