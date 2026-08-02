@@ -25,6 +25,11 @@ class BookingHistoryItem {
   /// live tracking when tapped."
   bool get isInProgress =>
       status.trim().toLowerCase().replaceAll(' ', '_') == 'in_progress';
+
+  /// Same normalization, for "should this navigate to the completed booking
+  /// details screen when tapped."
+  bool get isCompleted =>
+      status.trim().toLowerCase().replaceAll(' ', '_') == 'completed';
 }
 
 // BACKEND TODO:

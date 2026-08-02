@@ -68,6 +68,9 @@ class BookingStatusResponse {
     this.latitude,
     this.longitude,
     this.createdAt,
+    this.visitCharge,
+    this.rating,
+    this.reviewText,
   });
 
   final String id;
@@ -89,6 +92,18 @@ class BookingStatusResponse {
   final double? longitude;
   final DateTime? createdAt;
 
+  /// The visit charge assigned to this booking's worker — null until the
+  /// backend exposes BookingOffer.visit_charge on this endpoint.
+  final double? visitCharge;
+
+  /// The customer's own rating for this booking (1–5) — null until rated.
+  final double? rating;
+
+  /// The customer's own review text — null until the backend exposes
+  /// Booking.review_text on this endpoint (it's currently write-only, only
+  /// accepted by RateBookingSerializer when submitting a rating).
+  final String? reviewText;
+
   bool get hasAssignedWorker => worker != null;
 
   factory BookingStatusResponse.fromJson(Map<String, dynamic> json) {
@@ -108,6 +123,9 @@ class BookingStatusResponse {
       latitude: AssignedWorkerInfo._toDouble(json['latitude']),
       longitude: AssignedWorkerInfo._toDouble(json['longitude']),
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? ''),
+      visitCharge: AssignedWorkerInfo._toDouble(json['visit_charge']),
+      rating: AssignedWorkerInfo._toDouble(json['rating']),
+      reviewText: json['review_text']?.toString(),
     );
   }
 }
