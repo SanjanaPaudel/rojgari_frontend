@@ -368,7 +368,7 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
   /// Deliberately NOT skipped when an external tracking source is supplied
   /// (e.g. FindingServicePersonScreen's TEMP TEST-ONLY fake-walk stub) —
   /// [_handleSocketMessage] itself ignores location-only messages in that
-  /// case, but job_progress/status messages still need to get through, since
+  /// case, but status messages still need to get through, since
   /// this socket is the only way this screen learns the worker tapped Start
   /// or Complete on their own screen. The old polling implementation ran
   /// job-progress checks on a separate timer specifically so a fake/external
@@ -418,8 +418,7 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
   void _handleSocketMessage(Map<String, dynamic> message) {
     if (!mounted || _status.isCompleted) return;
 
-    if (message['job_progress'] == 'completed' ||
-        message['status'] == 'completed') {
+    if (message['status'] == 'completed') {
       if (!_status.isCompleted) {
         _setTrackingStatus(RequestSearchStatus.completed);
       }
@@ -427,14 +426,14 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
       return;
     }
 
-    if (message['job_progress'] == 'working') {
+    if (message['status'] == 'working') {
       if (!_status.isWorking) _setTrackingStatus(RequestSearchStatus.working);
       return; // Keep listening — still want the eventual "completed".
     }
 
     // Otherwise, a location update: {latitude, longitude}, both strings.
     // Skip it when an external source (fake-walk stub, tests) is already
-    // driving location instead — only job_progress/status above should
+    // driving location instead — only the status check above should
     // still get through in that case.
     if (_usesExternalStatusSource) return;
     if (_hasReachedService) return; // Nothing left to track once arrived.

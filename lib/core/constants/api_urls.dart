@@ -69,22 +69,22 @@ class ApiUrls {
   // GET — the worker's current accepted (in-progress) job, if any.
   // Response 200: booking_id, request_id, category, customer{name,
   //   profile_photo}, description, address, latitude, longitude,
-  //   requested_at, job_progress, distance_km.
+  //   requested_at, status, distance_km.
   // Response 404: { "message": "No active job found." }
   static const String workerCurrentJob = "$baseUrl/auth/worker/current-job/";
 
-  // POST — mark the accepted job as started (job_progress: accepted ->
+  // POST — mark the accepted job as started (Booking.status: assigned ->
   // working). Takes no request body. [offerId] is the BookingOffer id, same
   // one used by accept/reject.
-  // Response: { "message": "...", "job_progress": "working" }
+  // Response: { "message": "...", "status": "working" }
   static String workerStartJob(String offerId) =>
       "$baseUrl/auth/worker/request/$offerId/start/";
 
   // POST — mark the accepted job as completed. Takes no request body.
-  // Requires job_progress to already be "working" server-side, or the
-  // backend rejects it.
+  // Requires the booking's status to already be "working" server-side, or
+  // the backend rejects it.
   // Response: { "message": "...", "status": "completed",
-  //   "job_progress": "completed", "completed_jobs": <int> }
+  //   "completed_jobs": <int> }
   static String workerCompleteJob(String offerId) =>
       "$baseUrl/auth/worker/request/$offerId/complete/";
 
@@ -199,11 +199,11 @@ class ApiUrls {
   static String workerOffersSocket(String accessToken) =>
       '$_wsBaseUrl/ws/worker/offers/?token=$accessToken';
 
-  // WS — live status/progress/location updates for one booking. Works for
-  // both the customer who created it and the worker assigned to it.
+  // WS — live status/location updates for one booking. Works for both the
+  // customer who created it and the worker assigned to it.
   // Messages, distinguished by which keys are present:
-  //   {status, worker_name} | {job_progress} |
-  //   {status: "completed", job_progress: "completed"} |
+  //   {status: "assigned", worker_name} | {status: "working"} |
+  //   {status: "completed"} | {status: "cancelled"} |
   //   {latitude, longitude}  (both arrive as STRINGS, not numbers)
   static String bookingSocket(String bookingId, String accessToken) =>
       '$_wsBaseUrl/ws/bookings/$bookingId/?token=$accessToken';

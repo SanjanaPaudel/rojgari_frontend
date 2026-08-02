@@ -55,7 +55,7 @@ class ApiTechnicianJobRepository implements TechnicianJobRepository {
     TechnicianJobStatus status,
   ) async {
     // The real backend has no generic "set status" endpoint and no concept
-    // of en-route/arrived at all — job_progress only moves accepted ->
+    // of en-route/arrived at all — Booking.status only moves assigned ->
     // working -> completed, driven by the discrete start/ and complete/
     // actions below. "working" is the only status this method can act on;
     // "completed" goes through completeJob() instead, and en-route/arrived
@@ -191,7 +191,7 @@ class ApiTechnicianJobRepository implements TechnicianJobRepository {
       technicianLatitude: technicianLatitude,
       technicianLongitude: technicianLongitude,
       currentStatus: TechnicianJobStatus.fromBackendValue(
-        json['job_progress']?.toString(),
+        json['status']?.toString(),
       ),
     );
   }

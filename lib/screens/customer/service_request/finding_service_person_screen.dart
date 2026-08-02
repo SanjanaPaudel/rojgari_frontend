@@ -305,7 +305,7 @@ class _FindingServicePersonScreenState
       // real device there isn't always practical for testing — see
       // dev_testing/fake_worker_movement.dart. Supplying trackingListenable
       // is what makes ServiceOnTheWayScreen skip real location updates (it
-      // still processes real job_progress/status pushes regardless — see
+      // still processes real status pushes regardless — see
       // that screen's _handleSocketMessage). Gated by
       // ServiceBookingDemoConfig.useFakeWorkerMovement so flipping that one
       // flag switches both this screen and the worker's active-job screen to

@@ -76,10 +76,11 @@ class BookingStatusResponse {
   final String id;
   final String status;
 
-  /// The worker-side job stage ("accepted" / "working" / "completed"),
-  /// mapped through the same [RequestSearchStatus.fromBackendValue] the rest
-  /// of the app uses — distinct from [status], which is the booking's own
-  /// lifecycle ("active" / "assigned" / etc), not the in-progress job stage.
+  /// The booking's lifecycle stage mapped through
+  /// [RequestSearchStatus.fromBackendValue]. The backend merged its old
+  /// separate job_progress field into Booking.status (active/scheduled/
+  /// assigned/working/completed/cancelled), so this is parsed from the same
+  /// `status` key as [status] itself, just converted to the app's enum.
   final RequestSearchStatus jobProgress;
   final AssignedWorkerInfo? worker;
 
@@ -112,7 +113,7 @@ class BookingStatusResponse {
       id: json['id']?.toString() ?? '',
       status: json['status']?.toString() ?? 'active',
       jobProgress: RequestSearchStatus.fromBackendValue(
-        json['job_progress']?.toString(),
+        json['status']?.toString(),
       ),
       worker: workerJson is Map<String, dynamic>
           ? AssignedWorkerInfo.fromJson(workerJson)
