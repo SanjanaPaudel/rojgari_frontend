@@ -18,7 +18,7 @@ class CustomerBookingsHistoryScreen extends StatefulWidget {
       _CustomerBookingsHistoryScreenState();
 }
 
-enum _BookingFilter { all, booked, inProgress, completed, cancelled }
+enum _BookingFilter { all, inProgress, completed, cancelled }
 
 class _CustomerBookingsHistoryScreenState
     extends State<CustomerBookingsHistoryScreen> {
@@ -28,7 +28,6 @@ class _CustomerBookingsHistoryScreenState
     final status = item.status.trim().toLowerCase().replaceAll(' ', '_');
     return switch (_filter) {
       _BookingFilter.all => true,
-      _BookingFilter.booked => status == 'booked',
       _BookingFilter.inProgress => status == 'in_progress',
       _BookingFilter.completed => status == 'completed',
       _BookingFilter.cancelled => status == 'cancelled',
@@ -116,7 +115,6 @@ class _FilterChipsRow extends StatelessWidget {
 
   static const _labels = {
     _BookingFilter.all: 'All',
-    _BookingFilter.booked: 'Booked',
     _BookingFilter.inProgress: 'In Progress',
     _BookingFilter.completed: 'Completed',
     _BookingFilter.cancelled: 'Cancelled',
