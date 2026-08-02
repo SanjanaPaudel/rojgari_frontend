@@ -260,18 +260,22 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
           start.routeProgress +
           (targetProgress - start.routeProgress) * progress;
       final reachedSnapshot = progress >= 1;
+      // Nothing sensible to interpolate from an unknown starting value —
+      // jump straight to the snapshot's value (itself possibly still
+      // unknown/null) instead of crashing or fabricating a number.
+      final startDistance = start.distanceKm;
+      final snapshotDistance = snapshot.distanceKm;
+      final startEta = start.estimatedArrivalMinutes;
+      final snapshotEta = snapshot.estimatedArrivalMinutes;
       _applyTrackingState(
         WorkerTrackingUiState(
           coordinate: serviceTrackingCoordinateAt(route, routeProgress),
-          distanceKm:
-              start.distanceKm +
-              (snapshot.distanceKm - start.distanceKm) * progress,
-          estimatedArrivalMinutes:
-              (start.estimatedArrivalMinutes +
-                      (snapshot.estimatedArrivalMinutes -
-                              start.estimatedArrivalMinutes) *
-                          progress)
-                  .round(),
+          distanceKm: (startDistance == null || snapshotDistance == null)
+              ? snapshotDistance
+              : startDistance + (snapshotDistance - startDistance) * progress,
+          estimatedArrivalMinutes: (startEta == null || snapshotEta == null)
+              ? snapshotEta
+              : (startEta + (snapshotEta - startEta) * progress).round(),
           status: reachedSnapshot ? snapshot.status : start.status,
           updatedAt: reachedSnapshot ? snapshot.updatedAt : DateTime.now(),
           routeProgress: routeProgress,
@@ -290,12 +294,10 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
       coordinate: status.hasReachedService
           ? customer
           : widget.worker.coordinate,
-      distanceKm: status.hasReachedService
-          ? 0
-          : widget.worker.distanceKm ?? 1.2,
+      distanceKm: status.hasReachedService ? 0 : widget.worker.distanceKm,
       estimatedArrivalMinutes: status.hasReachedService
           ? 0
-          : widget.worker.estimatedArrivalMinutes ?? 2,
+          : widget.worker.estimatedArrivalMinutes,
       status: status,
       updatedAt: DateTime.now(),
       routeProgress: status.hasReachedService ? 1 : 0,
@@ -1138,9 +1140,7 @@ class ArrivalStatusCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  arrived
-                      ? '0 km away'
-                      : '${tracking.estimatedArrivalMinutes} min (${tracking.distanceKm.toStringAsFixed(1)} km away)',
+                  arrived ? '0 km away' : _distanceEtaLabel(tracking),
                   key: const ValueKey('arrival-distance-text'),
                   style: const TextStyle(
                     color: AppColors.black,
@@ -1533,6 +1533,21 @@ class _TrackingCard extends StatelessWidget {
       child: child,
     );
   }
+}
+
+/// Distance/ETA line for [ArrivalStatusCard] — the real tracking flow may
+/// not have either value yet (no GPS update received) or ever (nothing
+/// computes a real ETA today), so each half degrades independently instead
+/// of falling back to a fabricated number.
+String _distanceEtaLabel(WorkerTrackingUiState tracking) {
+  final eta = tracking.estimatedArrivalMinutes;
+  final distance = tracking.distanceKm;
+  if (eta != null && distance != null) {
+    return '$eta min (${distance.toStringAsFixed(1)} km away)';
+  }
+  if (distance != null) return '${distance.toStringAsFixed(1)} km away';
+  if (eta != null) return '$eta min away';
+  return 'Calculating distance…';
 }
 
 String _formatClock(DateTime value) {

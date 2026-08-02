@@ -509,11 +509,12 @@ class _TrackingWorkerMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final arrived = tracking.hasArrived;
+    final eta = tracking.estimatedArrivalMinutes;
     final statusLabel = switch (tracking.status) {
       RequestSearchStatus.working => 'Working',
       RequestSearchStatus.completed => 'Completed',
       RequestSearchStatus.arrived => 'Arrived',
-      _ => '${tracking.estimatedArrivalMinutes} min',
+      _ => eta != null ? '$eta min' : 'On the way',
     };
     return Stack(
       clipBehavior: Clip.none,
@@ -549,7 +550,9 @@ class _TrackingWorkerMarker extends StatelessWidget {
                 Text(
                   arrived
                       ? '0 km'
-                      : '${tracking.distanceKm.toStringAsFixed(1)} km',
+                      : tracking.distanceKm != null
+                      ? '${tracking.distanceKm!.toStringAsFixed(1)} km'
+                      : '--',
                   maxLines: 1,
                   style: const TextStyle(color: AppColors.grey, fontSize: 8),
                 ),

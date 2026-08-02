@@ -13,8 +13,14 @@ class WorkerTrackingUiState {
   });
 
   final LatLng coordinate;
-  final double distanceKm;
-  final int estimatedArrivalMinutes;
+
+  // Null when the real status endpoint hasn't provided either — the worker
+  // side doesn't compute an ETA at all today, and distance is only known
+  // once a real GPS location update has been received. Null means "unknown,
+  // don't display a number" (see ArrivalStatusCard / _TrackingWorkerMarker),
+  // not "zero".
+  final double? distanceKm;
+  final int? estimatedArrivalMinutes;
   final RequestSearchStatus status;
   final DateTime updatedAt;
   final double routeProgress;
