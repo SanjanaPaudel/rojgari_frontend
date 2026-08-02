@@ -111,6 +111,14 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
       if (!mounted) return;
       switch (permission) {
         case AppLocationPermission.granted:
+          // A prior selection (e.g. reopening via "Change" after already
+          // confirming a location) takes precedence over auto-fetching GPS —
+          // initState already seeded _selected/_cameraTarget from it. Only
+          // fetch the current position when there's nothing to preserve.
+          if (widget.initialLocation != null) {
+            setState(() => _state = _LocationViewState.ready);
+            return;
+          }
           await _loadCurrentLocation();
           return;
         case AppLocationPermission.blocked:
@@ -136,6 +144,10 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
       if (!mounted) return;
       switch (permission) {
         case AppLocationPermission.granted:
+          if (widget.initialLocation != null) {
+            setState(() => _state = _LocationViewState.ready);
+            return;
+          }
           await _loadCurrentLocation();
           return;
         case AppLocationPermission.blocked:
