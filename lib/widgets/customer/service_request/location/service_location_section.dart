@@ -174,9 +174,12 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
   }
 
   Future<void> _loadCurrentLocation() async {
+    // The map only exists once _state is already `ready` — this method also
+    // runs for the very first location fetch (from _checkAvailability,
+    // before FlutterMap has ever built), when there's no MapController to
+    // move yet. initialCenter already handles that first-render case.
+    final mapAlreadyOnScreen = _state == _LocationViewState.ready;
 
-  
-  
     if (mounted) {
       setState(() => _state = _LocationViewState.loading);
     }
@@ -199,6 +202,10 @@ class _ServiceLocationSectionState extends State<ServiceLocationSection>
         _isMapMoving = false;
       });
       widget.onLocationSelected(next);
+      if (mapAlreadyOnScreen) {
+        _ignoreNextMoveEnd = true;
+        _mapController.move(target, 17);
+      }
       unawaited(_resolveAddress(next));
     } on LocationServiceException catch (error) {
       if (mounted) _setError(error.message);
