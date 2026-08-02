@@ -81,4 +81,51 @@ class BookingStatusService {
       'Unable to cancel the request (${response.statusCode}).',
     );
   }
+
+  /// Submits the customer's rating (and optional review) for a completed
+  /// booking. [rating] must be 1-5 — the UI already enforces this via its
+  /// star picker, so this only guards against a caller bypassing that.
+  Future<BookingStatusResponse> rateBooking(
+    String bookingId, {
+    required int rating,
+    String? reviewText,
+  }) async {
+    if (rating < 1 || rating > 5) {
+      throw const BookingStatusException('Rating must be between 1 and 5.');
+    }
+
+    final response = await _api.post(ApiUrls.rateBooking(bookingId), {
+      'rating': rating,
+      if (reviewText != null && reviewText.isNotEmpty)
+        'review_text': reviewText,
+    });
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return BookingStatusResponse.fromJson(decoded);
+      }
+      throw const BookingStatusException(
+        'Unexpected response while submitting your review.',
+      );
+    }
+
+    if (response.statusCode == 404) {
+      throw const BookingNotFoundException();
+    }
+
+    if (response.statusCode == 400) {
+      final decoded = jsonDecode(response.body);
+      final detail = decoded is Map<String, dynamic>
+          ? decoded['detail'] as String?
+          : null;
+      throw BookingStatusException(
+        detail ?? 'Unable to submit your review.',
+      );
+    }
+
+    throw BookingStatusException(
+      'Unable to submit your review (${response.statusCode}).',
+    );
+  }
 }

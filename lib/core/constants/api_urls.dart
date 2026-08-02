@@ -137,6 +137,15 @@ class ApiUrls {
   static String cancelBooking(String bookingId) =>
       "$baseUrl/services/bookings/$bookingId/cancel/";
 
+  // POST — submits the customer's rating/review for a completed booking.
+  // Body: { "rating": 1-5 (one decimal place), "review_text": optional }.
+  // Response 200: the full BookingDetailSerializer shape (see bookingStatus).
+  // Response 400 — not yet completed, already rated, or failed validation.
+  // Response 404 — booking doesn't exist, or doesn't belong to the
+  // requesting customer.
+  static String rateBooking(String bookingId) =>
+      "$baseUrl/services/bookings/$bookingId/rate/";
+
   // GET — the logged-in customer's profile.
   // Response: { "id": <int>, "full_name": "...", "phone_number": "...",
   //   "email": "...", "profile_photo": "<url or null>", "is_verified": bool }

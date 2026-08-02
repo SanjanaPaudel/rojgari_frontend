@@ -9,6 +9,7 @@ import '../../../models/service_request/selected_service_location.dart';
 import '../../../models/service_request/service_request_payload.dart';
 import '../../../repositories/service_request/service_request_repository.dart';
 import '../../../repositories/service_request/service_request_repository_provider.dart';
+import '../../../services/service_request/booking_status_service.dart';
 import '../../../services/service_request/request_media_picker.dart';
 import '../../../widgets/customer/service_request/photo_upload_section.dart';
 import '../../../widgets/customer/service_request/problem_description_field.dart';
@@ -43,6 +44,7 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
   final _mediaPicker = RequestMediaPicker();
   final List<XFile?> _photoSlots = List<XFile?>.filled(3, null);
   late final ServiceRequestRepository _repository;
+  final BookingStatusService _bookingStatusService = BookingStatusService();
 
   SelectedServiceLocation? _selectedServiceLocation;
   XFile? _video;
@@ -322,6 +324,18 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
             initialStatus: RequestSearchStatus.fromBackendValue(result.status),
             addressText: result.addressText,
             offersSent: result.offersSent,
+            onSubmitReview: (reviewPayload) async {
+              try {
+                await _bookingStatusService.rateBooking(
+                  reviewPayload.requestId,
+                  rating: reviewPayload.rating,
+                  reviewText: reviewPayload.reviewText,
+                );
+                return true;
+              } catch (_) {
+                return false;
+              }
+            },
           ),
         ),
       );
