@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../core/utils/category_icon_registry.dart';
 import '../../models/customer/booking_history_item.dart';
+import '../../screens/customer/cancelled_booking_details_screen.dart';
 import '../../screens/customer/completed_booking_details_loader.dart';
 import '../../screens/customer/service_request/customer_booking_tracking_loader.dart';
 
 /// Default tap behavior for a booking history entry — navigates to live
 /// tracking when the booking is in progress, to the details screen when
-/// completed, and does nothing for cancelled entries (nothing to show).
+/// completed, and to a static "no details" screen when cancelled.
 void openBookingHistoryDetail(BuildContext context, BookingHistoryItem booking) {
   if (booking.isInProgress) {
     Navigator.push(
@@ -28,7 +29,12 @@ void openBookingHistoryDetail(BuildContext context, BookingHistoryItem booking) 
             CompletedBookingDetailsLoader(bookingId: booking.bookingId),
       ),
     );
+    return;
   }
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const CancelledBookingDetailsScreen()),
+  );
 }
 
 /// The single reusable card for rendering a [BookingHistoryItem] — used by
