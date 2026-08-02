@@ -167,6 +167,19 @@ class IncomingRequestsStore with WidgetsBindingObserver {
     requests.value = [...requests.value];
   }
 
+  /// Drops [offerId] from the shared list the moment its own client-side
+  /// countdown reaches zero — the backend expires offers lazily (only when
+  /// next fetched, see WorkerService._expire_if_stale) and never pushes an
+  /// "expired" event over the socket, so nothing else would otherwise
+  /// remove it from the home preview / full list right when its timer runs
+  /// out. A no-op if it's already gone (e.g. accepted/declined first).
+  void expireLocally(String offerId) {
+    if (!requests.value.any((request) => request.id == offerId)) return;
+    requests.value = requests.value
+        .where((request) => request.id != offerId)
+        .toList(growable: false);
+  }
+
   Future<Set<String>> _loadViewedIds() async {
     return _viewedIds ??= await StorageService.getViewedOfferIds();
   }

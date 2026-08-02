@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../models/incoming_request_model.dart';
 import 'category_avatar.dart';
+import 'request_offer_badges.dart';
 
 /// Which layout [IncomingRequestCard] renders.
 enum IncomingRequestCardStyle {
   /// The compact tile used on the technician home screen's "New requests
-  /// near you" preview: title + "New" badge, location, time, chevron button.
+  /// near you" preview: title + countdown badge, location, distance + visit
+  /// charge, chevron button.
   compact,
 
   /// The denser tile used on "All Incoming Requests": leads with the
@@ -26,11 +28,17 @@ class IncomingRequestCard extends StatelessWidget {
     required this.request,
     required this.style,
     this.onTap,
+    this.onExpired,
   });
 
   final IncomingRequest request;
   final IncomingRequestCardStyle style;
   final VoidCallback? onTap;
+
+  // Called once, the moment this offer's countdown reaches zero — the
+  // caller is expected to drop it from IncomingRequestsStore so it
+  // disappears from both the home preview and the full list.
+  final VoidCallback? onExpired;
 
   @override
   Widget build(BuildContext context) {
@@ -38,20 +46,23 @@ class IncomingRequestCard extends StatelessWidget {
       IncomingRequestCardStyle.compact => _CompactCard(
         request: request,
         onTap: onTap,
+        onExpired: onExpired,
       ),
       IncomingRequestCardStyle.detailed => _DetailedCard(
         request: request,
         onTap: onTap,
+        onExpired: onExpired,
       ),
     };
   }
 }
 
 class _CompactCard extends StatelessWidget {
-  const _CompactCard({required this.request, this.onTap});
+  const _CompactCard({required this.request, this.onTap, this.onExpired});
 
   final IncomingRequest request;
   final VoidCallback? onTap;
+  final VoidCallback? onExpired;
 
   @override
   Widget build(BuildContext context) {
@@ -89,23 +100,9 @@ class _CompactCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xffF4EEFF),
-                            borderRadius: BorderRadius.circular(7),
-                          ),
-                          child: const Text(
-                            'New',
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                            ),
-                          ),
+                        ExpiryCountdownBadge(
+                          initialSeconds: request.expiresInSeconds,
+                          onExpired: onExpired,
                         ),
                       ],
                     ),
@@ -115,15 +112,23 @@ class _CompactCard extends StatelessWidget {
                       text: request.location,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      request.distanceLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            request.distanceLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        VisitChargeBadge(amount: request.visitCharge),
+                      ],
                     ),
                   ],
                 ),
@@ -180,10 +185,11 @@ class _InfoLine extends StatelessWidget {
 }
 
 class _DetailedCard extends StatelessWidget {
-  const _DetailedCard({required this.request, this.onTap});
+  const _DetailedCard({required this.request, this.onTap, this.onExpired});
 
   final IncomingRequest request;
   final VoidCallback? onTap;
+  final VoidCallback? onExpired;
 
   @override
   Widget build(BuildContext context) {
@@ -214,15 +220,27 @@ class _DetailedCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        request.customerName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xff1A1830),
-                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              request.customerName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xff1A1830),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ExpiryCountdownBadge(
+                            initialSeconds: request.expiresInSeconds,
+                            onExpired: onExpired,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -274,13 +292,20 @@ class _DetailedCard extends StatelessWidget {
                         // Aligns the distance under the location text,
                         // clearing the 14px icon + 5px gap.
                         padding: const EdgeInsets.only(left: 19),
-                        child: Text(
-                          request.distanceLabel,
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                request.distanceLabel,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                            VisitChargeBadge(amount: request.visitCharge),
+                          ],
                         ),
                       ),
                     ],
@@ -294,3 +319,4 @@ class _DetailedCard extends StatelessWidget {
     );
   }
 }
+

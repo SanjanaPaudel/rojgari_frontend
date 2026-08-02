@@ -7,6 +7,7 @@ import '../../repositories/technician_job/technician_job_repository.dart';
 import '../../repositories/technician_job/technician_job_repository_provider.dart';
 import '../../services/incoming_request_service.dart' show IncomingRequestActionException;
 import '../../widgets/media_gallery_viewer.dart';
+import '../../widgets/technician/request_offer_badges.dart';
 import 'technician_active_job_screen.dart';
 
 /// Builds the combined, swipeable media sequence for this request — every
@@ -35,6 +36,7 @@ class IncomingRequestDetailsScreen extends StatefulWidget {
     this.onDeclinedNavigation,
     this.onVideoTap,
     this.onOfferNoLongerAvailable,
+    this.onExpired,
     this.jobRepository,
   });
 
@@ -49,6 +51,10 @@ class IncomingRequestDetailsScreen extends StatefulWidget {
   // elsewhere). The caller (IncomingRequestDetailsLoader) shows a popup with
   // this message and takes the worker to the incoming-requests list.
   final OfferGoneCallback? onOfferNoLongerAvailable;
+  // Called once, the moment the on-screen countdown reaches zero — the
+  // caller (IncomingRequestDetailsLoader) drops the offer from the shared
+  // store, which in turn triggers this screen's own "offer gone" handling.
+  final VoidCallback? onExpired;
   final TechnicianJobRepository? jobRepository;
 
   @override
@@ -209,10 +215,14 @@ class _IncomingRequestDetailsScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _RequestSummaryCard(request: request),
+              _RequestSummaryCard(request: request, onExpired: widget.onExpired),
               const SizedBox(height: 14),
               _DetailsCard(request: request, onVideoTap: widget.onVideoTap),
               const SizedBox(height: 18),
+              if (request.visitCharge != null) ...[
+                _VisitChargeBanner(amount: request.visitCharge!),
+                const SizedBox(height: 14),
+              ],
               _ActionButtons(
                 processingAction: _processingAction,
                 onAccept: _accept,
@@ -227,8 +237,9 @@ class _IncomingRequestDetailsScreenState
 }
 
 class _RequestSummaryCard extends StatelessWidget {
-  const _RequestSummaryCard({required this.request});
+  const _RequestSummaryCard({required this.request, this.onExpired});
   final IncomingServiceRequestDetails request;
+  final VoidCallback? onExpired;
 
   @override
   Widget build(BuildContext context) {
@@ -257,15 +268,29 @@ class _RequestSummaryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  request.customerName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        request.customerName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (request.expiresInSeconds != null) ...[
+                      const SizedBox(width: 8),
+                      ExpiryCountdownBadge(
+                        initialSeconds: request.expiresInSeconds!,
+                        onExpired: onExpired,
+                      ),
+                    ],
+                  ],
                 ),
                 Text(
                   request.categoryName,
@@ -555,6 +580,63 @@ class _MediaError extends StatelessWidget {
   );
 }
 
+/// Callout sitting directly above Accept/Decline — same tinted-badge
+/// treatment as [ExpiryCountdownBadge]'s under-60s warning state (light
+/// orange tint, not a solid fill) so it reads as a notice, not an alarm.
+class _VisitChargeBanner extends StatelessWidget {
+  const _VisitChargeBanner({required this.amount});
+  final double amount;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Card(
+      borderColor: AppColors.red,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.red.withValues(alpha: .15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.payments_outlined,
+              color: AppColors.green,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'You earn Rs. ${amount.toStringAsFixed(0)} just for visiting',
+                  style: const TextStyle(
+                    color: AppColors.red,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Material and other costs should be settled with the customer on-site.',
+                  style: TextStyle(
+                    color: AppColors.grey,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ActionButtons extends StatelessWidget {
   const _ActionButtons({
     required this.processingAction,
@@ -643,15 +725,16 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _Card extends StatelessWidget {
-  const _Card({required this.child});
+  const _Card({required this.child, this.borderColor});
   final Widget child;
+  final Color? borderColor;
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: AppColors.card,
       borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: AppColors.border),
+      border: Border.all(color: borderColor ?? AppColors.border),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: .025),

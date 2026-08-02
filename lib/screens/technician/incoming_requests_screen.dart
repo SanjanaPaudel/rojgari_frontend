@@ -190,6 +190,10 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
                   request: request,
                   style: IncomingRequestCardStyle.detailed,
                   onTap: () => _openDetails(request),
+                  onExpired: () =>
+                      IncomingRequestsStore.instance.expireLocally(
+                        request.id,
+                      ),
                 );
               },
             ),

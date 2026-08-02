@@ -260,6 +260,14 @@ class _IncomingRequestDetailsLoaderState
       // same shared store) by the time this list is shown.
       onDeclinedNavigation: _goToIncomingRequestsList,
       onOfferNoLongerAvailable: _showOfferGoneDialogThenGoToList,
+      // Dropping it from the shared store here (rather than doing nothing
+      // and letting the badge just sit on "Expired") reuses the exact same
+      // path a real-time removal would take: it flips _handleOffersChanged
+      // above, which does one REST check and — since the offer really is
+      // gone now — surfaces the same "Request unavailable" popup and sends
+      // the worker back to a fresh list.
+      onExpired: () =>
+          IncomingRequestsStore.instance.expireLocally(widget.offerId),
     );
   }
 }

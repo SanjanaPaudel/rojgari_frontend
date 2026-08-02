@@ -43,6 +43,8 @@ const _sampleOffers = [
     'description': 'Kitchen pipe leaking...',
     'address': 'Lazimpat, Kathmandu',
     'distance_km': 0,
+    'visit_charge': 250,
+    'expires_in_seconds': 95,
     'created_at': '2026-07-17T09:15:00Z',
   },
   {
@@ -53,6 +55,8 @@ const _sampleOffers = [
     'description': 'Power socket not working...',
     'address': 'Baneshwor, Kathmandu',
     'distance_km': 0,
+    'visit_charge': 180,
+    'expires_in_seconds': 42,
     'created_at': '2026-07-17T09:20:00Z',
   },
   {
@@ -63,6 +67,8 @@ const _sampleOffers = [
     'description': 'Two bedroom walls need a fresh coat before move-in.',
     'address': 'Baneshwor, Kathmandu',
     'distance_km': 2.0,
+    'visit_charge': 320,
+    'expires_in_seconds': 15,
     'created_at': null, // filled in at generation time, see below
   },
   {
@@ -73,6 +79,8 @@ const _sampleOffers = [
     'description': 'Wardrobe door hinge is broken.',
     'address': 'Thamel, Kathmandu',
     'distance_km': 2.5,
+    'visit_charge': 200,
+    'expires_in_seconds': 110,
     'created_at': null,
   },
 ];

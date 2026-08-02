@@ -5,11 +5,9 @@ import '../core/constants/api_urls.dart';
 //
 // Backed by GET /api/auth/worker/incoming-requests/, which returns:
 //   offer_id, customer_name, service, service_icon, description, address,
-//   distance_km, created_at
+//   visit_charge, distance_km, expires_in_seconds, created_at
 //
-// BACKEND GAPS (see fromJson for how each is handled):
-//   • distance_km is hardcoded to 0 in WorkerService.get_incoming_requests,
-//     so every card currently reads "0.0 km away".
+// BACKEND GAP (see fromJson for how it's handled):
 //   • The endpoint returns only offers with status="pending" and sends no
 //     status field, so every request is mapped to `isNew`.
 
@@ -32,6 +30,8 @@ class IncomingRequest {
     required this.distanceKm,
     required this.createdAt,
     required this.status,
+    required this.visitCharge,
+    required this.expiresInSeconds,
     this.iconUrl,
   });
 
@@ -51,6 +51,14 @@ class IncomingRequest {
   final double distanceKm;
   final DateTime createdAt;
 
+  // What the worker earns just for showing up to this job.
+  final double visitCharge;
+
+  // Seconds left to accept/decline as of when this was fetched — the offer
+  // auto-expires OFFER_EXPIRY_SECONDS (120s) after BookingOffer.offered_at.
+  // Not a live value; ExpiryCountdownBadge ticks it down client-side.
+  final int expiresInSeconds;
+
   // Absolute URL of the category icon, or null when the Skill has no icon.
   final String? iconUrl;
 
@@ -65,12 +73,12 @@ class IncomingRequest {
       title: json['service']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       location: json['address']?.toString() ?? '',
-      // Sent as 0 by the backend today; parsed properly so the card works
-      // as soon as Django starts computing it.
       distanceKm: (json['distance_km'] as num?)?.toDouble() ?? 0,
       createdAt:
           DateTime.tryParse(json['created_at']?.toString() ?? '')?.toLocal() ??
           DateTime.now(),
+      visitCharge: (json['visit_charge'] as num?)?.toDouble() ?? 0,
+      expiresInSeconds: (json['expires_in_seconds'] as num?)?.toInt() ?? 0,
       iconUrl: (icon == null || icon.isEmpty)
           ? null
           : ApiUrls.resolveMediaUrl(icon),

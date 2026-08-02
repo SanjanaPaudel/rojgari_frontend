@@ -1112,6 +1112,10 @@ class _IncomingRequestsSection extends StatelessWidget {
                   request: request,
                   style: IncomingRequestCardStyle.compact,
                   onTap: () => onRequestTap(request),
+                  onExpired: () =>
+                      IncomingRequestsStore.instance.expireLocally(
+                        request.id,
+                      ),
                 );
               },
             ),

@@ -17,6 +17,8 @@ class IncomingServiceRequestDetails {
     this.videoThumbnailUrl,
     this.videoDurationSeconds,
     this.status,
+    this.visitCharge,
+    this.expiresInSeconds,
   });
 
   final String id;
@@ -43,11 +45,18 @@ class IncomingServiceRequestDetails {
   final int? videoDurationSeconds;
   final String? status;
 
+  // What the worker earns just for showing up to this job.
+  final double? visitCharge;
+
+  // Seconds left to accept/decline as of when this was fetched — see
+  // IncomingRequest.expiresInSeconds for the same semantics.
+  final int? expiresInSeconds;
+
   /// Maps `GET /api/auth/worker/request/<offer_id>/`.
   ///
   /// Response fields: offer_id, customer_name, service, service_icon,
-  /// description, address, latitude, longitude, distance_km, photos, video,
-  /// status, created_at.
+  /// description, address, latitude, longitude, distance_km, visit_charge,
+  /// expires_in_seconds, photos, video, status, created_at.
   ///
   /// Fields with no backend source:
   ///   • categoryId / categorySlug — the API returns a flat `service` name.
@@ -68,8 +77,9 @@ class IncomingServiceRequestDetails {
       locationText: json['address']?.toString() ?? '',
       latitude: _toDouble(json['latitude']),
       longitude: _toDouble(json['longitude']),
-      // Hardcoded to 0 by the backend today (WorkerService.get_request_detail).
       distanceKm: _toDouble(json['distance_km']),
+      visitCharge: _toDouble(json['visit_charge']),
+      expiresInSeconds: (json['expires_in_seconds'] as num?)?.toInt(),
       photoUrls: (json['photos'] as List<dynamic>? ?? const [])
           .map((photo) => ApiUrls.resolveMediaUrl(photo.toString()))
           .toList(growable: false),
