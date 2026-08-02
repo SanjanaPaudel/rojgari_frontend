@@ -34,6 +34,7 @@ class ServiceOnTheWayScreen extends StatefulWidget {
     required this.requestDescription,
     required this.requestedAt,
     required this.worker,
+    this.visitCharge,
     this.initialStatus = RequestSearchStatus.workerOnTheWay,
     this.statusListenable,
     this.trackingListenable,
@@ -64,6 +65,11 @@ class ServiceOnTheWayScreen extends StatefulWidget {
   final String requestDescription;
   final DateTime requestedAt;
   final AcceptedWorkerUiModel worker;
+
+  // What the worker will charge just for this visit — null until the
+  // backend has an accepted offer to compute it from (BookingDetailSerializer
+  // .get_visit_charge). Hidden on screen when absent rather than showing 0.
+  final double? visitCharge;
   final RequestSearchStatus initialStatus;
   final ValueListenable<RequestSearchStatus>? statusListenable;
   final ValueListenable<WorkerTrackingUiState>? trackingListenable;
@@ -809,6 +815,10 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
                         worker: widget.worker,
                         onCall: _handleCall,
                       ),
+                      if (widget.visitCharge != null) ...[
+                        const SizedBox(height: 12),
+                        VisitChargeInfoCard(amount: widget.visitCharge!),
+                      ],
                       const SizedBox(height: 12),
                       if (!_hasReachedService)
                         ScaleTransition(
@@ -1078,6 +1088,69 @@ class WorkerInformationCard extends StatelessWidget {
               foregroundColor: AppColors.primary,
             ),
             icon: const Icon(Icons.call_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tells the customer what this visit will cost before the worker arrives,
+/// so it's never a surprise. Deliberately worded as a fixed visit-only
+/// charge — any extra material/service cost is a separate, later
+/// conversation with the worker, not something this screen quotes.
+class VisitChargeInfoCard extends StatelessWidget {
+  const VisitChargeInfoCard({required this.amount, super.key});
+
+  final double amount;
+
+  @override
+  Widget build(BuildContext context) {
+    return _TrackingCard(
+      padding: const EdgeInsets.all(14),
+      borderColor: AppColors.red,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.red.withValues(alpha: .15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.payments_outlined,
+              color: AppColors.green,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Visit Charge: Rs. ${amount.toStringAsFixed(0)}',
+                  key: const ValueKey('visit-charge-amount'),
+                  style: const TextStyle(
+                    color: AppColors.red,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Fixed charge for the visit. Any material or extra service '
+                  'costs will be discussed with the professional separately.',
+                  style: TextStyle(
+                    color: AppColors.grey,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1509,10 +1582,15 @@ class _WorkerProfileImage extends StatelessWidget {
 }
 
 class _TrackingCard extends StatelessWidget {
-  const _TrackingCard({required this.child, required this.padding});
+  const _TrackingCard({
+    required this.child,
+    required this.padding,
+    this.borderColor,
+  });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -1521,7 +1599,7 @@ class _TrackingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(color: const Color(0xFFE8E3F0)),
+        border: Border.all(color: borderColor ?? const Color(0xFFE8E3F0)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0C1A1233),

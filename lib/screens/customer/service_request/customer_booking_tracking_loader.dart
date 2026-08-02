@@ -91,6 +91,7 @@ class _CustomerBookingTrackingLoaderState
           requestDescription: response.description ?? '',
           requestedAt: response.createdAt ?? DateTime.now(),
           worker: acceptedWorker,
+          visitCharge: response.visitCharge,
           initialStatus: response.jobProgress,
           // Real fetched data is being used from here on — the screen's
           // built-in demo timers must stay off so nothing fabricated

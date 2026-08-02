@@ -97,6 +97,7 @@ class _FindingServicePersonScreenState
   AppWebSocket? _socket;
   StreamSubscription<Map<String, dynamic>>? _socketSubscription;
   AcceptedWorkerUiModel? _polledWorker;
+  double? _polledVisitCharge;
   final BookingStatusService _statusService = BookingStatusService();
 
   @override
@@ -246,6 +247,7 @@ class _FindingServicePersonScreenState
         _polledWorker = AcceptedWorkerUiModel.fromAssignedWorker(
           result.worker!,
         );
+        _polledVisitCharge = result.visitCharge;
         _applyStatus(RequestSearchStatus.accepted);
       }
       // worker == null: still searching — nothing to change, wait for the
@@ -329,6 +331,7 @@ class _FindingServicePersonScreenState
             requestDescription: widget.requestDescription,
             requestedAt: widget.requestedAt,
             worker: worker,
+            visitCharge: _polledVisitCharge,
             onSubmitReview: widget.onSubmitReview,
             onBackToHome: widget.onBackToHome,
             trackingListenable: fakeTracking?.notifier,
