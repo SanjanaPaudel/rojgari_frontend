@@ -8,6 +8,7 @@ import 'package:rojgari_frontend_one/services/navigation_service.dart';
 import 'package:rojgari_frontend_one/services/storage_service.dart';
 import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
 import '../core/constants/api_urls.dart';
+import 'fcm_service.dart';
 
 class ApiService {
   static const String sessionExpired = "Session Expired. Please login again.";
@@ -59,6 +60,7 @@ class ApiService {
 
   Future<void> _logoutUser() async {
     await StorageService.clearTokens();
+    FcmService.resetSession();
     NavigationService.navigatorKey.currentState?.pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,

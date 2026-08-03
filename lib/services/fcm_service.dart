@@ -25,13 +25,36 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
 /// Wires up push notifications: permission request, registering this
 /// device's token with the backend, and routing a notification tap.
 ///
-/// Call [initialize] once after a successful login, and again on app start
-/// when a session is already valid (see LoginScreen and SplashScreen) — the
-/// backend note asks for the token to be (re)sent on every login.
+/// [initialize] is called from both CustomerHomeScreen's and
+/// TechnicianHomeScreen's initState — safe to call on every mount, since
+/// [_registeredThisSession] makes repeat calls within the same login a
+/// no-op. Call [resetSession] right after clearing local auth state on
+/// logout so the next login (same device, possibly a different account)
+/// registers the token again — the backend associates each token with
+/// whichever user last registered it.
 class FcmService {
   FcmService._();
 
   static bool _listenersRegistered = false;
+
+  // Guards the priming-dialog/permission/getToken/register block, not just
+  // the listener subscriptions below — initialize() is called from both
+  // home screens' initState, which reruns on every fresh mount (re-login,
+  // navigating back to home, etc.), not just once per app process. Without
+  // this, the same token gets POSTed to the backend again on every mount,
+  // which is what was producing duplicate device rows (and duplicate Chrome
+  // notifications) server-side.
+  static bool _registeredThisSession = false;
+
+  /// Call right after clearing local auth state on logout. The backend
+  /// associates a device token with whichever user last registered it
+  /// (DeviceTokenService.register_device), so if a different account logs
+  /// in on the same device within the same app process, it needs its own
+  /// fresh registration — without this reset, the token would stay silently
+  /// tied to the previous account.
+  static void resetSession() {
+    _registeredThisSession = false;
+  }
 
   static Future<void> initialize() async {
     try {
@@ -48,31 +71,37 @@ class FcmService {
   static Future<void> _doInitialize() async {
     final messaging = FirebaseMessaging.instance;
 
-    // Only show the custom "priming" dialog when the real permission hasn't
-    // been decided yet — once the user (or a past visit) has already
-    // answered the native prompt, there's nothing left to prime.
-    final currentSettings = await messaging.getNotificationSettings();
-    if (currentSettings.authorizationStatus ==
-        AuthorizationStatus.notDetermined) {
-      final dialogContext = NavigationService.navigatorKey.currentContext;
-      if (dialogContext != null) {
-        final wantsNotifications = await NotificationPermissionDialog.show(
-          dialogContext,
-        );
-        // "Not now" leaves the real permission untouched (never called
-        // requestPermission), so this dialog can simply be shown again on
-        // a later visit — no permission was burned.
-        if (!wantsNotifications) return;
+    if (!_registeredThisSession) {
+      // Only show the custom "priming" dialog when the real permission
+      // hasn't been decided yet — once the user (or a past visit) has
+      // already answered the native prompt, there's nothing left to prime.
+      final currentSettings = await messaging.getNotificationSettings();
+      if (currentSettings.authorizationStatus ==
+          AuthorizationStatus.notDetermined) {
+        final dialogContext = NavigationService.navigatorKey.currentContext;
+        if (dialogContext != null) {
+          final wantsNotifications = await NotificationPermissionDialog.show(
+            dialogContext,
+          );
+          // "Not now" leaves the real permission untouched (never called
+          // requestPermission) and _registeredThisSession stays false, so
+          // this dialog can simply be shown again on a later visit — no
+          // permission was burned, and no retry is lost.
+          if (!wantsNotifications) return;
+        }
       }
-    }
 
-    await messaging.requestPermission();
+      await messaging.requestPermission();
 
-    final token = await messaging.getToken(
-      vapidKey: kIsWeb ? _webVapidKey : null,
-    );
-    if (token != null) {
-      await _registerToken(token);
+      final token = await messaging.getToken(
+        vapidKey: kIsWeb ? _webVapidKey : null,
+      );
+      if (token != null) {
+        // Only latch the guard on a real success — a failed POST (network
+        // hiccup, backend down) must still be retried on the next mount,
+        // same as before this guard existed.
+        _registeredThisSession = await _registerToken(token);
+      }
     }
 
     if (_listenersRegistered) return;
@@ -104,7 +133,12 @@ class FcmService {
     }
   }
 
-  static Future<void> _registerToken(String token) async {
+  /// Returns whether the POST actually succeeded, so [_doInitialize] knows
+  /// whether it's safe to latch [_registeredThisSession]. Also used
+  /// directly as the `onTokenRefresh` listener below — a `bool`-returning
+  /// function is still assignable there since Dart discards the return
+  /// value for a `void Function(T)` callback.
+  static Future<bool> _registerToken(String token) async {
     try {
       await ApiService().post(ApiUrls.deviceToken, {
         "device_token": token,
@@ -116,9 +150,11 @@ class FcmService {
             ? "ios"
             : "android",
       });
+      return true;
     } catch (_) {
       // Best-effort — a failed registration here shouldn't block app usage;
       // it retries next time initialize() runs (next login/app start).
+      return false;
     }
   }
 

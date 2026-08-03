@@ -7,6 +7,7 @@ import '../../core/constants/api_urls.dart';
 import '../../core/constants/colors.dart';
 import '../../models/technician_model.dart';
 import '../../models/worker_dashboard_response.dart';
+import '../../services/fcm_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/worker_dashboard_service.dart';
 import '../../widgets/customer/logout_confirmation_dialog.dart';
@@ -372,6 +373,7 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
       // flow by clearing secure authentication storage through StorageService.
       // BACKEND TODO: Revoke the refresh token when logout API support exists.
       await StorageService.clearTokens();
+      FcmService.resetSession();
       _sessionTechnician = null;
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(

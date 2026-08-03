@@ -4,6 +4,7 @@ import '../../core/constants/api_urls.dart';
 import '../../core/constants/colors.dart';
 import '../../models/customer_profile_model.dart';
 import '../../services/customer_profile_service.dart';
+import '../../services/fcm_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/customer/customer_address_sheet.dart';
 import '../../widgets/customer/customer_profile_header.dart';
@@ -151,6 +152,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       // customer profile stored in the same secure storage. If separate cache
       // storage is added, clear that customer profile here as well.
       await StorageService.clearTokens();
+      FcmService.resetSession();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
