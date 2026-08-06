@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/constants/api_urls.dart';
 import '../../../services/api_service.dart';
 import '../../../services/app_web_socket.dart';
+import '../../../services/booking_history_store.dart';
 import '../../../services/storage_service.dart';
 
 import '../../../core/constants/colors.dart';
@@ -337,6 +338,7 @@ class _FindingServicePersonScreenState
             trackingListenable: fakeTracking?.notifier,
             onCancelRequested: () async {
               await _statusService.cancelBooking(widget.requestId);
+              BookingHistoryStore.instance.refreshNow();
               return true;
             },
           ),
@@ -397,6 +399,7 @@ class _FindingServicePersonScreenState
         cancelled = true;
       } else {
         await _statusService.cancelBooking(widget.requestId);
+        BookingHistoryStore.instance.refreshNow();
         cancelled = true;
       }
 

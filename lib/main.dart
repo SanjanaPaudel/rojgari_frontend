@@ -55,6 +55,7 @@ class MyApp extends StatelessWidget {
       // LoginScreen when the session expires anywhere in the app — including
       // inside background service calls that have no BuildContext of their own.
       navigatorKey: NavigationService.navigatorKey,
+      navigatorObservers: [NavigationService.routeObserver],
 
       // home: OTPScreen(
       //   email: "email",

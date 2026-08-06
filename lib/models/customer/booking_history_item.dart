@@ -30,20 +30,68 @@ class BookingHistoryItem {
   /// details screen when tapped."
   bool get isCompleted =>
       status.trim().toLowerCase().replaceAll(' ', '_') == 'completed';
+
+  /// Maps one entry of `GET /api/services/bookings/list/`'s response
+  /// (BookingListSerializer) to this card's shape. See BookingHistoryStore
+  /// for the shared fetch this feeds both the home screen preview and
+  /// CustomerBookingsHistoryScreen from.
+  ///
+  /// Backend `status` is one of active/scheduled/assigned/working/completed/
+  /// cancelled — collapsed here to the three buckets
+  /// BookingHistoryStatusStyle.fromBackend actually styles differently
+  /// (everything before "completed"/"cancelled" reads as "in progress" to
+  /// the customer).
+  factory BookingHistoryItem.fromApi(Map<String, dynamic> json) {
+    final rawStatus = (json['status'] as String? ?? '').trim().toLowerCase();
+    final status = switch (rawStatus) {
+      'completed' => 'Completed',
+      'cancelled' => 'Cancelled',
+      _ => 'In Progress',
+    };
+
+    final createdAt = DateTime.tryParse(json['created_at']?.toString() ?? '');
+    final visitCharge = json['visit_charge'];
+
+    return BookingHistoryItem(
+      bookingId: json['id'].toString(),
+      title: json['category']?.toString() ?? '',
+      issue: json['description']?.toString() ?? '',
+      status: status,
+      timeLabel: createdAt == null ? '' : _formatTimeLabel(createdAt),
+      icon: json['category_icon']?.toString() ?? '',
+      visitCharge: visitCharge is num
+          ? 'Rs ${visitCharge.toStringAsFixed(0)}'
+          : null,
+    );
+  }
 }
 
-// BACKEND TODO:
-// Replace with response.bookings from GET /customer/bookings. Field mapping:
-// bookingId -> bookingId, serviceName -> title, issueDescription -> issue,
-// bookingStatus -> status, updatedAt/createdAt label -> timeLabel,
-// categoryIcon -> icon (same backend key style as GET /api/services/categories/,
-// resolved via CategoryIconRegistry — see booking_history_card.dart),
-// visitCharge -> visitCharge (null until the worker has been assigned a
-// charge for this booking).
-//
-// Ordered newest-first. The home screen preview takes the first few entries;
-// CustomerBookingsHistoryScreen shows the full list — both read from this
-// single source so they can never drift out of sync.
+String _formatTimeLabel(DateTime createdAt) {
+  final local = createdAt.toLocal();
+  final now = DateTime.now();
+  final diffDays = DateTime(
+    now.year,
+    now.month,
+    now.day,
+  ).difference(DateTime(local.year, local.month, local.day)).inDays;
+
+  if (diffDays == 0) return 'Today, ${_formatHour(local)}';
+  if (diffDays == 1) return 'Yesterday';
+  if (diffDays < 7) return '$diffDays days ago';
+  final weeks = diffDays ~/ 7;
+  if (weeks < 5) return weeks == 1 ? '1 week ago' : '$weeks weeks ago';
+  return '${local.day}/${local.month}/${local.year}';
+}
+
+String _formatHour(DateTime dt) {
+  final hour12 = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+  final period = dt.hour < 12 ? 'AM' : 'PM';
+  return '$hour12 $period';
+}
+
+// Kept for now as fixture/reference data only — no longer read by either
+// screen (see BookingHistoryStore). Not deleted without an explicit call —
+// ask before removing.
 const List<BookingHistoryItem> sampleBookingHistory = [
   BookingHistoryItem(
     bookingId: 'booking_003',

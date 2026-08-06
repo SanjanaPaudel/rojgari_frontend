@@ -146,6 +146,13 @@ class ApiUrls {
   static String rateBooking(String bookingId) =>
       "$baseUrl/services/bookings/$bookingId/rate/";
 
+  // GET — the logged-in customer's booking history (all of their bookings,
+  // newest first). Optional "?status=" filter exists server-side but isn't
+  // used by the app today — filtering happens client-side instead.
+  // Response: [ { id, category, category_icon, description, status,
+  //   visit_charge, created_at } ]
+  static const String bookingHistory = "$baseUrl/services/bookings/list/";
+
   // GET — the logged-in customer's profile.
   // Response: { "id": <int>, "full_name": "...", "phone_number": "...",
   //   "email": "...", "profile_photo": "<url or null>", "is_verified": bool }

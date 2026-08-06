@@ -19,6 +19,7 @@ import '../../../models/service_request/worker_tracking_ui_state.dart';
 import '../../../core/constants/api_urls.dart';
 import '../../../services/api_service.dart';
 import '../../../services/app_web_socket.dart';
+import '../../../services/booking_history_store.dart';
 import '../../../services/storage_service.dart';
 import '../../../widgets/customer/service_request/horizontal_service_status_tracker.dart';
 import '../../../widgets/customer/service_request/service_search_map.dart';
@@ -568,6 +569,16 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
       _workingTransitionTimer?.cancel();
       _completionDemoTimer?.cancel();
       _scheduleRatingNavigation();
+      // Single funnel point for "this booking just turned out to be
+      // completed" — reached both by a live ws/bookings/<id>/ "completed"
+      // message (via _setTrackingStatus/_applyTrackingState above) and by
+      // CustomerBookingTrackingLoader constructing this screen with
+      // initialStatus already completed (a customer re-opening an "In
+      // Progress" history card for a job that finished while they were
+      // away from this screen — nothing else would have refreshed the
+      // list for that case). Covering both here means the WS handler
+      // doesn't need its own separate call.
+      BookingHistoryStore.instance.refreshNow();
     }
   }
 

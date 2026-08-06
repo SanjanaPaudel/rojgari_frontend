@@ -18,7 +18,12 @@ import '../../models/service_request/booking_status_response.dart';
 
 /// Set true to preview CompletedBookingDetailsScreen with fixture data
 /// instead of calling the real API. Must be false before merging.
-const bool debugUseFakeCompletedBooking = true;
+///
+/// Flipped back to false now that the booking history list (see
+/// BookingHistoryStore) passes real backend booking ids into this screen
+/// instead of sample-data ids like 'booking_001' — the real
+/// GET .../bookings/<id>/status/ call resolves correctly now.
+const bool debugUseFakeCompletedBooking = false;
 
 const _sampleCompletedBookingJson = {
   'id': 9001,

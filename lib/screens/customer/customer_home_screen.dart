@@ -9,7 +9,9 @@ import 'package:rojgari_frontend_one/screens/customer/customer_bookings_history_
 import 'package:rojgari_frontend_one/screens/customer/profile_screen.dart';
 import 'package:rojgari_frontend_one/screens/notifications_screen.dart';
 import 'package:rojgari_frontend_one/services/api_service.dart';
+import 'package:rojgari_frontend_one/services/booking_history_store.dart';
 import 'package:rojgari_frontend_one/services/customer_profile_service.dart';
+import 'package:rojgari_frontend_one/services/navigation_service.dart';
 import 'package:rojgari_frontend_one/services/fcm_service.dart';
 import 'package:rojgari_frontend_one/widgets/category_card.dart';
 import 'package:rojgari_frontend_one/widgets/customer/booking_history_card.dart';
@@ -37,16 +39,10 @@ class CustomerHomeScreen extends StatefulWidget {
   State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
 }
 
-class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
+class _CustomerHomeScreenState extends State<CustomerHomeScreen>
+    with RouteAware {
   final NotificationService _notificationService = NotificationService();
   int _notificationCount = 0;
-
-  // The 3 most recent entries of the shared booking-history source — the
-  // same list CustomerBookingsHistoryScreen ("View All") shows in full, so
-  // this preview can never drift out of sync with it.
-  static final List<BookingHistoryItem> _recentJobs = sampleBookingHistory
-      .take(3)
-      .toList();
 
   final CustomerProfileService _profileService = CustomerProfileService();
   CustomerProfileModel? _profile;
@@ -56,10 +52,41 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     super.initState();
     _loadProfile();
     _loadUnreadCount();
+    // Same "silent, non-blocking" treatment as _loadProfile/_loadUnreadCount
+    // above — this is a preview, not a page, so a failed fetch just leaves
+    // the section empty rather than showing an error here.
+    BookingHistoryStore.instance.ensureLoaded();
     // Fire-and-forget: shows the OS/browser notification permission prompt
     // after this screen has rendered, rather than blocking login/splash
     // navigation on it. See FcmService for why failures here are swallowed.
     FcmService.initialize();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    NavigationService.routeObserver.subscribe(
+      this,
+      ModalRoute.of(context) as PageRoute,
+    );
+  }
+
+  @override
+  void dispose() {
+    NavigationService.routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  // Fires when a route pushed on top of this screen (service request flow,
+  // tracking screen, etc.) gets popped and this screen is visible again —
+  // this is the screen's only chance to notice a booking's status changed
+  // while its own initState() never re-ran (CustomerHomeScreen is the base
+  // of the customer navigator stack, so it's never remounted). Silent, same
+  // as _loadProfile/_loadUnreadCount — a failed background refresh just
+  // leaves the preview showing its last known state.
+  @override
+  void didPopNext() {
+    BookingHistoryStore.instance.refreshNow();
   }
 
   Future<void> _loadProfile() async {
@@ -162,18 +189,28 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                child: Column(
-                  children: _recentJobs
-                      .map(
-                        (job) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: BookingHistoryCard(
-                            booking: job,
-                            onTap: () => openBookingHistoryDetail(context, job),
-                          ),
-                        ),
-                      )
-                      .toList(),
+                child: ValueListenableBuilder<List<BookingHistoryItem>>(
+                  valueListenable: BookingHistoryStore.instance.history,
+                  builder: (context, allBookings, _) {
+                    final recentJobs = allBookings.take(3).toList();
+                    if (recentJobs.isEmpty) {
+                      return const _BookingHistoryEmptyState();
+                    }
+                    return Column(
+                      children: recentJobs
+                          .map(
+                            (job) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: BookingHistoryCard(
+                                booking: job,
+                                onTap: () =>
+                                    openBookingHistoryDetail(context, job),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
                 ),
               ),
             ],
@@ -573,6 +610,41 @@ class _CategoryDots extends StatelessWidget {
             shape: BoxShape.circle,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Shown in the Bookings preview when the customer has no bookings at all —
+/// mirrors TechnicianHomeScreen's _IncomingRequestsEmptyState (icon + single
+/// line of text), styled with the same card border/radius BookingHistoryCard
+/// uses so it reads as part of the same list rather than a bare label.
+class _BookingHistoryEmptyState extends StatelessWidget {
+  const _BookingHistoryEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFEFE9FF)),
+      ),
+      child: const Column(
+        children: [
+          Icon(Icons.event_busy_rounded, size: 40, color: Color(0xFFBFC4D2)),
+          SizedBox(height: 10),
+          Text(
+            'No booking history yet.',
+            style: TextStyle(
+              color: AppColors.grey,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

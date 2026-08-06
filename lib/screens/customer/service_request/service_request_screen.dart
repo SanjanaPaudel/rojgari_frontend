@@ -9,6 +9,7 @@ import '../../../models/service_request/selected_service_location.dart';
 import '../../../models/service_request/service_request_payload.dart';
 import '../../../repositories/service_request/service_request_repository.dart';
 import '../../../repositories/service_request/service_request_repository_provider.dart';
+import '../../../services/booking_history_store.dart';
 import '../../../services/service_request/booking_status_service.dart';
 import '../../../services/service_request/request_media_picker.dart';
 import '../../../widgets/customer/service_request/photo_upload_section.dart';
@@ -307,6 +308,10 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
       );
       final result = await _repository.createServiceRequest(payload);
       if (!mounted) return;
+
+      // Not awaited — the history list refreshing is a side effect of this
+      // booking existing now, not something this navigation should wait on.
+      BookingHistoryStore.instance.refreshNow();
 
       // BACKEND INTEGRATION:
       // result.requestId is the ID returned by the create-service-request API.

@@ -4,6 +4,7 @@ import '../../../core/constants/colors.dart';
 import '../../../models/service_request/accepted_worker_ui_model.dart';
 import '../../../models/service_request/selected_service_location.dart';
 import '../../../models/service_request/service_category.dart';
+import '../../../services/booking_history_store.dart';
 import '../../../services/service_request/booking_status_service.dart';
 import 'service_on_the_way_screen.dart';
 
@@ -100,6 +101,7 @@ class _CustomerBookingTrackingLoaderState
           enableDemoFlow: false,
           onCancelRequested: () async {
             await _service.cancelBooking(widget.bookingId);
+            BookingHistoryStore.instance.refreshNow();
             return true;
           },
         );
