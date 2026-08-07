@@ -845,6 +845,29 @@ class _CompletionWarning extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPending =
         verificationStatus == TechnicianVerificationStatus.pending;
+    final isRejected =
+        verificationStatus == TechnicianVerificationStatus.rejected;
+
+    // Three actionable states share this banner (verified never reaches here):
+    //   • pending  → docs under review, nothing to do → disabled "Pending"
+    //   • rejected → admin rejected → let the worker resubmit (replaces the
+    //                old documents and resets status to pending on the backend)
+    //   • else     → incomplete → first-time "Complete Now" call to action
+    final String message;
+    final String buttonLabel;
+    if (isPending) {
+      message = 'Your documents have been submitted and are pending review.';
+      buttonLabel = 'Pending';
+    } else if (isRejected) {
+      message =
+          'Your verification was rejected. Please resubmit your citizenship documents.';
+      buttonLabel = 'Resubmit';
+    } else {
+      message =
+          'Complete your profile and citizenship documents before accepting jobs.';
+      buttonLabel = 'Complete Now';
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -858,16 +881,16 @@ class _CompletionWarning extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isPending
-                  ? 'Your documents have been submitted and are pending review.'
-                  : 'Complete your profile and citizenship documents before accepting jobs.',
+              message,
               style: const TextStyle(fontSize: 12, height: 1.35),
             ),
           ),
           const SizedBox(width: 8),
           TextButton(
+            // Only "pending" has nothing to do; rejected/incomplete both open
+            // the document screen via onComplete.
             onPressed: isPending ? null : onComplete,
-            child: Text(isPending ? 'Pending' : 'Complete Now'),
+            child: Text(buttonLabel),
           ),
         ],
       ),

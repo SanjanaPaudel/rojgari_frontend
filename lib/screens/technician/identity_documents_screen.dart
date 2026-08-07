@@ -108,8 +108,18 @@ class _IdentityDocumentsScreenState extends State<IdentityDocumentsScreen> {
     }
   }
 
-  bool get _hasFront => widget.hasExistingFront || _front != null;
-  bool get _hasBack => widget.hasExistingBack || _back != null;
+  // After a rejection the worker must upload NEW images: the existing
+  // (rejected) files already on the server no longer satisfy the requirement,
+  // so Resubmit stays blocked until BOTH documents are freshly re-picked this
+  // session. For every other state, an existing server file still counts (a
+  // returning worker doesn't have to re-upload just to view/keep their docs).
+  bool get _isRejected =>
+      widget.verificationStatus == TechnicianVerificationStatus.rejected;
+
+  bool get _hasFront =>
+      _front != null || (!_isRejected && widget.hasExistingFront);
+  bool get _hasBack =>
+      _back != null || (!_isRejected && widget.hasExistingBack);
 
   Future<void> _pick(_DocumentType type) async {
     final source = await showModalBottomSheet<ImageSource>(
@@ -344,7 +354,9 @@ class _IdentityDocumentsScreenState extends State<IdentityDocumentsScreen> {
                 verificationStatus: widget.verificationStatus,
                 isEditable: !_isPendingOrVerified,
                 error: _showErrors && !_hasFront
-                    ? 'Citizenship front image is required.'
+                    ? (_isRejected
+                        ? 'Choose a new citizenship front image to resubmit.'
+                        : 'Citizenship front image is required.')
                     : null,
                 onPick: () => _pick(_DocumentType.front),
                 onRemove: _front == null || _isPendingOrVerified
@@ -360,7 +372,9 @@ class _IdentityDocumentsScreenState extends State<IdentityDocumentsScreen> {
                 verificationStatus: widget.verificationStatus,
                 isEditable: !_isPendingOrVerified,
                 error: _showErrors && !_hasBack
-                    ? 'Citizenship back image is required.'
+                    ? (_isRejected
+                        ? 'Choose a new citizenship back image to resubmit.'
+                        : 'Citizenship back image is required.')
                     : null,
                 onPick: () => _pick(_DocumentType.back),
                 onRemove: _back == null || _isPendingOrVerified
@@ -407,7 +421,9 @@ class _IdentityDocumentsScreenState extends State<IdentityDocumentsScreen> {
                           ? (widget.verificationStatus == TechnicianVerificationStatus.verified
                               ? 'Verified'
                               : 'Pending Verification')
-                          : 'Submit Documents',
+                          : (widget.verificationStatus == TechnicianVerificationStatus.rejected
+                              ? 'Resubmit Documents'
+                              : 'Submit Documents'),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: _isPendingOrVerified
