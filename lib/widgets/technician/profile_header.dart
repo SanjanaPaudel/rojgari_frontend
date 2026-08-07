@@ -8,6 +8,11 @@ class ProfileHeader extends StatelessWidget {
   final double rating;
   final int yearsOfExperience;
   final bool isVerified;
+
+  /// True when the worker has submitted their documents and is awaiting admin
+  /// review. Shows a "Pending" status instead of the "Verify Now" call to
+  /// action. Ignored when [isVerified] is true (verified always wins).
+  final bool isPendingVerification;
   final String avatarImage;
   final Uint8List? avatarBytes;
   final bool isOnline;
@@ -22,6 +27,7 @@ class ProfileHeader extends StatelessWidget {
     required this.rating,
     required this.yearsOfExperience,
     required this.isVerified,
+    this.isPendingVerification = false,
     required this.avatarImage,
     this.avatarBytes,
     required this.isOnline,
@@ -31,6 +37,25 @@ class ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Verified wins; otherwise show "Pending" once docs are submitted and
+    // awaiting review, else the "Verify Now" call to action.
+    final bool showPending = !isVerified && isPendingVerification;
+    final Color statusColor = isVerified
+        ? AppColors.primary
+        : showPending
+            ? AppColors.orange
+            : Colors.grey;
+    final IconData statusIcon = isVerified
+        ? Icons.verified_user
+        : showPending
+            ? Icons.hourglass_top
+            : Icons.info_outline;
+    final String statusLabel = isVerified
+        ? "Verified"
+        : showPending
+            ? "Pending"
+            : "Verify Now";
+
     return SizedBox(
       height: 145,
 
@@ -189,28 +214,22 @@ class ProfileHeader extends StatelessWidget {
                         Row(
                           children: [
                             Icon(
-                              isVerified
-                                  ? Icons.verified_user
-                                  : Icons.info_outline,
+                              statusIcon,
 
                               size: 16,
 
-                              color: isVerified
-                                  ? AppColors.primary
-                                  : Colors.grey,
+                              color: statusColor,
                             ),
 
                             const SizedBox(width: 4),
 
                             Text(
-                              isVerified ? "Verified" : "Verify Now",
+                              statusLabel,
 
                               style: TextStyle(
                                 fontSize: 12,
 
-                                color: isVerified
-                                    ? AppColors.primary
-                                    : Colors.grey,
+                                color: statusColor,
 
                                 fontWeight: FontWeight.w600,
                               ),

@@ -741,6 +741,10 @@ class _DashboardBody extends StatelessWidget {
               rating: stats.rating,
               yearsOfExperience: w.yearsOfExperience,
               isVerified: w.verified,
+              // Merged profile carries the 3-way status (docs submitted →
+              // pending), unlike the dashboard's binary `verified` flag.
+              isPendingVerification: profile.verificationStatus ==
+                  TechnicianVerificationStatus.pending,
               avatarImage: avatarImage,
               avatarBytes: profile.localProfileImageBytes,
               isOnline: isOnline,
