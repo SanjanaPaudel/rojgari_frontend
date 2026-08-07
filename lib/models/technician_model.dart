@@ -191,19 +191,34 @@ class TechnicianModel {
     final frontUrl = resolveUrl(json['citizenship_front'] as String?);
     final backUrl = resolveUrl(json['citizenship_back'] as String?);
     final isVerified = (json['is_verified'] as bool?) ?? false;
+    final hasDocs = frontUrl != null && backUrl != null;
 
-    // Derive the three-way verification status:
-    //   • is_verified == true               → admin has approved the docs
-    //   • docs uploaded, not yet approved   → pending review
-    //   • no docs uploaded at all           → incomplete (still needs to submit)
-    final TechnicianVerificationStatus verStatus;
-    if (isVerified) {
-      verStatus = TechnicianVerificationStatus.verified;
-    } else if (frontUrl != null && backUrl != null) {
-      verStatus = TechnicianVerificationStatus.pending;
-    } else {
-      verStatus = TechnicianVerificationStatus.incomplete;
-    }
+    // Derive the verification status. The backend's `verification_status`
+    // string (pending | verified | rejected) is the source of truth for the
+    // admin's approve/reject decision, so it is preferred when present — this
+    // is what lets a *rejected* worker actually show as rejected instead of
+    // being mistaken for pending.
+    //
+    // The backend has no "incomplete" state (it defaults to "pending" even
+    // before the worker uploads any documents), so we still use citizenship-
+    // doc presence to split the backend's "pending" into our two UI states:
+    //   • docs uploaded, awaiting admin review → pending
+    //   • no docs uploaded yet                 → incomplete (still needs to submit)
+    //
+    // The `_` fallback keeps the previous is_verified + docs inference for any
+    // caller/payload that doesn't include `verification_status`.
+    final verStatus = switch (json['verification_status'] as String?) {
+      'verified' => TechnicianVerificationStatus.verified,
+      'rejected' => TechnicianVerificationStatus.rejected,
+      'pending' => hasDocs
+          ? TechnicianVerificationStatus.pending
+          : TechnicianVerificationStatus.incomplete,
+      _ => isVerified
+          ? TechnicianVerificationStatus.verified
+          : (hasDocs
+                ? TechnicianVerificationStatus.pending
+                : TechnicianVerificationStatus.incomplete),
+    };
 
     return TechnicianModel(
       fullName: json['full_name'] as String? ?? '',

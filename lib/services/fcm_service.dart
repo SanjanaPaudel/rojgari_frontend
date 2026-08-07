@@ -4,9 +4,21 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/api_urls.dart';
 import '../screens/notifications_screen.dart';
+import '../screens/technician/profile_screen.dart';
 import '../widgets/notification_permission_dialog.dart';
 import 'api_service.dart';
 import 'navigation_service.dart';
+
+// The FCM `data` payload's `type` values that carry an admin worker-
+// verification decision. The backend sends these on approve/reject
+// (NotificationService.send_to_user → data: {"type": ..., "worker_id": ...}).
+const Set<String> _verificationDataTypes = {
+  'worker_verification_approved',
+  'worker_verification_rejected',
+};
+
+bool _isVerificationMessage(RemoteMessage message) =>
+    _verificationDataTypes.contains(message.data['type']);
 
 // Generated in Firebase console > Project settings > Cloud Messaging > Web
 // Push certificates. Required by getToken() on web only; native platforms
@@ -34,6 +46,19 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
 /// whichever user last registered it.
 class FcmService {
   FcmService._();
+
+  /// Bumped every time an admin worker-verification decision (approved or
+  /// rejected) arrives while the app is running, or is tapped to open the
+  /// app. Screens that display the worker's verification status (the
+  /// technician home dashboard) listen to this and re-fetch their status so
+  /// the badge flips live, without the worker needing to pull-to-refresh.
+  ///
+  /// A process-lifetime [ValueNotifier] rather than a stream so late
+  /// listeners (a home screen mounted after the message arrived) simply read
+  /// the current value; it is never disposed because it lives as long as the
+  /// app. Listeners must still remove themselves in their own dispose().
+  static final ValueNotifier<int> verificationStatusChanged =
+      ValueNotifier<int>(0);
 
   static bool _listenersRegistered = false;
 
@@ -120,6 +145,14 @@ class FcmService {
         'FCM foreground message: ${message.notification?.title} — '
         '${message.notification?.body}',
       );
+      // A verification decision that lands while the worker is actively using
+      // the app: nudge any status-showing screen to re-fetch so the badge
+      // updates live (they won't see the system tray banner in the
+      // foreground). Safe for non-worker/customer sessions too — nothing is
+      // listening there, so the bump is simply ignored.
+      if (_isVerificationMessage(message)) {
+        verificationStatusChanged.value++;
+      }
     });
 
     // App was in the background (not terminated) when the notification was
@@ -158,13 +191,31 @@ class FcmService {
     }
   }
 
-  // Both live notification types (booking_accepted, booking_rejected) carry
-  // a booking_id, but there's no screen yet that can open a specific booking
-  // from just its id — the existing tracking screens (ServiceOnTheWayScreen
-  // etc.) require the full booking context built up during the create/poll
-  // flow, not just an id. Land on the notifications list until that exists.
+  // Booking types (booking_accepted, booking_rejected) carry a booking_id,
+  // but there's no screen yet that can open a specific booking from just its
+  // id — the existing tracking screens (ServiceOnTheWayScreen etc.) require
+  // the full booking context built up during the create/poll flow, not just
+  // an id. Land on the notifications list for those.
+  //
+  // A worker-verification decision, though, is about the worker's own
+  // account, so a tap opens their profile screen where the verification
+  // badge now reflects the admin's decision. TechnicianProfileScreen fetches
+  // its own profile on open, so it needs no arguments here. We also bump
+  // [verificationStatusChanged] so the home dashboard behind it refreshes,
+  // and the badge is already correct when the worker pops back.
   static void _handleTap(RemoteMessage message) {
-    NavigationService.navigatorKey.currentState?.push(
+    final navigator = NavigationService.navigatorKey.currentState;
+    if (navigator == null) return;
+
+    if (_isVerificationMessage(message)) {
+      verificationStatusChanged.value++;
+      navigator.push(
+        MaterialPageRoute(builder: (_) => const TechnicianProfileScreen()),
+      );
+      return;
+    }
+
+    navigator.push(
       MaterialPageRoute(builder: (_) => const NotificationsScreen()),
     );
   }

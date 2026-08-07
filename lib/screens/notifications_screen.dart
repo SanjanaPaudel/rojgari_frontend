@@ -56,7 +56,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   List<NotificationItem> get _visible => switch (_filter) {
     _NotificationFilter.all => _notifications,
     _NotificationFilter.updates => _notifications
-        .where((n) => n.type == NotificationType.general)
+        .where(
+          (n) =>
+              n.type == NotificationType.general ||
+              n.type == NotificationType.workerVerificationApproved ||
+              n.type == NotificationType.workerVerificationRejected,
+        )
         .toList(),
   };
 

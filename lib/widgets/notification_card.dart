@@ -163,6 +163,18 @@ _NotificationVisual _visualFor(NotificationType type) {
         AppColors.red,
         Color(0xffFFE9E7),
       );
+    case NotificationType.workerVerificationApproved:
+      return const _NotificationVisual(
+        Icons.verified_user_outlined,
+        AppColors.green,
+        Color(0xffE4F9EC),
+      );
+    case NotificationType.workerVerificationRejected:
+      return const _NotificationVisual(
+        Icons.gpp_bad_outlined,
+        AppColors.red,
+        Color(0xffFFE9E7),
+      );
     case NotificationType.general:
       return const _NotificationVisual(
         Icons.notifications_none_rounded,

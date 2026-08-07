@@ -88,6 +88,10 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     // after this screen has rendered, rather than blocking login/splash
     // navigation on it. See FcmService for why failures here are swallowed.
     FcmService.initialize();
+    // Refresh the dashboard whenever an admin verification decision arrives
+    // (or is tapped) so the verification badge flips live — no manual
+    // pull-to-refresh needed. Removed in dispose().
+    FcmService.verificationStatusChanged.addListener(_onVerificationChanged);
     _loadUnreadNotificationCount();
     // Set safe defaults before the API responds.
     isOnline = false;
@@ -146,8 +150,20 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     if (accepted == true) await IncomingRequestsStore.instance.refreshNow();
   }
 
+  // Re-fetches the worker's verification status (and unread badge) after an
+  // admin approve/reject push. _loadDashboard() re-derives the verification
+  // badge from the fresh `verified` flag, so this is all that's needed.
+  void _onVerificationChanged() {
+    if (!mounted) return;
+    _loadDashboard();
+    _loadUnreadNotificationCount();
+  }
+
   @override
   void dispose() {
+    FcmService.verificationStatusChanged.removeListener(
+      _onVerificationChanged,
+    );
     _stopLocationUpdates();
     IncomingRequestsStore.instance.detach();
     super.dispose();
@@ -741,10 +757,13 @@ class _DashboardBody extends StatelessWidget {
               rating: stats.rating,
               yearsOfExperience: w.yearsOfExperience,
               isVerified: w.verified,
-              // Merged profile carries the 3-way status (docs submitted →
-              // pending), unlike the dashboard's binary `verified` flag.
+              // Merged profile carries the full status (docs submitted →
+              // pending, admin rejected → rejected), unlike the dashboard's
+              // binary `verified` flag which can't tell rejected from pending.
               isPendingVerification: profile.verificationStatus ==
                   TechnicianVerificationStatus.pending,
+              isRejected: profile.verificationStatus ==
+                  TechnicianVerificationStatus.rejected,
               avatarImage: avatarImage,
               avatarBytes: profile.localProfileImageBytes,
               isOnline: isOnline,

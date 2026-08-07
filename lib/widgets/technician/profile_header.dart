@@ -13,6 +13,11 @@ class ProfileHeader extends StatelessWidget {
   /// review. Shows a "Pending" status instead of the "Verify Now" call to
   /// action. Ignored when [isVerified] is true (verified always wins).
   final bool isPendingVerification;
+
+  /// True when the admin has rejected the worker's verification. Shows a
+  /// "Rejected" status. Ignored when [isVerified] is true, and takes
+  /// precedence over [isPendingVerification] when both are somehow set.
+  final bool isRejected;
   final String avatarImage;
   final Uint8List? avatarBytes;
   final bool isOnline;
@@ -28,6 +33,7 @@ class ProfileHeader extends StatelessWidget {
     required this.yearsOfExperience,
     required this.isVerified,
     this.isPendingVerification = false,
+    this.isRejected = false,
     required this.avatarImage,
     this.avatarBytes,
     required this.isOnline,
@@ -37,24 +43,33 @@ class ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Verified wins; otherwise show "Pending" once docs are submitted and
-    // awaiting review, else the "Verify Now" call to action.
-    final bool showPending = !isVerified && isPendingVerification;
+    // Verified wins; then "Rejected" if the admin rejected the application;
+    // then "Pending" once docs are submitted and awaiting review; else the
+    // "Verify Now" call to action.
+    final bool showRejected = !isVerified && isRejected;
+    final bool showPending =
+        !isVerified && !isRejected && isPendingVerification;
     final Color statusColor = isVerified
         ? AppColors.primary
-        : showPending
-            ? AppColors.orange
-            : Colors.grey;
+        : showRejected
+            ? AppColors.red
+            : showPending
+                ? AppColors.orange
+                : Colors.grey;
     final IconData statusIcon = isVerified
         ? Icons.verified_user
-        : showPending
-            ? Icons.hourglass_top
-            : Icons.info_outline;
+        : showRejected
+            ? Icons.gpp_bad
+            : showPending
+                ? Icons.hourglass_top
+                : Icons.info_outline;
     final String statusLabel = isVerified
         ? "Verified"
-        : showPending
-            ? "Pending"
-            : "Verify Now";
+        : showRejected
+            ? "Rejected"
+            : showPending
+                ? "Pending"
+                : "Verify Now";
 
     return SizedBox(
       height: 145,
