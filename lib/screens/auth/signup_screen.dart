@@ -505,8 +505,11 @@ class _CustomerSignupScreenState
                                       return; // Don't navigate to OTP screen
                                     }
 
-                                    // Signup successful
-                                    if (response["message"] == "OTP sent successfully.") {
+                                    // Signup successful — gate on the backend's
+                                    // `success` flag rather than an exact-match
+                                    // on the message string, so a reworded
+                                    // message can't silently stop navigation.
+                                    if (response["success"] == true) {
                                       if (!mounted) return;
                                       Navigator.push(
                                         context,
