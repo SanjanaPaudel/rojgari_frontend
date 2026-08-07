@@ -155,7 +155,10 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
   // badge from the fresh `verified` flag, so this is all that's needed.
   void _onVerificationChanged() {
     if (!mounted) return;
-    _loadDashboard();
+    // Silent refresh: update the verification badge in place without blanking
+    // the whole screen to a full-screen spinner. A background push should
+    // never yank the worker out of what they're looking at.
+    _loadDashboard(silent: true);
     _loadUnreadNotificationCount();
   }
 
@@ -169,12 +172,17 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     super.dispose();
   }
 
-  Future<void> _loadDashboard() async {
+  Future<void> _loadDashboard({bool silent = false}) async {
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    // A silent refresh (e.g. triggered by a verification push) re-fetches and
+    // updates the badge in place, leaving the current screen visible. Only an
+    // explicit/first load shows the full-screen loading spinner.
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final dashboard = await _dashboardService.fetchDashboard();
@@ -222,6 +230,9 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      // A silent refresh is best-effort: on failure keep the current screen
+      // as-is rather than replacing it with the full-screen error body.
+      if (silent) return;
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
