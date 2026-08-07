@@ -23,6 +23,7 @@ import '../../../services/booking_history_store.dart';
 import '../../../services/storage_service.dart';
 import '../../../widgets/customer/service_request/horizontal_service_status_tracker.dart';
 import '../../../widgets/customer/service_request/service_search_map.dart';
+import '../../chat/booking_chat_screen.dart';
 import 'rate_your_experience_screen.dart';
 
 typedef TrackingCancelCallback = Future<bool> Function();
@@ -684,10 +685,24 @@ class _ServiceOnTheWayScreenState extends State<ServiceOnTheWayScreen>
       widget.onChat!.call();
       return;
     }
-    // NAVIGATION INTEGRATION:
-    // Navigate to the customer-worker chat screen using requestId and workerId.
-    // Replace this temporary UI feedback when the chat feature is ready.
-    _showPlaceholder('Chat will be connected here.');
+    // Chat rides the same ws/bookings/<id>/ socket as tracking; requestId is
+    // the booking id here (it's what _startTrackingSocket connects with).
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BookingChatScreen(
+          bookingId: widget.requestId,
+          title: widget.worker.name.trim().isEmpty
+              ? 'Service professional'
+              : widget.worker.name,
+          subtitle: ServiceCategoryPresentation.serviceTitleFor(
+            widget.category,
+          ),
+          avatarUrl: widget.worker.profileImageUrl,
+          avatarAsset: widget.worker.profileImageAsset,
+        ),
+      ),
+    );
   }
 
   void _handleCall() {

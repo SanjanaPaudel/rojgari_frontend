@@ -49,6 +49,37 @@ class StorageService {
     return await _storage.read(key: 'refresh_token');
   }
 
+  // Returns the logged-in user's id, decoded from the stored JWT access
+  // token's "user_id" claim — the same claim the backend's WebSocket auth
+  // reads to identify the connected user. The chat screen uses this to tell
+  // which messages are the current user's own (align them right vs left),
+  // without needing a separate "who am I" endpoint. Returns null if there's
+  // no token or the payload can't be parsed. Mirrors the base64url payload
+  // decoding ApiService._isTokenExpired already does.
+  static Future<int?> getCurrentUserId() async {
+    final token = await getAccessToken();
+    if (token == null) return null;
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+
+      String payload = parts[1];
+      final padding = 4 - (payload.length % 4);
+      if (padding > 0 && padding < 4) {
+        payload += '=' * padding;
+      }
+
+      final decoded = jsonDecode(utf8.decode(base64Url.decode(payload)));
+      if (decoded is Map<String, dynamic>) {
+        final id = decoded['user_id'];
+        return id is int ? id : int.tryParse('$id');
+      }
+    } catch (_) {
+      // Malformed token — treat as unknown user.
+    }
+    return null;
+  }
+
   // Get next screen
   static Future<String?> getNextScreen() async {
     return await _storage.read(key: 'next_screen');

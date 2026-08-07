@@ -19,6 +19,7 @@ import '../../services/location/location_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/technician_job/technician_route_service.dart';
 import '../../widgets/technician/technician_route_map.dart';
+import '../chat/booking_chat_screen.dart';
 import 'incoming_requests_screen.dart';
 import 'technician_home_screen.dart';
 import 'technician_work_completed_screen.dart';
@@ -728,13 +729,31 @@ class _TechnicianActiveJobScreenState extends State<TechnicianActiveJobScreen> {
   }
 
   void _handleChat() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Customer chat is ready for integration.')),
+    // Chat rides ws/bookings/<id>/, keyed by the Booking id (distinct from the
+    // BookingOffer requestId). The fromIncomingRequest path has no booking id
+    // to hand over yet, so guard against that rather than opening a chat that
+    // can't connect.
+    final bookingId = _job.bookingId;
+    if (bookingId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chat is unavailable for this job.')),
+      );
+      return;
+    }
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BookingChatScreen(
+          bookingId: bookingId,
+          title: _job.customerName.trim().isEmpty
+              ? 'Customer'
+              : _job.customerName,
+          subtitle: _job.categoryName,
+          avatarUrl: _job.customerProfileImageUrl,
+          avatarAsset: _job.customerProfileImageAsset,
+        ),
+      ),
     );
-
-    // NAVIGATION INTEGRATION:
-    // Open the established request chat using this job's request/customer ID.
-    // Keep this action clickable while the messaging page is connected.
   }
 
   void _handleMore() {

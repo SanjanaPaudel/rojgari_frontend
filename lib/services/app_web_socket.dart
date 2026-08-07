@@ -43,6 +43,15 @@ class AppWebSocket {
     return controller.stream;
   }
 
+  /// Sends a JSON message to the server over this socket. No-op if the
+  /// connection isn't open yet or has already closed (the message is dropped
+  /// silently rather than throwing). Only the chat flow uses this — it pushes
+  /// {"type": "chat.message", "content": ...} frames; the booking/offer
+  /// sockets are receive-only and never call it.
+  void send(Map<String, dynamic> message) {
+    _channel?.sink.add(jsonEncode(message));
+  }
+
   /// The close code once the connection has ended (e.g. 4001 = bad/expired
   /// token, 4003 = not authorized for this booking) — see the backend's
   /// WebSocket guide §2. Only meaningful after the stream closes.

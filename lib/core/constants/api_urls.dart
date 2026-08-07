@@ -200,6 +200,19 @@ class ApiUrls {
   static String markNotificationRead(String notificationId) =>
       "$baseUrl/notifications/$notificationId/read/";
 
+  // GET — chat message history for one booking (up to the most recent 100,
+  // returned oldest-first). Works for the booking's customer or its assigned
+  // worker; 404/403 otherwise. This is loaded once when the chat screen opens;
+  // everything after that arrives live on bookingSocket (same connection as
+  // status/location, distinguished by an "event": "chat_message" key).
+  // Response: [ { id, booking, sender, sender_name, content, is_read,
+  //   created_at } ]
+  // NOTE the field names differ from the WS push: here the sender is a plain
+  // user id under "sender"; the socket calls it "sender_id". ChatMessage
+  // normalizes both.
+  static String bookingMessages(String bookingId) =>
+      "$baseUrl/services/bookings/$bookingId/messages/";
+
   // WebSocket base — same host as the REST API, but ws:// (wss:// once
   // TLS is in place) instead of http(s)://, and no "/api" prefix — the
   // WebSocket routes are mounted at the ASGI root, not under Django's
