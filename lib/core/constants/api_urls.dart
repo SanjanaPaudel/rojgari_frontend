@@ -29,6 +29,18 @@ class ApiUrls {
   static const String login = "$baseUrl/auth/login/";
   static const String refresh = "$baseUrl/auth/refresh/";
   static const String logout = "$baseUrl/auth/logout/";
+
+  // Forgot password (email-based, works for any role: customer/worker/admin).
+  // Flow: forgotPassword -> (optional resendForgotPasswordOtp) ->
+  // verifyForgotPasswordOtp -> resetPassword. OTP is valid 3 minutes,
+  // single-use, max 3 wrong attempts before the flow must restart from
+  // forgotPassword.
+  static const String forgotPassword = "$baseUrl/auth/forgot-password/";
+  static const String resendForgotPasswordOtp =
+      "$baseUrl/auth/forgot-password/resend-otp/";
+  static const String verifyForgotPasswordOtp =
+      "$baseUrl/auth/forgot-password/verify-otp/";
+  static const String resetPassword = "$baseUrl/auth/reset-password/";
   static const String workerDashboard = "$baseUrl/auth/worker/dashboard/";
 
   static const String workerProfile = "$baseUrl/auth/worker/profile/";

@@ -96,4 +96,63 @@ class AuthService {
     return data;
   }
 
+  // Forgot password flow (email-based, any role). Each method returns the
+  // raw decoded response body — callers check response["success"] the same
+  // way the signup OTP flow above does. reset-password's error body is the
+  // one exception: it can also come back as bare DRF field-array errors
+  // ({"confirm_password": [...]}, {"new_password": [...]}) with no
+  // "success" key at all, so callers of resetPassword must check those
+  // fields directly rather than relying solely on response["success"].
+
+  Future<Map<String, dynamic>> forgotPassword({
+    required String email,
+  }) async {
+    final response = await _apiService.post(
+      ApiUrls.forgotPassword,
+      {"email": email},
+    );
+
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> resendForgotPasswordOtp({
+    required String email,
+  }) async {
+    final response = await _apiService.post(
+      ApiUrls.resendForgotPasswordOtp,
+      {"email": email},
+    );
+
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> verifyForgotPasswordOtp({
+    required String email,
+    required String otp,
+  }) async {
+    final response = await _apiService.post(
+      ApiUrls.verifyForgotPasswordOtp,
+      {"email": email, "otp": otp},
+    );
+
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await _apiService.post(
+      ApiUrls.resetPassword,
+      {
+        "email": email,
+        "new_password": newPassword,
+        "confirm_password": confirmPassword,
+      },
+    );
+
+    return jsonDecode(response.body);
+  }
+
 }

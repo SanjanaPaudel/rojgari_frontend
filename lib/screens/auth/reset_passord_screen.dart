@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
+import 'package:rojgari_frontend_one/services/auth_service.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/widgets/custom_textfield.dart';
 import 'package:rojgari_frontend_one/widgets/password_requirement.dart';
 import 'package:rojgari_frontend_one/screens/auth/login_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
-  const ResetPasswordScreen({super.key});
+  final String email;
+
+  const ResetPasswordScreen({super.key, required this.email});
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -17,6 +20,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final TextEditingController newPasswordController = TextEditingController();
   final TextEditingController confirmPasswordController =
       TextEditingController();
+  final AuthService _authService = AuthService();
 
   bool hasMinLength = false;
   bool hasUppercase = false;
@@ -24,8 +28,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool hasNumber = false;
   bool hasSpecial = false;
 
+  bool isLoading = false;
   String? newPasswordError;
   String? confirmPasswordError;
+  String? generalError;
 
   @override
   void initState() {
@@ -43,7 +49,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     super.dispose();
   }
 
-  void validateFields() {
+  Future<void> validateFields() async {
     String? newError;
     String? confirmError;
 
@@ -66,17 +72,64 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() {
       newPasswordError = newError;
       confirmPasswordError = confirmError;
+      generalError = null;
     });
 
     if (newError != null || confirmError != null) return;
 
-    // Navigation-only for now — no reset-password API call yet, matching
-    // the rest of this auth flow's current scope.
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => LoginScreen()),
-      (route) => false,
-    );
+    setState(() => isLoading = true);
+
+    try {
+      final response = await _authService.resetPassword(
+        email: widget.email,
+        newPassword: newPasswordController.text,
+        confirmPassword: confirmPasswordController.text,
+      );
+
+      if (!mounted) return;
+      setState(() => isLoading = false);
+
+      // reset-password's error body has two distinct shapes: bare DRF
+      // field-array errors (no "success" key) for confirm_password/
+      // new_password, and a flat {success: false, message} for stale-flow
+      // cases (OTP not verified/expired, no pending request, account not
+      // found) — those have no single field to blame, so they show as a
+      // general banner instead.
+      final confirmPasswordFieldError = response["confirm_password"];
+      final newPasswordFieldError = response["new_password"];
+
+      if (confirmPasswordFieldError is List ||
+          newPasswordFieldError is List) {
+        setState(() {
+          if (newPasswordFieldError is List && newPasswordFieldError.isNotEmpty) {
+            newPasswordError = newPasswordFieldError.first.toString();
+          }
+          if (confirmPasswordFieldError is List && confirmPasswordFieldError.isNotEmpty) {
+            confirmPasswordError = confirmPasswordFieldError.first.toString();
+          }
+        });
+        return;
+      }
+
+      if (response["success"] == false) {
+        setState(() {
+          generalError = response["message"] ?? "Could not reset your password.";
+        });
+        return;
+      }
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        generalError = "Something went wrong. Please try again.";
+      });
+    }
   }
 
   void validatePassword(String password) {
@@ -341,10 +394,24 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           isValid: hasSpecial,
                         ),
 
+                        if (generalError != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            generalError!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+
                         const SizedBox(height: 12),
                         CustomButton(
                           text: "Reset Password",
                           icon: Icons.arrow_forward_rounded,
+                          isLoading: isLoading,
                           onPressed: validateFields,
                         ),
 

@@ -349,7 +349,11 @@ class ApiService {
     return url == ApiUrls.login ||
         url == ApiUrls.signup ||
         url == ApiUrls.verifyOtp ||
-        url == ApiUrls.resendOtp;
+        url == ApiUrls.resendOtp ||
+        url == ApiUrls.forgotPassword ||
+        url == ApiUrls.resendForgotPasswordOtp ||
+        url == ApiUrls.verifyForgotPasswordOtp ||
+        url == ApiUrls.resetPassword;
   }
 
   bool _isTokenExpired(String token) {

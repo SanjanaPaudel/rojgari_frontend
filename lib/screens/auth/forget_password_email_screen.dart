@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rojgari_frontend_one/core/constants/colors.dart';
-import 'package:rojgari_frontend_one/screens/auth/otp_screen.dart';
+import 'package:rojgari_frontend_one/screens/auth/forgot_password_otp_screen.dart';
+import 'package:rojgari_frontend_one/services/auth_service.dart';
 import 'package:rojgari_frontend_one/widgets/custom_button.dart';
 import 'package:rojgari_frontend_one/widgets/custom_textfield.dart';
 
@@ -15,8 +16,10 @@ class ForgotPasswordEmailScreen extends StatefulWidget {
 class _ForgotPasswordEmailScreenState
     extends State<ForgotPasswordEmailScreen> {
   final TextEditingController emailController = TextEditingController();
+  final AuthService _authService = AuthService();
 
   String? emailError;
+  bool isLoading = false;
 
   @override
   void dispose() {
@@ -271,25 +274,51 @@ class _ForgotPasswordEmailScreenState
                         CustomButton(
                           text: "Send OTP",
                           icon: Icons.arrow_forward_rounded,
-                          onPressed: () {
+                          isLoading: isLoading,
+                          onPressed: () async {
                             if (!_validateEmail()) return;
 
-                            // Navigation-only for now — no send-OTP API call
-                            // yet. OTPScreen's `phone` is a required
-                            // constructor field (used for the resend-OTP
-                            // API), but this email-based reset flow has no
-                            // phone number to give it; left blank as a
-                            // placeholder until the real backend contract
-                            // for email-based reset is wired up.
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => OTPScreen(
-                                  email: emailController.text.trim(),
-                                  phone: '',
+                            final email = emailController.text.trim();
+                            setState(() => isLoading = true);
+
+                            try {
+                              final response = await _authService
+                                  .forgotPassword(email: email);
+
+                              if (!mounted) return;
+                              setState(() => isLoading = false);
+
+                              if (response["success"] == false) {
+                                setState(() {
+                                  emailError = response["message"] ??
+                                      "Could not send the reset code.";
+                                });
+                                return;
+                              }
+
+                              final expiresIn =
+                                  response["expires_in"] is int
+                                      ? response["expires_in"] as int
+                                      : 180;
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ForgotPasswordOtpScreen(
+                                    email: email,
+                                    expiresIn: expiresIn,
+                                  ),
                                 ),
-                              ),
-                            );
+                              );
+                            } catch (e) {
+                              // Covers network failures and non-JSON error
+                              // responses, same as the signup OTP flow.
+                              if (!mounted) return;
+                              setState(() {
+                                isLoading = false;
+                                emailError = "Something went wrong. Please try again.";
+                              });
+                            }
                           },
                         ),
 
