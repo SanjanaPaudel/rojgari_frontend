@@ -419,6 +419,15 @@ class ApiService {
           data["access"],
         );
 
+        // The backend runs ROTATE_REFRESH_TOKENS + BLACKLIST_AFTER_ROTATION, so
+        // each refresh returns a NEW refresh token and blacklists the one we
+        // just sent. Persist the rotated token — otherwise the next refresh
+        // reuses a blacklisted token and the session dies after one refresh.
+        final newRefreshToken = data["refresh"];
+        if (newRefreshToken is String && newRefreshToken.isNotEmpty) {
+          await StorageService.saveRefreshToken(newRefreshToken);
+        }
+
         return true;
       }
     } catch (_) {
